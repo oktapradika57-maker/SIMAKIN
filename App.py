@@ -47,7 +47,7 @@ def load_data():
 df = load_data()
 
 # --- HEADER DASHBOARD ---
-st.markdown('<div class="header-style">🚀 DASHBOARD SDM & INVENTARIS TOOLS | NOP PALANGKARAYA</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">🚀 SIMAKIN | Sistem Monitoring Aset Kinarya </div>', unsafe_allow_html=True)
 st.write("---")
 
 if not df.empty:
