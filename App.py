@@ -4,7 +4,7 @@ import plotly.express as px
 import re
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Dashboard SDM & Asset", layout="wide", initial_sidebar_state="collapsed")
 
 # --- 2. CUSTOM CSS ---
 st.markdown("""
