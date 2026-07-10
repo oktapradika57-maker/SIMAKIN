@@ -67,7 +67,7 @@ def load_all_data():
 df_sdm, df_asset = load_all_data()
 
 # --- 4. HEADER & KONTEN UTAMA ---
-st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL & ASSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">🚀 SIMAKIN | REG KALIMANTAN</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty and not df_asset.empty:
     
