@@ -132,7 +132,7 @@ def extract_photos_robust(data_row, df_columns, range_letters=None, sheet_name="
     return photos, all_logs
 
 # --- 6. HEADER DASHBOARD ---
-st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">🚀 SIMAKIN | REG KALIMANTAN</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
     
