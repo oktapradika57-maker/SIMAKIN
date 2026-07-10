@@ -265,7 +265,7 @@ if not df_sdm.empty:
                 st.info("Tidak ada foto unit Genset terdeteksi untuk karyawan ini.")
                 
             with st.expander("🔍 Debug Link Kolom Genset"):
-                st.write(logs_genset if logs_logs_genset else "Kolom-kolom di GSheet kosong.")
+                st.write(logs_genset if logs_genset else "Kolom-kolom di GSheet kosong.")
 
         # 3. Tab Foto Tools
         with tab_tools:
