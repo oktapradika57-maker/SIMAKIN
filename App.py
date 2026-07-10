@@ -42,7 +42,7 @@ def load_all_data():
             df_sdm = pd.DataFrame()
             
         # 3B. Deteksi Sheet Asset dengan Smart Search (Abaikan spasi berlebih)
-        asset_target = "ALL ASSET MBP CME TE REG KALIMANTAN"
+asset_target = "ALL ASSET MBP CME TE REG KALIMA"
         actual_asset_name = None
         
         for name in sheet_names:
