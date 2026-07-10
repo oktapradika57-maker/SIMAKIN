@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# --- KONFIGURASI HALAMAN ---
+# --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard SDM & Asset", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CUSTOM CSS (Tema Gelap Dashboard) ---
+# --- 2. CUSTOM CSS ---
 st.markdown("""
 <style>
     .reportview-container { background: #1e1e24; color: white; }
@@ -18,176 +18,184 @@ st.markdown("""
         font-weight: bold;
         font-size: 20px;
         margin-bottom: 20px;
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- FUNGSI LOAD DATA DARI MULTIPLE SHEETS ---
+# --- 3. FUNGSI LOAD DATA (DENGAN SMART SEARCH SHEET NAME) ---
 @st.cache_data(ttl=600)
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
-    # Menggunakan format export xlsx agar bisa membaca multi-sheet berdasarkan nama
     excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
     
     try:
-        df_sdm = pd.read_excel(excel_url, sheet_name="SDM")
-        df_asset = pd.read_excel(excel_url, sheet_name="ALL ASSET MBP CME TE REG KALIMANTAN")
+        # Membaca seluruh file Excel (semua tab/sheet)
+        xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl')
+        sheet_names = list(xls.keys())
+        
+        # 3A. Deteksi Sheet SDM
+        if "SDM" in xls:
+            df_sdm = xls["SDM"]
+        else:
+            st.error(f"❌ Sheet 'SDM' tidak ditemukan. Sheet yang ada di file Anda: {sheet_names}")
+            df_sdm = pd.DataFrame()
+            
+        # 3B. Deteksi Sheet Asset dengan Smart Search (Abaikan spasi berlebih)
+        asset_target = "ALL ASSET MBP CME TE REG KALIMANTAN"
+        actual_asset_name = None
+        
+        for name in sheet_names:
+            # Bandingkan nama dengan menghapus semua spasi agar toleran terhadap typo/spasi tersembunyi
+            if asset_target.replace(" ", "").lower() in name.replace(" ", "").lower():
+                actual_asset_name = name
+                break
+                
+        if actual_asset_name:
+            df_asset = xls[actual_asset_name]
+        else:
+            st.error(f"❌ Sheet Asset tidak ditemukan. Sheet yang ada di file Anda: {sheet_names}")
+            df_asset = pd.DataFrame()
+            
         return df_sdm, df_asset
+
     except Exception as e:
-        st.error(f"Gagal memuat data dari Spreadsheet. Pastikan akses GSheet sudah Public (Anyone with link can view). Error: {e}")
+        st.error(f"❌ Gagal memuat data dari Spreadsheet. Error: {e}")
         return pd.DataFrame(), pd.DataFrame()
 
+# Panggil fungsi load data
 df_sdm, df_asset = load_all_data()
 
-# --- HEADER DASHBOARD ---
+# --- 4. HEADER & KONTEN UTAMA ---
 st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL & ASSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty and not df_asset.empty:
     
-    # ==========================================
-    # PILIH KARYAWAN (FILTER UTAMA)
-    # ==========================================
-    # Kita gunakan kolom NAMA yang ada di kedua sheet sebagai penyambung relasi data
-    list_nama = df_sdm['NAMA'].dropna().unique()
-    selected_nama = st.selectbox("👤 Pilih Nama Karyawan:", list_nama)
-    
-    # Filter data berdasarkan nama terpilih
-    data_karyawan_select = df_sdm[df_sdm['NAMA'] == selected_nama].iloc[0]
-    
-    # Cek apakah nama tersebut memiliki data di sheet Asset
-    has_asset = selected_nama in df_asset['NAMA'].values
-    if has_asset:
-        data_asset_select = df_asset[df_asset['NAMA'] == selected_nama].iloc[0]
-    else:
-        data_asset_select = None
-
-    # ==========================================
-    # BARIS 1: DATA RINGKAS KARYAWAN (Profil Utama)
-    # ==========================================
-    st.markdown("### 👤 Data Karyawan (Profil)")
-    karyawan_fields = ["NIK", "NAMA", "JOB", "LOKER", "NOP", "NO. KTP", "AKHIR PKWT", "Status Karyawan", "pakta Integritas", "Keahlian"]
-    dict_karyawan = {field: data_karyawan_select[field] if field in df_sdm.columns else "-" for field in karyawan_fields}
-    df_karyawan_profile = pd.DataFrame(list(dict_karyawan.items()), columns=["Parameter", "Informasi"])
-    st.dataframe(df_karyawan_profile, hide_index=True, use_container_width=True)
-    
-    st.write("---")
-
-    # ==========================================
-    # BARIS 2: DATA TOOLS DAN ASSET R2/R4 (BERDAMPINGAN)
-    # ==========================================
-    col_left, col_right = st.columns(2)
-    
-    # --- KOLOM KIRI: DATA TOOLS (Kondisi & Jumlah) ---
-    with col_left:
-        st.markdown("### 🔧 Data Tools (Kondisi & Jumlah)")
+    # 4A. Filter Karyawan
+    if 'NAMA' in df_sdm.columns:
+        list_nama = df_sdm['NAMA'].dropna().unique()
+        selected_nama = st.selectbox("👤 Pilih Nama Karyawan (Dari Sheet SDM):", list_nama)
         
-        tools_list = [
-            "WAH", "FA", "FE", "EXP. CERT.", "COUNSELING", "RESUME CONSELING", "WARNING LETTER", 
-            "Safety Driving License", "Type Kendaraan", "Jenis Kendaraan", "Nopol", "Status Asset Kendaraan", 
-            "Type Genset", "KVA Genset", "Status Genset", "TANG AMPERE AC / DC", "GROUNDING TESTER",
-            "Flaring set", "conduits", "pipe benders", "sealant tool", "Steamer Aircond", "Manifold", "freon",
-            "Full Body Harness", "Sefty Vest", "Sefty shoes", "Test Pen", "Safety Climbing Helmet", "First aid box",
-            "TOOLS BOX with standard tool set", "Laptop", "Smartphone", "Genset + Cable Genseat Minimum 100m + COS legrand 3 phase"
-            # ... Anda bisa menambahkan list tools lengkap Anda di sini ...
-        ]
+        # Ambil data spesifik 1 orang
+        data_karyawan_select = df_sdm[df_sdm['NAMA'] == selected_nama].iloc[0]
         
-        tools_data = []
-        status_bagus, status_rusak = 0, 0
+        # Cek apakah nama ini juga ada di Sheet Asset
+        if 'NAMA' in df_asset.columns and selected_nama in df_asset['NAMA'].values:
+            data_asset_select = df_asset[df_asset['NAMA'] == selected_nama].iloc[0]
+        else:
+            data_asset_select = None
+            
+        # 4B. Data Karyawan (Profil Horizontal)
+        st.markdown("### 👤 Data Karyawan (Profil)")
+        karyawan_fields = ["NIK", "NAMA", "JOB", "LOKER", "NOP", "NO. KTP", "AKHIR PKWT", "Status Karyawan", "pakta Integritas", "Keahlian"]
         
-        for tool in tools_list:
-            if tool in df_sdm.columns:
-                val = str(data_karyawan_select[tool])
-                tools_data.append({"Nama Tools": tool, "Kondisi / Jumlah": val})
-                if any(x in val.lower() for x in ['bagus', 'ok', 'ada', '1']): status_bagus += 1
-                elif any(x in val.lower() for x in ['rusak', 'tidak', '0']): status_rusak += 1
+        dict_karyawan = {}
+        for field in karyawan_fields:
+            if field in df_sdm.columns:
+                dict_karyawan[field] = str(data_karyawan_select[field])
             else:
-                tools_data.append({"Nama Tools": tool, "Kondisi / Jumlah": "-"})
+                dict_karyawan[field] = "-"
                 
-        df_tools_display = pd.DataFrame(tools_data)
-        st.dataframe(df_tools_display, height=400, hide_index=True, use_container_width=True)
+        df_karyawan_profile = pd.DataFrame(list(dict_karyawan.items()), columns=["Parameter", "Informasi"])
+        st.dataframe(df_karyawan_profile, hide_index=True, use_container_width=True)
+        
+        st.write("---")
 
-    # --- KOLOM KANAN: DATA ASSET R2/R4 (Sheet: ALL ASSET MBP CME...) ---
-    with col_right:
-        st.markdown("### 🚗 Data Asset R2/R4 (Logistik & Kendaraan)")
+        # 4C. Layout Kolom (Tools vs Asset R2/R4)
+        col_left, col_right = st.columns(2)
         
-        asset_fields = [
-            "JABATAN/ROLE", "LOKASI KERJA", "KATEGORI KENDARAAN", "STATUS KEPEMILIKAN ASSET", 
-            "NOPOL (PLAT NOMOR)", "MERK KENDARAAN", "TYPE KENDARAAN", "JENIS KENDARAAN", "TAHUN KENDARAAN", 
-            "OLI MESIN (TGL TERAKHIR DIGANTI)", "SERCIVE BERKALA (TGL TERAKHIR SERVICE)", 
-            "GANTI OLI (TGL TERAKHIR DIGANTI)", "PERGANTIAN BAN (TGL TERAKHIR PERGANTIAN BAN)"
-        ]
-        
-        asset_data = []
-        if data_asset_select is not None:
-            for field in asset_fields:
-                val = str(data_asset_select[field]) if field in df_asset.columns else "-"
-                asset_data.append({"Parameter Asset R2/R4": field, "Keterangan": val})
-        else:
-            for field in asset_fields:
-                asset_data.append({"Parameter Asset R2/R4": field, "Keterangan": "Data Asset Tidak Ditemukan"})
-                
-        df_asset_display = pd.DataFrame(asset_data)
-        # Dibuat list bentuk scrollable sama persis dengan height=400
-        st.dataframe(df_asset_display, height=400, hide_index=True, use_container_width=True)
+        with col_left:
+            st.markdown("### 🔧 Data Tools (Kondisi & Jumlah)")
+            
+            # List tools super lengkap sesuai request
+            tools_list = [
+                "WAH", "FA", "FE", "EXP. CERT.", "COUNSELING", "RESUME CONSELING", "WARNING LETTER", 
+                "Safety Driving License", "Type Kendaraan", "Jenis Kendaraan", "Nopol", "Status Asset Kendaraan", 
+                "Type Genset", "KVA Genset", "Status Genset", "TANG AMPERE AC / DC", "GROUNDING TESTER", 
+                "Aircond rectification tools for dismantle/ install such as piping tools", "Flaring set", 
+                "conduits", "pipe benders", "sealant tool", "Steamer Aircond", "Manifold", "freon", 
+                "cutting pipe etc", "Full Body Harness", "Double Hooked Lanyard with absorber", 
+                "Work Positioning Lanyard", "Sefty Vest", "Sefty shoes", "Safety Civil Gloves", 
+                "Safety Electrical Glove", "Safety Climbing Glove", "Rain coat", "Test Pen", 
+                "Safety Climbing Helmet", "Safety Ground Helmet", "Safety Glass", "Safety Banner", 
+                "Barricade Line", "Safety Boots (For Rainy session/ Flood )", "First aid box", 
+                "TOOLS BOX with standard tool set", "portable small Vacuum cleaner", "broom", "canebo", 
+                "tarpaulin", "lamp", "Battery Tester", "Mesin Las portable", "Gerinda", "Bor listrik", 
+                "KUNCI SABUK (Rantai) FILTER", "VACUM CLEANER", "JET PUMP PEMBERSIH AC", "Mesin Pemotong rumput", 
+                "TANG CRIMPING", "LAN TESTER", "TANGGA hidrolic 10 METER", "KOMPAS", "METERAN 50m", 
+                "METERAN 100m", "ANGLE METER (Water pass)", "OPTICAL POWER METER", "INFRARED THERMOMETER", 
+                "TAMBANG", "KATROL", "KUNCI PASS 32", "Cable & Connector Console", "Power bank Handphone", 
+                "Thermal Imager", "Thermal Logger", "Optical splicer single core", "OTDR", "Laptop", 
+                "Smartphone", "Printer label", "Genset + Cable Genseat Minimum 100m + COS legrand 3 phase", 
+                "Light Source (optical)", "obeng cadik", "tang buaya", "tang kombinasi", "tang potong", 
+                "kunci pass set", "kunci L set", "cutter", "Krone LSA", "Krone Wrapping Gun", 
+                "Fire Estinguisher portable", "OBD (Car GPS)", "Diagonal Plier", "Wire Stripper", 
+                "Electrical Insulation (Solasi Kabel)", "Cable Ties 5mm", "Iron Saw", "Screw stuck drat puller", 
+                "Kolor KUT Paste (Fuel Quality tester)", "Tent/ Tarpaulin (Including Lamp)", "Vehicle/ Motorcycle", 
+                "Climbing Supporting Tools (Rope, Katrol 7 Etc)", "Feeder Installation Kit", "Portable Ladder", "Car Tracker"
+            ]
+            
+            tools_data = []
+            status_bagus, status_rusak = 0, 0
+            
+            for tool in tools_list:
+                if tool in df_sdm.columns:
+                    val = str(data_karyawan_select[tool])
+                    if str(val).strip() == "nan": val = "-"
+                    tools_data.append({"Nama Tools": tool, "Kondisi / Jumlah": val})
+                    
+                    # Logika perhitungan grafik
+                    if any(x in val.lower() for x in ['bagus', 'ok', 'ada', '1']): status_bagus += 1
+                    elif any(x in val.lower() for x in ['rusak', 'tidak', 'hilang', '0']): status_rusak += 1
+                else:
+                    tools_data.append({"Nama Tools": tool, "Kondisi / Jumlah": "-"})
+                    
+            df_tools_display = pd.DataFrame(tools_data)
+            st.dataframe(df_tools_display, height=450, hide_index=True, use_container_width=True)
 
-    # ==========================================
-    # BARIS 3: GRAFIK & ANALISA
-    # ==========================================
-    st.write("---")
-    col_chart, col_plan = st.columns([1.5, 2])
-    
-    with col_chart:
-        st.markdown("### 📊 Ringkasan Kondisi Tools Karyawan")
-        chart_df = pd.DataFrame({"Kondisi": ["Bagus/OK", "Rusak/Tidak Ada"], "Total": [status_bagus, status_rusak]})
-        fig = px.pie(chart_df, values='Total', names='Kondisi', hole=0.4, color='Kondisi',
-                     color_discrete_map={'Bagus/OK':'#00b4d8', 'Rusak/Tidak Ada':'#d62828'})
-        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="white", margin=dict(t=0, b=0, l=0, r=0))
-        st.plotly_chart(fig, use_container_width=True)
-        
-    with col_plan:
-        st.markdown("### 📝 Findings & Action Plan")
-        st.text_area("Input Rekomendasi perbaikan berkala asset/tools:", height=120)
-        st.button("Push Update Data Asset & Tools")
+        with col_right:
+            st.markdown("### 🚗 Data Asset R2/R4 (Logistik)")
+            
+            asset_fields = [
+                "JABATAN/ROLE", "LOKASI KERJA", "KATEGORI KENDARAAN", "STATUS KEPEMILIKAN ASSET", 
+                "NOPOL (PLAT NOMOR)", "MERK KENDARAAN", "TYPE KENDARAAN", "JENIS KENDARAAN", "TAHUN KENDARAAN", 
+                "OLI MESIN (TGL TERAKHIR DIGANTI)", "SERCIVE BERKALA (TGL TERAKHIR SERVICE)", 
+                "GANTI OLI (TGL TERAKHIR DIGANTI)", "PERGANTIAN BAN (TGL TERAKHIR PERGANTIAN BAN)"
+            ]
+            
+            asset_data = []
+            if data_asset_select is not None:
+                for field in asset_fields:
+                    val = str(data_asset_select[field]) if field in df_asset.columns else "-"
+                    if val.strip() == "nan": val = "-"
+                    asset_data.append({"Parameter Asset R2/R4": field, "Keterangan": val})
+            else:
+                for field in asset_fields:
+                    asset_data.append({"Parameter Asset R2/R4": field, "Keterangan": "Belum ada data di Sheet Asset"})
+                    
+            df_asset_display = pd.DataFrame(asset_data)
+            st.dataframe(df_asset_display, height=450, hide_index=True, use_container_width=True)
 
-    # ==========================================
-    # BARIS 4: FOTO EVIDENCE BERDASARKAN INDEKS KOLOM GSHEET
-    # ==========================================
-    st.write("---")
-    st.markdown("### 📸 Evidence & Documented Slide (Foto Asset Terkait)")
-    
-    if data_asset_select is not None:
-        # Konversi nama kolom alfabet GSheet menjadi indeks angka Python (0-indexed)
-        # G=6, H=7, I=8, J=9, K=10, S=18, T=19, U=20, W=22, X=23, Y=24, Z=25
-        # AA=26, AB=27, AC=28, AD=29, AE=30, AF=31, AG=32, AH=33, AI=34, AJ=35, AK=36, AL=37, AM=38
-        # AP=41, AS=44, AT=45, AU=46, AV=47, AW=48
-        target_columns_idx = [
-            6, 7, 8, 9, 10, 18, 19, 20, 22, 23, 24, 25, 
-            26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 
-            41, 44, 45, 46, 47, 48
-        ]
+        # 4D. Grafik & Action Plan
+        st.write("---")
+        col_chart, col_plan = st.columns([1.5, 2])
         
-        # Mengumpulkan semua URL foto yang valid dari kolom-kolom di atas
-        valid_photos = []
-        for idx in target_columns_idx:
-            if idx < len(df_asset.columns):
-                col_name = df_asset.columns[idx]
-                cell_value = str(data_asset_select[col_name]).strip()
-                # Cek apakah cell berisi link gambar (Google Drive/Web Link)
-                if cell_value.startswith("http"):
-                    valid_photos.append((col_name, cell_value))
-        
-        if valid_photos:
-            # Tampilkan foto menggunakan grid kolom Streamlit (misal maksimal 4 kolom per baris)
-            photo_cols = st.columns(4)
-            for i, (col_label, img_url) in enumerate(valid_photos):
-                with photo_cols[i % 4]:
-                    # Catatan: Jika gambar dari Google Drive, pastikan format URL-nya sudah berupa direct-download link
-                    st.image(img_url, caption=f"Kolom {col_label}", use_container_width=True)
-                    st.button("Download", key=f"dl_{i}")
-        else:
-            st.info("Tidak ada link foto yang tersedia pada kolom-kolom asset karyawan ini.")
-    else:
-        st.warning("Foto tidak dapat dimuat karena data pada sheet Asset untuk karyawan ini kosong.")
+        with col_chart:
+            st.markdown("### 📊 Ringkasan Kondisi Tools Karyawan")
+            if status_bagus == 0 and status_rusak == 0:
+                st.info("Tidak ada data 'Bagus' atau 'Rusak' yang bisa dihitung untuk grafik.")
+            else:
+                chart_df = pd.DataFrame({"Kondisi": ["Bagus/Tersedia", "Rusak/Tidak Ada"], "Total": [status_bagus, status_rusak]})
+                fig = px.pie(chart_df, values='Total', names='Kondisi', hole=0.4, color='Kondisi',
+                             color_discrete_map={'Bagus/Tersedia':'#00b4d8', 'Rusak/Tidak Ada':'#d62828'})
+                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="white", margin=dict(t=20, b=20, l=20, r=20))
+                st.plotly_chart(fig, use_container_width=True)
+            
+        with col_plan:
+            st.markdown("### 📝 Findings & Action Plan")
+            st.text_area("Input Rekomendasi perbaikan berkala asset/tools:", height=150)
+            st.button("Push Update Data")
 
-else:
-    st.warning("Pastikan nama sheet 'SDM' dan 'ALL ASSET MBP CME TE REG KALIMANTAN' di isi dengan benar.")
+        # 4E. Foto Evidence (Berdasarkan Kolom G,H,I... dst)
+        st.write("---")
+        st.markdown("### 📸 Evidence & Documented Slide
