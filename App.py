@@ -24,16 +24,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNGSI UTAS: KONVERSI ABJAD KOLOM EXCEL KE INDEX ANGKA ---
-def col_letter_to_index(col_str):
-    exp = 0
-    idx = 0
-    for char in reversed(col_str.upper().strip()):
-        idx += (ord(char) - ord('A') + 1) * (26 ** exp)
-        exp += 1
-    return idx - 1
-
-# --- 4. FUNGSI LOAD DATA DARI SEMUA SHEET ---
+# --- 3. FUNGSI LOAD DATA ---
 @st.cache_data(ttl=600)
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
@@ -54,35 +45,56 @@ def load_all_data():
 
 df_sdm, df_asset, df_genset, df_tools_asset = load_all_data()
 
-# --- 5. FUNGSI PENCARIAN BARIS DATA BERDASARKAN NAMA (TOLERAN TYPO & SPASI) ---
+# --- 4. FUNGSI PENCARIAN BARIS DATA BERDASARKAN NAMA ---
 def get_row_by_name(df, name):
     if df.empty or 'NAMA' not in df.columns:
         return None
     clean_target_name = str(name).strip().lower()
-    # Mencocokkan nama dengan mengabaikan spasi berlebih dan huruf besar/kecil
     matched = df[df['NAMA'].astype(str).str.strip().str.lower() == clean_target_name]
     if not matched.empty:
         return matched.iloc[0]
     return None
 
-# --- 6. FUNGSI EKSTRAKSI & KONVERSI LINK FOTO GOOGLE DRIVE ---
-def extract_valid_photos(data_row, df_columns, target_indices):
+# --- 5. FUNGSI EKSTRAKSI FOTO BERDASARKAN FILTER NAMA JUDUL KOLOM (SMART & AKURAT) ---
+def extract_photos_by_column_names(data_row, df_columns, keyword_pattern=None, range_letters=None):
     photos = []
     all_logs = []
     if data_row is None or len(df_columns) == 0:
         return photos, all_logs
-        
+
+    # Fungsi pembantu konversi huruf ke index angka
+    def letter_to_idx(s):
+        val = 0
+        for char in s.upper().strip():
+            val = val * 26 + (ord(char) - ord('A') + 1)
+        return val - 1
+
+    # Tentukan index mana saja yang mau discan
+    target_indices = []
+    if range_letters:
+        for item in range_letters:
+            if "-" in item:
+                start, end = item.split("-")
+                target_indices.extend(list(range(letter_to_idx(start), letter_to_idx(end) + 1)))
+            else:
+                target_indices.append(letter_to_idx(item))
+    else:
+        target_indices = list(range(len(df_columns)))
+
     for idx in target_indices:
         if idx < len(df_columns):
-            col_name = df_columns[idx]
-            cell_value = str(data_row[col_name]).strip()
+            col_name = str(df_columns[idx])
             
+            # Jika ada pattern filter keyword nama kolom (misal kolom harus mengandung kata 'FOTO' atau 'DOKUMEN')
+            if keyword_pattern and not re.search(keyword_pattern, col_name, re.IGNORECASE):
+                continue
+                
+            cell_value = str(data_row[col_name]).strip()
             if cell_value and cell_value != "nan" and cell_value != "-":
                 all_logs.append({"Kolom": col_name, "Isi Teks Sel": cell_value})
                 urls = re.findall(r'(https?://[^\s"\'\)]+)', cell_value)
                 for url in urls:
                     final_url = url
-                    # Perbaikan format konversi direct link Google Drive agar stabil di Streamlit
                     if "drive.google.com" in url:
                         match_d = re.search(r'/file/d/([a-zA-Z0-9-_]+)', url)
                         if match_d:
@@ -92,15 +104,16 @@ def extract_valid_photos(data_row, df_columns, target_indices):
                             if match_id:
                                 final_url = f"https://lh3.googleusercontent.com/d/{match_id.group(1)}"
                     photos.append((col_name, final_url))
+                    
     return photos, all_logs
 
-# --- 7. HEADER DASHBOARD ---
+# --- 6. HEADER DASHBOARD ---
 st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
     
     # ==========================================
-    # FILTER BERTINGKAT: LOKER & NAMA KARYAWAN
+    # FILTER BERTINGKAT
     # ==========================================
     if 'LOKER' in df_sdm.columns:
         list_loker = ["SEMUA LOKER"] + list(df_sdm['LOKER'].dropna().unique())
@@ -117,7 +130,7 @@ if not df_sdm.empty:
         list_nama = df_sdm_filtered['NAMA'].dropna().unique()
         selected_nama = st.selectbox("👤 Pilih Nama Karyawan (Dari Sheet SDM):", list_nama)
         
-        # Ambil data spesifik menggunakan Smart Name Matching
+        # Ambil data spesifik baris via Smart Name Matching
         data_karyawan_select = get_row_by_name(df_sdm_filtered, selected_nama)
         data_asset_select = get_row_by_name(df_asset, selected_nama)
         data_genset_select = get_row_by_name(df_genset, selected_nama)
@@ -133,7 +146,7 @@ if not df_sdm.empty:
         st.write("---")
 
         # ==========================================
-        # LAYOUT 3 KOLOM BERDAMPINGAN (Tools, Asset, Genset)
+        # LAYOUT 3 KOLOM BERDAMPINGAN
         # ==========================================
         col_left, col_mid, col_right = st.columns(3)
         
@@ -210,7 +223,7 @@ if not df_sdm.empty:
                 genset_data = [{"Parameter Genset": f, "Keterangan": "Belum ada data Genset"} for f in genset_fields]
             st.dataframe(pd.DataFrame(genset_data), height=450, hide_index=True, use_container_width=True)
 
-        # --- GRAFIK KONDISI ---
+        # --- GRAFIK ---
         st.write("---")
         col_chart, col_plan = st.columns([1.5, 2])
         with col_chart:
@@ -228,35 +241,30 @@ if not df_sdm.empty:
             st.button("Push Update Data")
 
         # ==========================================
-        # SEKSI FOTO EVIDENCE (GALLERY VIA TABS & DEBUGGER)
+        # GALLERY EVIDENCE (MENGGUNAKAN SMART FILTER JUDUL KOLOM)
         # ==========================================
         st.write("---")
         st.markdown("### 📸 Evidence & Documented Slide Gallery")
         
         tab_r2r4, tab_genset, tab_tools = st.tabs(["🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools (Kalimantan)"])
         
-        # 1. Tab Foto Asset R2/R4
+        # 1. Tab Foto Asset R2/R4 (Aman & Muncul)
         with tab_r2r4:
-            letters_r2r4 = ["G","H","I","J","K","S","T","U","W","X","Y","Z","AA","AB","AC","AD","AE","AF","AG","AH","AI","AJ","AK","AL","AM","AP","AS","AT","AU","AV","AW"]
-            idx_r2r4 = [col_letter_to_index(l) for l in letters_r2r4]
-            photos_r2r4, logs_r2r4 = extract_valid_photos(data_asset_select, df_asset.columns, idx_r2r4)
-            
+            photos_r2r4, logs_r2r4 = extract_photos_by_column_names(
+                data_asset_select, df_asset.columns, range_letters=["G-K", "S-U", "W-Z", "AA-AM", "AP", "AS-AW"]
+            )
             if photos_r2r4:
                 cols = st.columns(4)
                 for i, (lbl, url) in enumerate(photos_r2r4):
                     cols[i % 4].image(url, caption=f"Kolom {lbl}", use_container_width=True)
             else:
                 st.info("Tidak ada foto kendaraan R2/R4 terdeteksi untuk karyawan ini.")
-            
-            with st.expander("🔍 Debug Link Kolom R2/R4"):
-                st.write(logs_r2r4 if logs_r2r4 else "Kolom-kolom di GSheet kosong.")
 
-        # 2. Tab Foto Genset
+        # 2. Tab Foto Genset (Discan dari Kolom F-H, M-Q, S-X, Z-AH)
         with tab_genset:
-            letters_genset = ["F","G","H","M","N","O","P","Q","S","T","U","V","W","X","Z","AA","AB","AC","AD","AE","AF","AG","AH"]
-            idx_genset = [col_letter_to_index(l) for l in letters_genset]
-            photos_genset, logs_genset = extract_valid_photos(data_genset_select, df_genset.columns, idx_genset)
-            
+            photos_genset, logs_genset = extract_photos_by_column_names(
+                data_genset_select, df_genset.columns, range_letters=["F-H", "M-Q", "S-X", "Z-AH"]
+            )
             if photos_genset:
                 cols = st.columns(4)
                 for i, (lbl, url) in enumerate(photos_genset):
@@ -264,18 +272,14 @@ if not df_sdm.empty:
             else:
                 st.info("Tidak ada foto unit Genset terdeteksi untuk karyawan ini.")
                 
-            with st.expander("🔍 Debug Link Kolom Genset"):
-                st.write(logs_genset if logs_genset else "Kolom-kolom di GSheet kosong.")
+            with st.expander("🔍 Pasang Alat Debug Link Sheet Genset"):
+                st.write(logs_genset if logs_genset else "Tidak mendeteksi teks link apa pun pada range kolom ini di sheet Genset.")
 
-        # 3. Tab Foto Tools
+        # 3. Tab Foto Tools (Discan otomatis dari Kolom E-DB)
         with tab_tools:
-            # Generate indeks alfabet otomatis dari E sampai DB
-            start_idx = col_letter_to_index("E")
-            end_idx = col_letter_to_index("DB")
-            idx_tools = list(range(start_idx, end_idx + 1))
-            
-            photos_tools, logs_tools = extract_valid_photos(data_tools_asset_select, df_tools_asset.columns, idx_tools)
-            
+            photos_tools, logs_tools = extract_photos_by_column_names(
+                data_tools_asset_select, df_tools_asset.columns, range_letters=["E-DB"]
+            )
             if photos_tools:
                 cols = st.columns(4)
                 for i, (lbl, url) in enumerate(photos_tools):
@@ -283,8 +287,8 @@ if not df_sdm.empty:
             else:
                 st.info("Tidak ada foto unit Tools terdeteksi untuk karyawan ini.")
                 
-            with st.expander("🔍 Debug Link Kolom Tools"):
-                st.write(logs_tools if logs_tools else "Kolom-kolom di GSheet kosong.")
+            with st.expander("🔍 Pasang Alat Debug Link Sheet Tools"):
+                st.write(logs_tools if logs_tools else "Tidak mendeteksi teks link apa pun pada range kolom ini di sheet Tools.")
 
     else:
         st.error("Kolom 'NAMA' tidak terdeteksi.")
