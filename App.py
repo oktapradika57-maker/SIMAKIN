@@ -23,7 +23,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNGSI LOAD DATA (DENGAN SMART SEARCH SHEET NAME) ---
+# --- 3. FUNGSI LOAD DATA ---
 @st.cache_data(ttl=600)
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
@@ -41,12 +41,11 @@ def load_all_data():
             st.error(f"❌ Sheet 'SDM' tidak ditemukan. Sheet yang ada di file Anda: {sheet_names}")
             df_sdm = pd.DataFrame()
             
-        # 3B. Deteksi Sheet Asset dengan Smart Search (Abaikan spasi berlebih)
-asset_target = "ALL ASSET MBP CME TE REG KALIMA"
+        # 3B. Deteksi Sheet Asset dengan Smart Search (Sudah diperbaiki namanya)
+        asset_target = "ALL ASSET MBP CME TE REG KALIMA"
         actual_asset_name = None
         
         for name in sheet_names:
-            # Bandingkan nama dengan menghapus semua spasi agar toleran terhadap typo/spasi tersembunyi
             if asset_target.replace(" ", "").lower() in name.replace(" ", "").lower():
                 actual_asset_name = name
                 break
@@ -107,7 +106,6 @@ if not df_sdm.empty and not df_asset.empty:
         with col_left:
             st.markdown("### 🔧 Data Tools (Kondisi & Jumlah)")
             
-            # List tools super lengkap sesuai request
             tools_list = [
                 "WAH", "FA", "FE", "EXP. CERT.", "COUNSELING", "RESUME CONSELING", "WARNING LETTER", 
                 "Safety Driving License", "Type Kendaraan", "Jenis Kendaraan", "Nopol", "Status Asset Kendaraan", 
@@ -144,7 +142,6 @@ if not df_sdm.empty and not df_asset.empty:
                     if str(val).strip() == "nan": val = "-"
                     tools_data.append({"Nama Tools": tool, "Kondisi / Jumlah": val})
                     
-                    # Logika perhitungan grafik
                     if any(x in val.lower() for x in ['bagus', 'ok', 'ada', '1']): status_bagus += 1
                     elif any(x in val.lower() for x in ['rusak', 'tidak', 'hilang', '0']): status_rusak += 1
                 else:
@@ -196,6 +193,37 @@ if not df_sdm.empty and not df_asset.empty:
             st.text_area("Input Rekomendasi perbaikan berkala asset/tools:", height=150)
             st.button("Push Update Data")
 
-        # 4E. Foto Evidence (Berdasarkan Kolom G,H,I... dst)
+        # 4E. Foto Evidence
         st.write("---")
-    st.markdown("### 📸 Evidence & Documented Slide (Foto Asset)")
+        st.markdown("### 📸 Evidence & Documented Slide (Foto Asset)")
+        
+        if data_asset_select is not None:
+            target_cols = [
+                6, 7, 8, 9, 10,       
+                18, 19, 20,           
+                22, 23, 24, 25,       
+                26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 
+                41,                   
+                44, 45, 46, 47, 48    
+            ]
+            
+            valid_photos = []
+            for idx in target_cols:
+                if idx < len(df_asset.columns):
+                    col_name = df_asset.columns[idx]
+                    cell_value = str(data_asset_select[col_name]).strip()
+                    if cell_value.startswith("http"):
+                        valid_photos.append((col_name, cell_value))
+            
+            if valid_photos:
+                photo_cols = st.columns(6) 
+                for i, (col_label, img_url) in enumerate(valid_photos):
+                    with photo_cols[i % 6]:
+                        st.image(img_url, caption=f"Foto {col_label}", use_container_width=True)
+            else:
+                st.info("Tidak ada link foto yang valid (berawalan http://) pada data Asset karyawan ini.")
+        else:
+            st.warning("Foto tidak dapat dimuat karena data Asset untuk karyawan ini tidak ditemukan.")
+
+    else:
+        st.error("Kolom 'NAMA' tidak ditemukan di Sheet SDM.")
