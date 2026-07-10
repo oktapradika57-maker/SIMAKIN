@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import re
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard SDM & Asset", layout="wide", initial_sidebar_state="collapsed")
@@ -41,7 +42,7 @@ def load_all_data():
             st.error(f"❌ Sheet 'SDM' tidak ditemukan. Sheet yang ada di file Anda: {sheet_names}")
             df_sdm = pd.DataFrame()
             
-        # 3B. Deteksi Sheet Asset dengan Smart Search (Sudah diperbaiki namanya)
+        # 3B. Deteksi Sheet Asset (Menggunakan nama yang terpotong sesuai sistem)
         asset_target = "ALL ASSET MBP CME TE REG KALIMA"
         actual_asset_name = None
         
@@ -193,11 +194,12 @@ if not df_sdm.empty and not df_asset.empty:
             st.text_area("Input Rekomendasi perbaikan berkala asset/tools:", height=150)
             st.button("Push Update Data")
 
-        # 4E. Foto Evidence
+        # 4E. Foto Evidence (Dengan Perbaikan Google Drive Link Converter & Debugger)
         st.write("---")
         st.markdown("### 📸 Evidence & Documented Slide (Foto Asset)")
         
         if data_asset_select is not None:
+            # Index kolom alfabet: G sd K, S sd U, W sd Z, AA sd AM, AP, AS sd AW
             target_cols = [
                 6, 7, 8, 9, 10,       
                 18, 19, 20,           
@@ -208,20 +210,48 @@ if not df_sdm.empty and not df_asset.empty:
             ]
             
             valid_photos = []
+            all_detected_values = []
+            
             for idx in target_cols:
                 if idx < len(df_asset.columns):
                     col_name = df_asset.columns[idx]
                     cell_value = str(data_asset_select[col_name]).strip()
-                    if cell_value.startswith("http"):
-                        valid_photos.append((col_name, cell_value))
+                    
+                    if cell_value and cell_value != "nan" and cell_value != "-":
+                        all_detected_values.append({"Kolom": col_name, "Isi Data": cell_value})
+                        
+                        # Ekstraksi tautan URL jika ada di dalam cell
+                        urls = re.findall(r'(https?://[^\s"\'\)]+)', cell_value)
+                        for url in urls:
+                            final_url = url
+                            # Jika link berasal dari Google Drive, konversi ke Direct Download Link
+                            if "drive.google.com" in url:
+                                match_d = re.search(r'/file/d/([a-zA-Z0-9-_]+)', url)
+                                if match_d:
+                                    final_url = f"https://lh3.googleusercontent.com/d/{match_d.group(1)}"
+                                else:
+                                    match_id = re.search(r'id=([a-zA-Z0-9-_]+)', url)
+                                    if match_id:
+                                        final_url = f"https://lh3.googleusercontent.com/d/{match_id.group(1)}"
+                            
+                            valid_photos.append((col_name, final_url))
             
             if valid_photos:
-                photo_cols = st.columns(6) 
+                photo_cols = st.columns(4) # Menampilkan dalam susunan grid 4 kolom
                 for i, (col_label, img_url) in enumerate(valid_photos):
-                    with photo_cols[i % 6]:
-                        st.image(img_url, caption=f"Foto {col_label}", use_container_width=True)
+                    with photo_cols[i % 4]:
+                        st.image(img_url, caption=f"Kolom: {col_label}", use_container_width=True)
             else:
-                st.info("Tidak ada link foto yang valid (berawalan http://) pada data Asset karyawan ini.")
+                st.info("Tidak ada link foto yang valid terdeteksi pada kolom asset karyawan ini.")
+            
+            # --- PANEL DEBUGGING JIKA FOTO TETAP KOSONG ---
+            with st.expander("🔍 Klik di sini jika foto belum muncul (Informasi Isi Kolom G-AW)"):
+                if all_detected_values:
+                    st.write("Sistem mendeteksi isi data berikut pada kolom foto Anda:")
+                    st.json(all_detected_values)
+                    st.caption("Catatan: Pastikan isi data di atas berupa link utuh berawalan http:// atau https:// dan file Google Drive diset ke 'Siapa saja dengan link dapat melihat'.")
+                else:
+                    st.write("Sistem tidak mendeteksi teks apa pun pada kolom G s/d AW untuk karyawan ini. Harap periksa apakah baris data atas nama ini di Google Sheets sudah terisi tautannya.")
         else:
             st.warning("Foto tidak dapat dimuat karena data Asset untuk karyawan ini tidak ditemukan.")
 
