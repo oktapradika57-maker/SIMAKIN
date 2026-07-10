@@ -3,193 +3,191 @@ import pandas as pd
 import plotly.express as px
 
 # --- KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Dashboard SDM & Tools", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Dashboard SDM & Asset", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CUSTOM CSS (Tema Gelap ala Dashboard di Gambar) ---
+# --- CUSTOM CSS (Tema Gelap Dashboard) ---
 st.markdown("""
 <style>
-    .reportview-container {
-        background: #1e1e24;
-        color: white;
-    }
-    .stDataFrame {
-        border-radius: 5px;
-    }
-    div[data-testid="stMetricValue"] {
-        font-size: 16px;
-    }
+    .reportview-container { background: #1e1e24; color: white; }
+    .stDataFrame { border-radius: 5px; }
     .header-style {
         background-color: #d32f2f;
         padding: 10px;
         border-radius: 5px;
         color: white;
         font-weight: bold;
+        font-size: 20px;
+        margin-bottom: 20px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- FUNGSI LOAD DATA DARI GOOGLE SHEETS ---
-@st.cache_data(ttl=600) # Cache data selama 10 menit
-def load_data():
-    # URL Asli: https://docs.google.com/spreadsheets/d/1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw/edit?gid=1104205638#gid=1104205638
-    # Diubah ke format export CSV
+# --- FUNGSI LOAD DATA DARI MULTIPLE SHEETS ---
+@st.cache_data(ttl=600)
+def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
-    gid = "1104205638"
-    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
+    # Menggunakan format export xlsx agar bisa membaca multi-sheet berdasarkan nama
+    excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
     
     try:
-        df = pd.read_csv(csv_url)
-        return df
+        df_sdm = pd.read_excel(excel_url, sheet_name="SDM")
+        df_asset = pd.read_excel(excel_url, sheet_name="ALL ASSET MBP CME TE REG KALIMANTAN")
+        return df_sdm, df_asset
     except Exception as e:
-        st.error(f"Gagal memuat data dari Spreadsheet. Pastikan link diset ke 'Public'. Error: {e}")
-        return pd.DataFrame()
+        st.error(f"Gagal memuat data dari Spreadsheet. Pastikan akses GSheet sudah Public (Anyone with link can view). Error: {e}")
+        return pd.DataFrame(), pd.DataFrame()
 
-df = load_data()
+df_sdm, df_asset = load_all_data()
 
 # --- HEADER DASHBOARD ---
-st.markdown('<div class="header-style">🚀 SIMAKIN | Sistem Monitoring Aset Kinarya </div>', unsafe_allow_html=True)
-st.write("---")
+st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL & ASSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
 
-if not df.empty:
-    # --- FILTER DATA ---
-    # Asumsi ada kolom 'NAMA' di spreadsheet Anda untuk memilih karyawan
-    if 'NAMA' in df.columns:
-        selected_nama = st.selectbox("Pilih Karyawan / Nama Tim:", df['NAMA'].unique())
-        user_data = df[df['NAMA'] == selected_nama].iloc[0]
+if not df_sdm.empty and not df_asset.empty:
+    
+    # ==========================================
+    # PILIH KARYAWAN (FILTER UTAMA)
+    # ==========================================
+    # Kita gunakan kolom NAMA yang ada di kedua sheet sebagai penyambung relasi data
+    list_nama = df_sdm['NAMA'].dropna().unique()
+    selected_nama = st.selectbox("👤 Pilih Nama Karyawan:", list_nama)
+    
+    # Filter data berdasarkan nama terpilih
+    data_karyawan_select = df_sdm[df_sdm['NAMA'] == selected_nama].iloc[0]
+    
+    # Cek apakah nama tersebut memiliki data di sheet Asset
+    has_asset = selected_nama in df_asset['NAMA'].values
+    if has_asset:
+        data_asset_select = df_asset[df_asset['NAMA'] == selected_nama].iloc[0]
     else:
-        st.warning("Kolom 'NAMA' tidak ditemukan di Spreadsheet.")
-        user_data = df.iloc[0] # Ambil baris pertama sebagai default
-
-    # --- LAYOUT KOLOM ---
-    col1, col2, col3 = st.columns([1, 1.5, 1.5])
+        data_asset_select = None
 
     # ==========================================
-    # KOLOM 1: DATA KARYAWAN (Pengganti Site Master)
+    # BARIS 1: DATA RINGKAS KARYAWAN (Profil Utama)
     # ==========================================
-    with col1:
-        st.markdown("### 👤 Data Karyawan")
-        # List kolom sesuai permintaan
-        karyawan_fields = [
-            "NIK", "NAMA", "JOB", "LOKER", "NOP", "NO. KTP", 
-            "AKHIR PKWT", "Status Karyawan", "pakta Integritas", "Keahlian"
-        ]
-        
-        # Menampilkan data karyawan dalam bentuk tabel rapi
-        dict_karyawan = {}
-        for field in karyawan_fields:
-            # Pengecekan apakah kolom ada di gsheet
-            dict_karyawan[field] = user_data[field] if field in df.columns else "-"
-            
-        df_karyawan = pd.DataFrame(list(dict_karyawan.items()), columns=["Parameter", "Value"])
-        st.dataframe(df_karyawan, hide_index=True, use_container_width=True)
-
+    st.markdown("### 👤 Data Karyawan (Profil)")
+    karyawan_fields = ["NIK", "NAMA", "JOB", "LOKER", "NOP", "NO. KTP", "AKHIR PKWT", "Status Karyawan", "pakta Integritas", "Keahlian"]
+    dict_karyawan = {field: data_karyawan_select[field] if field in df_sdm.columns else "-" for field in karyawan_fields}
+    df_karyawan_profile = pd.DataFrame(list(dict_karyawan.items()), columns=["Parameter", "Informasi"])
+    st.dataframe(df_karyawan_profile, hide_index=True, use_container_width=True)
+    
+    st.write("---")
 
     # ==========================================
-    # KOLOM 2: DATA TOOLS (Pengganti Tech Specs - Scrollable)
+    # BARIS 2: DATA TOOLS DAN ASSET R2/R4 (BERDAMPINGAN)
     # ==========================================
-    with col2:
+    col_left, col_right = st.columns(2)
+    
+    # --- KOLOM KIRI: DATA TOOLS (Kondisi & Jumlah) ---
+    with col_left:
         st.markdown("### 🔧 Data Tools (Kondisi & Jumlah)")
         
-        # List tools sesuai permintaan
         tools_list = [
             "WAH", "FA", "FE", "EXP. CERT.", "COUNSELING", "RESUME CONSELING", "WARNING LETTER", 
             "Safety Driving License", "Type Kendaraan", "Jenis Kendaraan", "Nopol", "Status Asset Kendaraan", 
-            "Type Genset", "KVA Genset", "Status Genset", "TANG AMPERE AC / DC", "GROUNDING TESTER", 
-            "Aircond rectification tools for dismantle/ install such as piping tools", "Flaring set", 
-            "conduits", "pipe benders", "sealant tool", "Steamer Aircond", "Manifold", "freon", 
-            "cutting pipe etc", "Full Body Harness", "Double Hooked Lanyard with absorber", 
-            "Work Positioning Lanyard", "Sefty Vest", "Sefty shoes", "Safety Civil Gloves", 
-            "Safety Electrical Glove", "Safety Climbing Glove", "Rain coat", "Test Pen", 
-            "Safety Climbing Helmet", "Safety Ground Helmet", "Safety Glass", "Safety Banner", 
-            "Barricade Line", "Safety Boots (For Rainy session/ Flood )", "First aid box", 
-            "TOOLS BOX with standard tool set", "portable small Vacuum cleaner", "broom", "canebo", 
-            "tarpaulin", "lamp", "Battery Tester", "Mesin Las portable", "Gerinda", "Bor listrik", 
-            "KUNCI SABUK (Rantai) FILTER", "VACUM CLEANER", "JET PUMP PEMBERSIH AC", "Mesin Pemotong rumput", 
-            "TANG CRIMPING", "LAN TESTER", "TANGGA hidrolic 10 METER", "KOMPAS", "METERAN 50m", 
-            "METERAN 100m", "ANGLE METER (Water pass)", "OPTICAL POWER METER", "INFRARED THERMOMETER", 
-            "TAMBANG", "KATROL", "KUNCI PASS 32", "Cable & Connector Console", "Power bank Handphone", 
-            "Thermal Imager", "Thermal Logger", "Optical splicer single core", "OTDR", "Laptop", 
-            "Smartphone", "Printer label", "Genset + Cable Genseat Minimum 100m + COS legrand 3 phase", 
-            "Light Source (optical)", "obeng cadik", "tang buaya", "tang kombinasi", "tang potong", 
-            "kunci pass set", "kunci L set", "cutter", "Krone LSA", "Krone Wrapping Gun", 
-            "Fire Estinguisher portable", "OBD (Car GPS)", "Diagonal Plier", "Wire Stripper", 
-            "Electrical Insulation (Solasi Kabel)", "Cable Ties 5mm", "Iron Saw", "Screw stuck drat puller", 
-            "Kolor KUT Paste (Fuel Quality tester)", "Tent/ Tarpaulin (Including Lamp)", "Vehicle/ Motorcycle", 
-            "Climbing Supporting Tools (Rope, Katrol 7 Etc)", "Feeder Installation Kit", "Portable Ladder", "Car Tracker"
+            "Type Genset", "KVA Genset", "Status Genset", "TANG AMPERE AC / DC", "GROUNDING TESTER",
+            "Flaring set", "conduits", "pipe benders", "sealant tool", "Steamer Aircond", "Manifold", "freon",
+            "Full Body Harness", "Sefty Vest", "Sefty shoes", "Test Pen", "Safety Climbing Helmet", "First aid box",
+            "TOOLS BOX with standard tool set", "Laptop", "Smartphone", "Genset + Cable Genseat Minimum 100m + COS legrand 3 phase"
+            # ... Anda bisa menambahkan list tools lengkap Anda di sini ...
         ]
-
-        # Membuat dataframe khusus untuk tools. 
-        # Asumsi di Spreadsheet formatnya: Nama Kolom Tool (berisi kondisi/jumlah, misal "1 - Bagus" atau kolom terpisah)
+        
         tools_data = []
-        status_bagus = 0
-        status_rusak = 0
-
+        status_bagus, status_rusak = 0, 0
+        
         for tool in tools_list:
-            if tool in df.columns:
-                val = str(user_data[tool])
-                tools_data.append({"Nama Tools": tool, "Informasi / Kondisi": val})
-                
-                # Logika sederhana untuk grafik: hitung kata 'Bagus' atau 'Rusak' (Sesuaikan dengan data asli Anda)
-                if 'bagus' in val.lower() or 'ok' in val.lower() or 'ada' in val.lower():
-                    status_bagus += 1
-                elif 'rusak' in val.lower() or 'hilang' in val.lower() or 'tidak' in val.lower():
-                    status_rusak += 1
+            if tool in df_sdm.columns:
+                val = str(data_karyawan_select[tool])
+                tools_data.append({"Nama Tools": tool, "Kondisi / Jumlah": val})
+                if any(x in val.lower() for x in ['bagus', 'ok', 'ada', '1']): status_bagus += 1
+                elif any(x in val.lower() for x in ['rusak', 'tidak', '0']): status_rusak += 1
             else:
-                tools_data.append({"Nama Tools": tool, "Informasi / Kondisi": "Data tidak tersedia"})
+                tools_data.append({"Nama Tools": tool, "Kondisi / Jumlah": "-"})
+                
+        df_tools_display = pd.DataFrame(tools_data)
+        st.dataframe(df_tools_display, height=400, hide_index=True, use_container_width=True)
 
-        df_tools = pd.DataFrame(tools_data)
+    # --- KOLOM KANAN: DATA ASSET R2/R4 (Sheet: ALL ASSET MBP CME...) ---
+    with col_right:
+        st.markdown("### 🚗 Data Asset R2/R4 (Logistik & Kendaraan)")
         
-        # Fitur SCROLLABLE: menggunakan height pada st.dataframe
-        st.dataframe(df_tools, height=450, hide_index=True, use_container_width=True)
-
-
-    # ==========================================
-    # KOLOM 3: GRAFIK KONDISI (Pengganti Daily Trend)
-    # ==========================================
-    with col3:
-        st.markdown("### 📊 Total Bagus / Rusak Tools")
+        asset_fields = [
+            "JABATAN/ROLE", "LOKASI KERJA", "KATEGORI KENDARAAN", "STATUS KEPEMILIKAN ASSET", 
+            "NOPOL (PLAT NOMOR)", "MERK KENDARAAN", "TYPE KENDARAAN", "JENIS KENDARAAN", "TAHUN KENDARAAN", 
+            "OLI MESIN (TGL TERAKHIR DIGANTI)", "SERCIVE BERKALA (TGL TERAKHIR SERVICE)", 
+            "GANTI OLI (TGL TERAKHIR DIGANTI)", "PERGANTIAN BAN (TGL TERAKHIR PERGANTIAN BAN)"
+        ]
         
-        # Membuat Dataframe untuk Chart
-        chart_data = pd.DataFrame({
-            "Kondisi": ["Bagus / Tersedia", "Rusak / Tidak Ada"],
-            "Jumlah": [status_bagus, status_rusak]
-        })
-
-        if status_bagus == 0 and status_rusak == 0:
-            st.info("Tidak ada data status (Bagus/Rusak) yang terdeteksi untuk user ini.")
+        asset_data = []
+        if data_asset_select is not None:
+            for field in asset_fields:
+                val = str(data_asset_select[field]) if field in df_asset.columns else "-"
+                asset_data.append({"Parameter Asset R2/R4": field, "Keterangan": val})
         else:
-            # Membuat Bar Chart menggunakan Plotly
-            fig = px.pie(chart_data, values='Jumlah', names='Kondisi', 
-                         color='Kondisi',
-                         color_discrete_map={'Bagus / Tersedia':'#00b4d8', 'Rusak / Tidak Ada':'#d62828'},
-                         hole=0.4)
-            fig.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font_color="white",
-                margin=dict(t=20, b=20, l=20, r=20)
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-        st.markdown("### 📝 Findings & Action Plan")
-        st.text_area("Input Rekomendasi / Analisa:", height=150)
-        st.button("Push Update Data")
+            for field in asset_fields:
+                asset_data.append({"Parameter Asset R2/R4": field, "Keterangan": "Data Asset Tidak Ditemukan"})
+                
+        df_asset_display = pd.DataFrame(asset_data)
+        # Dibuat list bentuk scrollable sama persis dengan height=400
+        st.dataframe(df_asset_display, height=400, hide_index=True, use_container_width=True)
 
     # ==========================================
-    # BAGIAN BAWAH: EVIDENCE / FOTO DARI GOOGLE DRIVE
+    # BARIS 3: GRAFIK & ANALISA
     # ==========================================
     st.write("---")
-    st.markdown("### 📸 Evidence & Documented Slide")
+    col_chart, col_plan = st.columns([1.5, 2])
     
-    # Placeholder untuk gambar. 
-    # Jika di Gsheet ada link gambar GDrive, Anda bisa melooping url tersebut.
-    # Karena Google Drive URL perlu format khusus untuk ditampilkan, ini contoh strukturnya:
-    image_cols = st.columns(8)
-    for i in range(8):
-        with image_cols[i]:
-            # Ganti URL ini dengan URL gambar asli dari spreadsheet Anda
-            st.image("https://via.placeholder.com/150", caption=f"Foto {i+1}", use_column_width=True)
-            st.button("Download", key=f"btn_{i}")
+    with col_chart:
+        st.markdown("### 📊 Ringkasan Kondisi Tools Karyawan")
+        chart_df = pd.DataFrame({"Kondisi": ["Bagus/OK", "Rusak/Tidak Ada"], "Total": [status_bagus, status_rusak]})
+        fig = px.pie(chart_df, values='Total', names='Kondisi', hole=0.4, color='Kondisi',
+                     color_discrete_map={'Bagus/OK':'#00b4d8', 'Rusak/Tidak Ada':'#d62828'})
+        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="white", margin=dict(t=0, b=0, l=0, r=0))
+        st.plotly_chart(fig, use_container_width=True)
+        
+    with col_plan:
+        st.markdown("### 📝 Findings & Action Plan")
+        st.text_area("Input Rekomendasi perbaikan berkala asset/tools:", height=120)
+        st.button("Push Update Data Asset & Tools")
+
+    # ==========================================
+    # BARIS 4: FOTO EVIDENCE BERDASARKAN INDEKS KOLOM GSHEET
+    # ==========================================
+    st.write("---")
+    st.markdown("### 📸 Evidence & Documented Slide (Foto Asset Terkait)")
+    
+    if data_asset_select is not None:
+        # Konversi nama kolom alfabet GSheet menjadi indeks angka Python (0-indexed)
+        # G=6, H=7, I=8, J=9, K=10, S=18, T=19, U=20, W=22, X=23, Y=24, Z=25
+        # AA=26, AB=27, AC=28, AD=29, AE=30, AF=31, AG=32, AH=33, AI=34, AJ=35, AK=36, AL=37, AM=38
+        # AP=41, AS=44, AT=45, AU=46, AV=47, AW=48
+        target_columns_idx = [
+            6, 7, 8, 9, 10, 18, 19, 20, 22, 23, 24, 25, 
+            26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 
+            41, 44, 45, 46, 47, 48
+        ]
+        
+        # Mengumpulkan semua URL foto yang valid dari kolom-kolom di atas
+        valid_photos = []
+        for idx in target_columns_idx:
+            if idx < len(df_asset.columns):
+                col_name = df_asset.columns[idx]
+                cell_value = str(data_asset_select[col_name]).strip()
+                # Cek apakah cell berisi link gambar (Google Drive/Web Link)
+                if cell_value.startswith("http"):
+                    valid_photos.append((col_name, cell_value))
+        
+        if valid_photos:
+            # Tampilkan foto menggunakan grid kolom Streamlit (misal maksimal 4 kolom per baris)
+            photo_cols = st.columns(4)
+            for i, (col_label, img_url) in enumerate(valid_photos):
+                with photo_cols[i % 4]:
+                    # Catatan: Jika gambar dari Google Drive, pastikan format URL-nya sudah berupa direct-download link
+                    st.image(img_url, caption=f"Kolom {col_label}", use_container_width=True)
+                    st.button("Download", key=f"dl_{i}")
+        else:
+            st.info("Tidak ada link foto yang tersedia pada kolom-kolom asset karyawan ini.")
+    else:
+        st.warning("Foto tidak dapat dimuat karena data pada sheet Asset untuk karyawan ini kosong.")
 
 else:
-    st.warning("Data kosong atau belum terhubung.")
+    st.warning("Pastikan nama sheet 'SDM' dan 'ALL ASSET MBP CME TE REG KALIMANTAN' di isi dengan benar.")
