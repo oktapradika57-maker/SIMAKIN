@@ -55,21 +55,20 @@ def get_row_by_name(df, name):
         return matched.iloc[0]
     return None
 
-# --- 5. FUNGSI EKSTRAKSI FOTO BERDASARKAN FILTER NAMA JUDUL KOLOM (SMART & AKURAT) ---
-def extract_photos_by_column_names(data_row, df_columns, keyword_pattern=None, range_letters=None):
+# --- 5. FUNGSI ULTRA-ROBUST: EKSTRAKSI FOTO DENGAN AUTOMATIC FAILSAFE SCAN ---
+def extract_photos_robust(data_row, df_columns, range_letters=None):
     photos = []
     all_logs = []
     if data_row is None or len(df_columns) == 0:
         return photos, all_logs
 
-    # Fungsi pembantu konversi huruf ke index angka
     def letter_to_idx(s):
         val = 0
         for char in s.upper().strip():
             val = val * 26 + (ord(char) - ord('A') + 1)
         return val - 1
 
-    # Tentukan index mana saja yang mau discan
+    # Tentukan indeks target berdasarkan abjad yang diminta
     target_indices = []
     if range_letters:
         for item in range_letters:
@@ -81,17 +80,13 @@ def extract_photos_by_column_names(data_row, df_columns, keyword_pattern=None, r
     else:
         target_indices = list(range(len(df_columns)))
 
+    # LANGKAH 1: Cari berdasarkan urutan abjad asli kolom
     for idx in target_indices:
         if idx < len(df_columns):
-            col_name = str(df_columns[idx])
-            
-            # Jika ada pattern filter keyword nama kolom (misal kolom harus mengandung kata 'FOTO' atau 'DOKUMEN')
-            if keyword_pattern and not re.search(keyword_pattern, col_name, re.IGNORECASE):
-                continue
-                
+            col_name = df_columns[idx]
             cell_value = str(data_row[col_name]).strip()
+            
             if cell_value and cell_value != "nan" and cell_value != "-":
-                all_logs.append({"Kolom": col_name, "Isi Teks Sel": cell_value})
                 urls = re.findall(r'(https?://[^\s"\'\)]+)', cell_value)
                 for url in urls:
                     final_url = url
@@ -103,7 +98,27 @@ def extract_photos_by_column_names(data_row, df_columns, keyword_pattern=None, r
                             match_id = re.search(r'[?&]id=([a-zA-Z0-9-_]+)', url)
                             if match_id:
                                 final_url = f"https://lh3.googleusercontent.com/d/{match_id.group(1)}"
-                    photos.append((col_name, final_url))
+                    photos.append((str(col_name), final_url))
+                    all_logs.append({"Metode": f"Sesuai Abjad ({col_name})", "Isi Data": cell_value})
+
+    # LANGKAH 2 (FAILSAFE): Jika langkah 1 zonk/kosong, scan ALL KOLOM di baris ini secara otomatis
+    if not photos:
+        for col_name in df_columns:
+            cell_value = str(data_row[col_name]).strip()
+            if cell_value and cell_value != "nan" and cell_value != "-":
+                urls = re.findall(r'(https?://[^\s"\'\)]+)', cell_value)
+                for url in urls:
+                    final_url = url
+                    if "drive.google.com" in url:
+                        match_d = re.search(r'/file/d/([a-zA-Z0-9-_]+)', url)
+                        if match_d:
+                            final_url = f"https://lh3.googleusercontent.com/d/{match_d.group(1)}"
+                        else:
+                            match_id = re.search(r'[?&]id=([a-zA-Z0-9-_]+)', url)
+                            if match_id:
+                                final_url = f"https://lh3.googleusercontent.com/d/{match_id.group(1)}"
+                    photos.append((str(col_name), final_url))
+                    all_logs.append({"Metode": f"Failsafe Scan ({col_name})", "Isi Data": cell_value})
                     
     return photos, all_logs
 
@@ -130,7 +145,6 @@ if not df_sdm.empty:
         list_nama = df_sdm_filtered['NAMA'].dropna().unique()
         selected_nama = st.selectbox("👤 Pilih Nama Karyawan (Dari Sheet SDM):", list_nama)
         
-        # Ambil data spesifik baris via Smart Name Matching
         data_karyawan_select = get_row_by_name(df_sdm_filtered, selected_nama)
         data_asset_select = get_row_by_name(df_asset, selected_nama)
         data_genset_select = get_row_by_name(df_genset, selected_nama)
@@ -241,16 +255,16 @@ if not df_sdm.empty:
             st.button("Push Update Data")
 
         # ==========================================
-        # GALLERY EVIDENCE (MENGGUNAKAN SMART FILTER JUDUL KOLOM)
+        # GALLERY EVIDENCE (AUTOMATIC FAILSAFE ACTIVATED)
         # ==========================================
         st.write("---")
         st.markdown("### 📸 Evidence & Documented Slide Gallery")
         
         tab_r2r4, tab_genset, tab_tools = st.tabs(["🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools (Kalimantan)"])
         
-        # 1. Tab Foto Asset R2/R4 (Aman & Muncul)
+        # 1. Tab Foto Asset R2/R4
         with tab_r2r4:
-            photos_r2r4, logs_r2r4 = extract_photos_by_column_names(
+            photos_r2r4, logs_r2r4 = extract_photos_robust(
                 data_asset_select, df_asset.columns, range_letters=["G-K", "S-U", "W-Z", "AA-AM", "AP", "AS-AW"]
             )
             if photos_r2r4:
@@ -260,35 +274,35 @@ if not df_sdm.empty:
             else:
                 st.info("Tidak ada foto kendaraan R2/R4 terdeteksi untuk karyawan ini.")
 
-        # 2. Tab Foto Genset (Discan dari Kolom F-H, M-Q, S-X, Z-AH)
+        # 2. Tab Foto Genset (Discan cerdas dengan Failsafe)
         with tab_genset:
-            photos_genset, logs_genset = extract_photos_by_column_names(
+            photos_genset, logs_genset = extract_photos_robust(
                 data_genset_select, df_genset.columns, range_letters=["F-H", "M-Q", "S-X", "Z-AH"]
             )
             if photos_genset:
                 cols = st.columns(4)
                 for i, (lbl, url) in enumerate(photos_genset):
-                    cols[i % 4].image(url, caption=f"Kolom {lbl}", use_container_width=True)
+                    cols[i % 4].image(url, caption=f"Kolom: {lbl}", use_container_width=True)
             else:
-                st.info("Tidak ada foto unit Genset terdeteksi untuk karyawan ini.")
+                st.info("Tidak ada foto unit Genset terdeteksi untuk karyawan ini pada sistem.")
                 
             with st.expander("🔍 Pasang Alat Debug Link Sheet Genset"):
-                st.write(logs_genset if logs_genset else "Tidak mendeteksi teks link apa pun pada range kolom ini di sheet Genset.")
+                st.write(logs_genset if logs_genset else "Tidak mendeteksi teks link apa pun di baris karyawan ini pada sheet Genset.")
 
-        # 3. Tab Foto Tools (Discan otomatis dari Kolom E-DB)
+        # 3. Tab Foto Tools (Discan cerdas dengan Failsafe)
         with tab_tools:
-            photos_tools, logs_tools = extract_photos_by_column_names(
+            photos_tools, logs_tools = extract_photos_robust(
                 data_tools_asset_select, df_tools_asset.columns, range_letters=["E-DB"]
             )
             if photos_tools:
                 cols = st.columns(4)
                 for i, (lbl, url) in enumerate(photos_tools):
-                    cols[i % 4].image(url, caption=f"Kolom {lbl}", use_container_width=True)
+                    cols[i % 4].image(url, caption=f"Kolom: {lbl}", use_container_width=True)
             else:
-                st.info("Tidak ada foto unit Tools terdeteksi untuk karyawan ini.")
+                st.info("Tidak ada foto unit Tools terdeteksi untuk karyawan ini pada sistem.")
                 
             with st.expander("🔍 Pasang Alat Debug Link Sheet Tools"):
-                st.write(logs_tools if logs_tools else "Tidak mendeteksi teks link apa pun pada range kolom ini di sheet Tools.")
+                st.write(logs_tools if logs_tools else "Tidak mendeteksi teks link apa pun di baris karyawan ini pada sheet Tools.")
 
     else:
         st.error("Kolom 'NAMA' tidak terdeteksi.")
