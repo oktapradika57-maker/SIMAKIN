@@ -139,7 +139,7 @@ def extract_photos_robust(data_row, df_columns, range_letters=None, sheet_name="
         for item in range_letters:
             if "-" in item:
                 start, end = item.split("-")
-                target_indices.extend(list(range(letter_to_idx(start), letter_to_idx(end) + 1))))
+                target_indices.extend(list(range(letter_to_idx(start), letter_to_idx(end) + 1)))
             else:
                 target_indices.append(letter_to_idx(item))
     else:
