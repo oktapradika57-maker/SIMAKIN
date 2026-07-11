@@ -24,7 +24,8 @@ def login_form():
     with st.form("login"):
         user = st.text_input("Username")
         pwd = st.text_input("Password", type="password")
-        submit = st.form_submit_button("Masuk", use_container_width=True)
+        # Perbaikan Streamlit Deprecation: use_container_width -> width="stretch"
+        submit = st.form_submit_button("Masuk", width="stretch")
         
     st.markdown("</div></div>", unsafe_allow_html=True)
     
@@ -89,13 +90,14 @@ def save_findings_to_sheet(nik, nama, unit_info, findings):
         st.error(f"Gagal menyimpan data: {e}")
         return False
 
-# --- 5. FUNGSI LOAD DATA UTAMA (BACA DATA) ---
+# --- 5. FUNGSI LOAD DATA UTAMA (ANTI SEGFAULT) ---
 @st.cache_data(ttl=600)
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
     excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
     try:
-        xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl')
+        # PERBAIKAN: Tambahkan dtype=str untuk mencegah Segmentation fault karena sel tanggal yang rusak
+        xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
         df_sdm = xls.get("SDM", pd.DataFrame())
         df_asset = xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame())
         df_genset = xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame())
@@ -163,7 +165,8 @@ if not df_sdm.empty:
         st.markdown("### 👤 Data Karyawan (Profil)")
         karyawan_fields = ["NIK", "NAMA", "JOB", "LOKER", "NOP", "NO. KTP", "AKHIR PKWT", "Status Karyawan", "pakta Integritas", "Keahlian"]
         dict_karyawan = {field: str(data_karyawan_select[field]) if data_karyawan_select is not None and field in data_karyawan_select else "-" for field in karyawan_fields}
-        st.dataframe(pd.DataFrame(list(dict_karyawan.items()), columns=["Parameter", "Informasi"]), hide_index=True, use_container_width=True)
+        # Perbaikan width dataframe
+        st.dataframe(pd.DataFrame(list(dict_karyawan.items()), columns=["Parameter", "Informasi"]), hide_index=True, width="stretch")
         st.write("---")
 
         col_left, col_mid, col_right = st.columns(3)
@@ -180,7 +183,7 @@ if not df_sdm.empty:
                     if any(x in val.lower() for x in ['bagus', 'ok', 'ada', '1']): status_bagus += 1
                     elif any(x in val.lower() for x in ['rusak', 'tidak', 'hilang', '0']): status_rusak += 1
                 else: tools_data.append({"Nama Tools": tool, "Kondisi / Jumlah": "-"})
-            st.dataframe(pd.DataFrame(tools_data), height=450, hide_index=True, use_container_width=True)
+            st.dataframe(pd.DataFrame(tools_data), height=450, hide_index=True, width="stretch")
 
         with col_mid:
             st.markdown("### 🚗 Data Asset R2/R4")
@@ -192,7 +195,7 @@ if not df_sdm.empty:
                     if val.strip() in ["nan", "None"]: val = "-"
                     asset_data.append({"Parameter Asset R2/R4": field, "Keterangan": val})
             else: asset_data = [{"Parameter": f, "Keterangan": "-"} for f in asset_fields]
-            st.dataframe(pd.DataFrame(asset_data), height=450, hide_index=True, use_container_width=True)
+            st.dataframe(pd.DataFrame(asset_data), height=450, hide_index=True, width="stretch")
 
         with col_right:
             st.markdown("### ⚡ Data Genset")
@@ -204,7 +207,7 @@ if not df_sdm.empty:
                     if val.strip() in ["nan", "None"]: val = "-"
                     genset_data.append({"Parameter Genset": field, "Keterangan": val})
             else: genset_data = [{"Parameter": f, "Keterangan": "-"} for f in genset_fields]
-            st.dataframe(pd.DataFrame(genset_data), height=450, hide_index=True, use_container_width=True)
+            st.dataframe(pd.DataFrame(genset_data), height=450, hide_index=True, width="stretch")
 
         st.write("---")
         col_chart, col_plan = st.columns([1.5, 2])
@@ -214,7 +217,8 @@ if not df_sdm.empty:
             if status_bagus > 0 or status_rusak > 0:
                 fig = px.pie(pd.DataFrame({"Kondisi": ["Bagus/Tersedia", "Rusak/Tidak Ada"], "Total": [status_bagus, status_rusak]}), values='Total', names='Kondisi', hole=0.4, color='Kondisi', color_discrete_map={'Bagus/Tersedia':'#00b4d8', 'Rusak/Tidak Ada':'#d62828'})
                 fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="white", margin=dict(t=20, b=20, l=20, r=20))
-                st.plotly_chart(fig, use_container_width=True)
+                # Perbaikan Streamlit Deprecation
+                st.plotly_chart(fig, width="stretch")
             else: st.info("Kondisi tools bernilai kosong.")
             
         with col_plan:
@@ -246,20 +250,19 @@ if not df_sdm.empty:
             photos_r2r4, _ = extract_photos_robust(data_asset_select, df_asset.columns, sheet_name="Asset R2/R4")
             if photos_r2r4:
                 cols = st.columns(4)
-                for i, (lbl, url) in enumerate(photos_r2r4): cols[i % 4].image(url, caption=f"Kolom {lbl}", use_container_width=True)
+                for i, (lbl, url) in enumerate(photos_r2r4): cols[i % 4].image(url, caption=f"Kolom {lbl}", width="stretch")
             else: st.info("Tidak ada foto kendaraan R2/R4.")
 
         with tab_genset:
             photos_genset, _ = extract_photos_robust(data_genset_select, df_genset.columns, sheet_name="Genset")
             if photos_genset:
                 cols = st.columns(4)
-                for i, (lbl, url) in enumerate(photos_genset): cols[i % 4].image(url, caption=f"Kolom: {lbl}", use_container_width=True)
+                for i, (lbl, url) in enumerate(photos_genset): cols[i % 4].image(url, caption=f"Kolom: {lbl}", width="stretch")
             else: st.info("Tidak ada foto unit Genset.")
 
         with tab_tools:
             photos_tools, _ = extract_photos_robust(data_tools_asset_select, df_tools_asset.columns, sheet_name="Tools")
             if photos_tools:
                 cols = st.columns(4)
-                for i, (lbl, url) in enumerate(photos_tools): cols[i % 4].image(url, caption=f"Kolom: {lbl}", use_container_width=True)
+                for i, (lbl, url) in enumerate(photos_tools): cols[i % 4].image(url, caption=f"Kolom: {lbl}", width="stretch")
             else: st.info("Tidak ada foto unit Tools.")
-
