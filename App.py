@@ -40,7 +40,6 @@ if not st.session_state.logged_in:
     login_form()
     st.stop() 
 
-
 # --- 3. CUSTOM CSS ---
 st.markdown("""
 <style>
@@ -59,8 +58,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
-# --- 4. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS (FINDINGS & ACTION PLAN) ---
+# --- 4. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
 def get_gspread_client():
     try:
         creds_dict = st.secrets["gcp_service_account"]
@@ -68,7 +66,7 @@ def get_gspread_client():
         client = gspread.authorize(creds)
         return client
     except Exception as e:
-        st.error("Konfigurasi Google Secrets belum diatur. Harap tambahkan file JSON ke Streamlit Cloud Secrets.")
+        st.error("Konfigurasi Google Secrets belum diatur di Streamlit Cloud. Fitur 'Push Update Data' dimatikan sementara.")
         return None
 
 def save_findings_to_sheet(nik, nama, unit_info, findings):
@@ -78,7 +76,6 @@ def save_findings_to_sheet(nik, nama, unit_info, findings):
         
         sh = client.open_by_key("1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw")
         
-        # Buat sheet baru jika belum ada
         try:
             worksheet = sh.worksheet("Rekomendasi Perbaikan")
         except:
@@ -91,7 +88,6 @@ def save_findings_to_sheet(nik, nama, unit_info, findings):
     except Exception as e:
         st.error(f"Gagal menyimpan data: {e}")
         return False
-
 
 # --- 5. FUNGSI LOAD DATA UTAMA (BACA DATA) ---
 @st.cache_data(ttl=600)
@@ -122,28 +118,10 @@ def get_row_by_name(df, target_name):
     if not partial_match.empty: return partial_match.iloc[0]
     return None
 
-def extract_photos_robust(data_row, df_columns, range_letters=None, sheet_name=""):
+def extract_photos_robust(data_row, df_columns, sheet_name=""):
     photos, all_logs = [], []
     if data_row is None:
-        all_logs.append({"Status": "❌ GAGAL DITEMUKAN", "Pesan": "Data karyawan ini TIDAK ADA di sheet.", "Data Mentah": "-"})
         return photos, all_logs
-
-    def letter_to_idx(s):
-        val = 0
-        for char in s.upper().strip():
-            val = val * 26 + (ord(char) - ord('A') + 1)
-        return val - 1
-
-    target_indices = []
-    if range_letters:
-        for item in range_letters:
-            if "-" in item:
-                start, end = item.split("-")
-                target_indices.extend(list(range(letter_to_idx(start), letter_to_idx(end) + 1)))
-            else:
-                target_indices.append(letter_to_idx(item))
-    else:
-        target_indices = list(range(len(df_columns)))
 
     for idx in range(len(df_columns)):
         col_name = df_columns[idx]
