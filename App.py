@@ -9,39 +9,71 @@ import requests
 import base64
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. SISTEM LOGIN ---
+# --- 2. LAYAR LOGIN PREMIUM & PROFESIONAL (GLASSMORPHISM COOPERATE THEME) ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
 def login_form():
     st.markdown("""
-        <div style="display: flex; justify-content: center; align-items: center; height: 80vh;">
-            <div style="padding: 20px; border: 1px solid #444; border-radius: 10px; background-color: #262730; width: 350px;">
-                <h2 style="text-align: center; color: #d32f2f;">🔐 LOGIN DASHBOARD</h2>
-                <hr>
+        <style>
+        /* Desain Card Login */
+        .login-box {
+            background: #1f2026;
+            border: 1px solid #33343d;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            max-width: 420px;
+            margin: 80px auto 20px auto;
+        }
+        .login-title {
+            color: #e53935;
+            font-size: 24px;
+            font-weight: 800;
+            text-align: center;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        .login-subtitle {
+            color: #888894;
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        /* Penyesuaian Style Input Kontainer */
+        div[data-testid="stForm"] {
+            border: none !important;
+            padding: 0 !important;
+            background-color: transparent !important;
+        }
+        </style>
+        <div class="login-box">
+            <div class="login-title">🔐 SYSTEM PORTAL LOGIN</div>
+            <div class="login-subtitle">Dashboard Operasional, Asset & Genset | Reg Kalimantan</div>
     """, unsafe_allow_html=True)
     
-    with st.form("login"):
-        user = st.text_input("Username")
-        pwd = st.text_input("Password", type="password")
-        submit = st.form_submit_button("Masuk", width="stretch")
+    with st.form("login_form_fields"):
+        user = st.text_input("👤 Username", placeholder="Masukkan username anda...")
+        pwd = st.text_input("🔑 Password", type="password", placeholder="Masukkan password anda...")
+        st.markdown("<br>", unsafe_allow_html=True)
+        submit = st.form_submit_button("🚀 OTENTIKASI MASUK", width="stretch")
         
-    st.markdown("</div></div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
     
     if submit:
         if user == "SIMAKINKUT" and pwd == "2026KUTPOSITIF":
             st.session_state.logged_in = True
             st.rerun()
         else:
-            st.error("Username atau Password salah!")
+            st.error("❌ Kredensial Salah! Silakan periksa kembali Username & Password.")
 
 if not st.session_state.logged_in:
     login_form()
     st.stop() 
 
-# --- 3. CUSTOM CSS ---
+# --- 3. CUSTOM CSS DASHBOARD UTAMA ---
 st.markdown("""
 <style>
     .reportview-container { background: #1e1e24; color: white; }
@@ -113,8 +145,8 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
         return False
 
 
-# --- 6. FUNGSI LOAD DATA UTAMA (OPTIMASI CACHE LOW-TTL) ---
-@st.cache_data(ttl=5) # Mengubah cache menjadi 5 detik agar data perbaikan langsung terupdate otomatis
+# --- 6. FUNGSI LOAD DATA UTAMA (OPTIMASI CACHE) ---
+@st.cache_data(ttl=5) 
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
     excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
@@ -165,19 +197,34 @@ def extract_photos_robust(data_row, df_columns, sheet_name=""):
 
 
 # --- 7. TAMPILAN DASHBOARD ---
-st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">🚀 SIMAKIN | REG KALIMANTAN</div>', unsafe_allow_html=True)
 st.markdown(f'<div style="text-align:right; margin-top:-20px; margin-bottom:20px;"><small>✅ Logged in as: <b>SIMAKINKUT</b></small></div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
-    if 'LOKER' in df_sdm.columns:
-        list_loker = ["SEMUA LOKER"] + list(df_sdm['LOKER'].dropna().unique())
-        selected_loker = st.selectbox("📍 Pilih Loker Kerja (Filter Atas):", list_loker)
-        df_sdm_filtered = df_sdm[df_sdm['LOKER'] == selected_loker] if selected_loker != "SEMUA LOKER" else df_sdm
-    else: df_sdm_filtered = df_sdm
+    
+    # ==========================================
+    # SISTEM FILTER BERTINGKAT (JABATAN -> LOKER)
+    # ==========================================
+    df_sdm_filtered = df_sdm.copy()
+    
+    # 1. Filter Job / Jabatan (Paling Atas)
+    if 'JOB' in df_sdm.columns:
+        list_job = ["SEMUA JOB / JABATAN"] + list(df_sdm['JOB'].dropna().unique())
+        selected_job = st.selectbox("💼 Filter Berdasarkan Job / Jabatan:", list_job)
+        if selected_job != "SEMUA JOB / JABATAN":
+            df_sdm_filtered = df_sdm_filtered[df_sdm_filtered['JOB'] == selected_job]
 
+    # 2. Filter Loker (Menyesuaikan dengan Job yang dipilih)
+    if 'LOKER' in df_sdm_filtered.columns:
+        list_loker = ["SEMUA LOKER"] + list(df_sdm_filtered['LOKER'].dropna().unique())
+        selected_loker = st.selectbox("📍 Filter Berdasarkan Loker Kerja:", list_loker)
+        if selected_loker != "SEMUA LOKER":
+            df_sdm_filtered = df_sdm_filtered[df_sdm_filtered['LOKER'] == selected_loker]
+
+    # 3. Pilihan Nama Karyawan Akhir
     if 'NAMA' in df_sdm_filtered.columns:
         list_nama = df_sdm_filtered['NAMA'].dropna().unique()
-        selected_nama = st.selectbox("👤 Pilih Nama Karyawan (Dari Sheet SDM):", list_nama)
+        selected_nama = st.selectbox("👤 Pilih Nama Karyawan:", list_nama)
         
         data_karyawan_select = get_row_by_name(df_sdm_filtered, selected_nama)
         data_asset_select = get_row_by_name(df_asset, selected_nama)
@@ -269,7 +316,7 @@ if not df_sdm.empty:
                                         img_urls[idx] = url_hasil
                                     else:
                                         upload_failed = True
-                                        st.error(f"❌ Foto ke-{idx+1} gagal diupload. Periksa kuota/API Key ImgBB Anda.")
+                                        st.error(f"❌ Foto ke-{idx+1} gagal diupload. Periksa kuota/API Key ImgBB.")
                         
                         with st.spinner("Menyimpan teks laporan ke Spreadsheet..."):
                             sukses = save_findings_to_sheet(
@@ -281,10 +328,9 @@ if not df_sdm.empty:
                             )
                             if sukses:
                                 if upload_failed:
-                                    st.warning("Data tersimpan, tetapi ada foto yang gagal diupload.")
+                                    st.warning("Data tersimpan, namun ada kegagalan upload foto.")
                                 else:
                                     st.success("Data Laporan & Foto berhasil tersimpan!")
-                                # PENTING: Paksa sistem refresh instan agar cache langsung terupdate
                                 st.rerun()
                 else:
                     st.warning("Mohon isi text area laporan perbaikan sebelum melakukan Push Update.")
@@ -315,10 +361,11 @@ if not df_sdm.empty:
                 for i, (lbl, url) in enumerate(photos_tools): cols[i % 4].image(url, caption=f"Kolom: {lbl}", width="stretch")
             else: st.info("Tidak ada foto unit Tools.")
             
-        # MENAMPILKAN BUKTI FOTO PERBAIKAN DENGAN DETEKSY FUZZY KOLOM & AUTO-BASE64 RENDERER
+        # ==========================================
+        # TAB BUKTI PERBAIKAN DENGAN SMART REGEX DETECTOR (ANTI-BLANK FOTO)
+        # ==========================================
         with tab_perbaikan:
             if not df_rekomendasi.empty:
-                # Cari kolom nama secara fleksibel (anti error huruf besar/kecil)
                 rec_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
                 
                 if rec_name_col:
@@ -327,31 +374,32 @@ if not df_sdm.empty:
                     
                     if not matched_rek.empty:
                         st.markdown(f"**Riwayat Bukti Perbaikan untuk: {selected_nama}**")
-                        
-                        # Deteksi otomatis semua nama kolom yang memuat kata 'FOTO'
                         foto_columns = [col for col in df_rekomendasi.columns if "FOTO" in str(col).upper()]
                         
                         for index, row in matched_rek.iterrows():
                             st.write(f"📅 **Tanggal:** {row.get('Timestamp', '-')}")
                             st.write(f"📝 **Laporan:** {row.get('Findings & Action Plan', row.get('Findings', '-'))}")
                             
-                            # Siapkan kolom tata letak foto sebanyak kolom foto yang ada di GSheet
                             foto_cols = st.columns(max(1, len(foto_columns)))
                             col_idx = 0
                             
                             for col_name in foto_columns:
-                                link = str(row[col_name]).strip()
+                                cell_raw_value = str(row[col_name]).strip()
                                 
-                                if link and link not in ["nan", "-", "None", ""]:
-                                    # KONDISI 1: Jika berisi Link URL ImgBB
-                                    if link.startswith("http"): 
-                                        foto_cols[col_idx].image(link, caption=col_name, width="stretch")
+                                if cell_raw_value and cell_raw_value not in ["nan", "-", "None", ""]:
+                                    # EKSTRAKSI DENGAN REGEX: Bersihkan link dari spasi/karakter rusak tersembunyi
+                                    extracted_urls = re.findall(r'(https?://[^\s"\'\)<>]+)', cell_raw_value)
+                                    
+                                    # KONDISI 1: Jika lolos deteksi Regex sebagai Link URL Fisik Gambar
+                                    if extracted_urls:
+                                        valid_img_url = extracted_urls[0]
+                                        foto_cols[col_idx].image(valid_img_url, caption=col_name, width="stretch")
                                         col_idx += 1
                                         
-                                    # KONDISI 2: Jika berisi kode Base64 (/9j/...) dari data lama Anda
-                                    elif link.startswith("/9j/") or len(link) > 50:
+                                    # KONDISI 2: Jika terdeteksi sebagai sisa teks Base64 (/9j/...)
+                                    elif cell_raw_value.startswith("/9j/") or len(cell_raw_value) > 50:
                                         try:
-                                            clean_b64 = link.split(",")[-1] if "," in link else link
+                                            clean_b64 = cell_raw_value.split(",")[-1] if "," in cell_raw_value else cell_raw_value
                                             missing_padding = len(clean_b64) % 4
                                             if missing_padding:
                                                 clean_b64 += '=' * (4 - missing_padding)
@@ -360,11 +408,11 @@ if not df_sdm.empty:
                                             foto_cols[col_idx].image(img_bytes, caption=col_name, width="stretch")
                                             col_idx += 1
                                         except:
-                                            st.caption(f"⚠️ {col_name} (Format Teks Rusak)")
+                                            pass
                             st.divider()
                     else:
                         st.info(f"Belum ada riwayat laporan perbaikan untuk karyawan ini.")
                 else:
-                    st.error("Kolom 'Nama' tidak ditemukan di sheet Rekomendasi Perbaikan.")
+                    st.error("Kolom identifikasi 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
             else:
                 st.info("Belum ada data riwayat perbaikan.")
