@@ -9,7 +9,7 @@ import requests
 import base64
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="collapsed")
 
 # --- 2. SISTEM LOGIN ---
 if 'logged_in' not in st.session_state:
@@ -19,7 +19,7 @@ def login_form():
     st.markdown("""
         <div style="display: flex; justify-content: center; align-items: center; height: 80vh;">
             <div style="padding: 20px; border: 1px solid #444; border-radius: 10px; background-color: #262730; width: 350px;">
-                <h2 style="text-align: center; color: #d32f2f;">🔐 SICANTIK & SIGANTENG LOGIN SIMAKIN</h2>
+                <h2 style="text-align: center; color: #d32f2f;">🔐 LOGIN DASHBOARD</h2>
                 <hr>
     """, unsafe_allow_html=True)
     
@@ -61,12 +61,9 @@ st.markdown("""
 
 
 # --- 4. FUNGSI UPLOAD FOTO KE CLOUD (IMGBB) ---
-# Menyimpan foto ke cloud dan hanya mengambil URL-nya agar muat di Google Sheet
 def upload_image_to_imgbb(uploaded_file):
     try:
         api_key = st.secrets["imgbb_api_key"]
-        
-        # Konversi file upload Streamlit ke format base64
         base64_image = base64.b64encode(uploaded_file.getvalue()).decode("utf-8")
         
         url = "https://api.imgbb.com/1/upload"
@@ -77,7 +74,7 @@ def upload_image_to_imgbb(uploaded_file):
         res = requests.post(url, data=payload)
         
         if res.status_code == 200:
-            return res.json()["data"]["url"] # Berhasil, return URL gambar pendek
+            return res.json()["data"]["url"]
         else:
             return ""
     except Exception as e:
@@ -116,8 +113,8 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
         return False
 
 
-# --- 6. FUNGSI LOAD DATA UTAMA ---
-@st.cache_data(ttl=600)
+# --- 6. FUNGSI LOAD DATA UTAMA (OPTIMASI CACHE LOW-TTL) ---
+@st.cache_data(ttl=5) # Mengubah cache menjadi 5 detik agar data perbaikan langsung terupdate otomatis
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
     excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
@@ -168,7 +165,7 @@ def extract_photos_robust(data_row, df_columns, sheet_name=""):
 
 
 # --- 7. TAMPILAN DASHBOARD ---
-st.markdown('<div class="header-style">🚀 SIMAKIN | REG KALIMANTAN</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
 st.markdown(f'<div style="text-align:right; margin-top:-20px; margin-bottom:20px;"><small>✅ Logged in as: <b>SIMAKINKUT</b></small></div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
@@ -247,7 +244,6 @@ if not df_sdm.empty:
         with col_plan:
             st.markdown("### 📝 Findings & Action Plan")
             input_findings = st.text_area("Input Laporan/Rekomendasi perbaikan:", height=100)
-            
             uploaded_files = st.file_uploader("📸 Upload Bukti Nota/Service (Maksimal 5 Foto, .JPG/.PNG)", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
             
             unit_mobil = str(data_asset_select['NOPOL (PLAT NOMOR)']) if data_asset_select is not None and 'NOPOL (PLAT NOMOR)' in data_asset_select else "Tidak Ada"
@@ -256,19 +252,24 @@ if not df_sdm.empty:
             
             if st.button("Push Update Data"):
                 if input_findings:
-                    # Cek apakah ImgBB API Key sudah diatur
                     if "imgbb_api_key" not in st.secrets:
-                        st.error("API Key ImgBB belum dimasukkan di Streamlit Secrets! Tambahkan: imgbb_api_key = 'KODE_ANDA'")
+                        st.error("API Key ImgBB belum dimasukkan di Streamlit Secrets!")
                     else:
                         img_urls = ["", "", "", "", ""]
+                        upload_failed = False
+                        
                         if uploaded_files:
                             if len(uploaded_files) > 5:
                                 st.warning("Hanya 5 foto pertama yang akan disimpan!")
                             
-                            with st.spinner("Mengupload foto ke server awan..."):
+                            with st.spinner("Mengupload foto ke server cloud..."):
                                 for idx, file in enumerate(uploaded_files[:5]):
                                     url_hasil = upload_image_to_imgbb(file)
-                                    img_urls[idx] = url_hasil
+                                    if url_hasil:
+                                        img_urls[idx] = url_hasil
+                                    else:
+                                        upload_failed = True
+                                        st.error(f"❌ Foto ke-{idx+1} gagal diupload. Periksa kuota/API Key ImgBB Anda.")
                         
                         with st.spinner("Menyimpan teks laporan ke Spreadsheet..."):
                             sukses = save_findings_to_sheet(
@@ -278,7 +279,13 @@ if not df_sdm.empty:
                                 input_findings,
                                 img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
                             )
-                            if sukses: st.success("Data Laporan & Foto berhasil tersimpan!")
+                            if sukses:
+                                if upload_failed:
+                                    st.warning("Data tersimpan, tetapi ada foto yang gagal diupload.")
+                                else:
+                                    st.success("Data Laporan & Foto berhasil tersimpan!")
+                                # PENTING: Paksa sistem refresh instan agar cache langsung terupdate
+                                st.rerun()
                 else:
                     st.warning("Mohon isi text area laporan perbaikan sebelum melakukan Push Update.")
 
@@ -307,54 +314,57 @@ if not df_sdm.empty:
                 cols = st.columns(4)
                 for i, (lbl, url) in enumerate(photos_tools): cols[i % 4].image(url, caption=f"Kolom: {lbl}", width="stretch")
             else: st.info("Tidak ada foto unit Tools.")
-
-        # MENAMPILKAN BUKTI FOTO PERBAIKAN DARI URL IMGBB ATAU KODE BASE64 (/9j/...)
+            
+        # MENAMPILKAN BUKTI FOTO PERBAIKAN DENGAN DETEKSY FUZZY KOLOM & AUTO-BASE64 RENDERER
         with tab_perbaikan:
-            if not df_rekomendasi.empty and 'Nama' in df_rekomendasi.columns:
-                clean_target = selected_nama.strip().lower()
-                matched_rek = df_rekomendasi[df_rekomendasi['Nama'].astype(str).str.strip().str.lower() == clean_target]
+            if not df_rekomendasi.empty:
+                # Cari kolom nama secara fleksibel (anti error huruf besar/kecil)
+                rec_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
                 
-                if not matched_rek.empty:
-                    st.markdown(f"**Riwayat Bukti Perbaikan untuk: {selected_nama}**")
-                    for index, row in matched_rek.iterrows():
-                        st.write(f"📅 **Tanggal:** {row.get('Timestamp', '-')}")
-                        st.write(f"📝 **Laporan:** {row.get('Findings & Action Plan', '-')}")
+                if rec_name_col:
+                    clean_target = selected_nama.strip().lower()
+                    matched_rek = df_rekomendasi[df_rekomendasi[rec_name_col].astype(str).str.strip().str.lower() == clean_target]
+                    
+                    if not matched_rek.empty:
+                        st.markdown(f"**Riwayat Bukti Perbaikan untuk: {selected_nama}**")
                         
-                        # Siapkan grid 5 kolom untuk foto
-                        foto_cols = st.columns(5)
-                        col_idx = 0
+                        # Deteksi otomatis semua nama kolom yang memuat kata 'FOTO'
+                        foto_columns = [col for col in df_rekomendasi.columns if "FOTO" in str(col).upper()]
                         
-                        for col_name in ['Foto 1', 'Foto 2', 'Foto 3', 'Foto 4', 'Foto 5']:
-                            if col_name in row:
+                        for index, row in matched_rek.iterrows():
+                            st.write(f"📅 **Tanggal:** {row.get('Timestamp', '-')}")
+                            st.write(f"📝 **Laporan:** {row.get('Findings & Action Plan', row.get('Findings', '-'))}")
+                            
+                            # Siapkan kolom tata letak foto sebanyak kolom foto yang ada di GSheet
+                            foto_cols = st.columns(max(1, len(foto_columns)))
+                            col_idx = 0
+                            
+                            for col_name in foto_columns:
                                 link = str(row[col_name]).strip()
                                 
-                                # KONDISI 1: Jika baris data berisi Link URL (Hasil Sistem Baru ImgBB)
-                                if link.startswith("http"): 
-                                    foto_cols[col_idx].image(link, caption=col_name, use_container_width=True)
-                                    col_idx += 1
-                                    
-                                # KONDISI 2: Jika berisi kode teks Base64 (Sisa Data Lama /9j/...)
-                                elif link.startswith("/9j/") or len(link) > 50:
-                                    try:
-                                        # Bersihkan teks jika ada awalan header data:image
-                                        clean_b64 = link.split(",")[-1] if "," in link else link
-                                        
-                                        # SISTEM FAILSAFE: Perbaiki otomatis padding '=' jika teks terpotong di GSheet
-                                        missing_padding = len(clean_b64) % 4
-                                        if missing_padding:
-                                            clean_b64 += '=' * (4 - missing_padding)
-                                        
-                                        # Dekode teks string menjadi Byte Gambar asli
-                                        img_bytes = base64.b64decode(clean_b64)
-                                        
-                                        # Render ke layar
-                                        foto_cols[col_idx].image(img_bytes, caption=col_name, use_container_width=True)
+                                if link and link not in ["nan", "-", "None", ""]:
+                                    # KONDISI 1: Jika berisi Link URL ImgBB
+                                    if link.startswith("http"): 
+                                        foto_cols[col_idx].image(link, caption=col_name, width="stretch")
                                         col_idx += 1
-                                    except Exception as e:
-                                        # Jika benar-benar rusak parah kodenya, lewati agar aplikasi tidak crash
-                                        pass
-                        st.divider()
+                                        
+                                    # KONDISI 2: Jika berisi kode Base64 (/9j/...) dari data lama Anda
+                                    elif link.startswith("/9j/") or len(link) > 50:
+                                        try:
+                                            clean_b64 = link.split(",")[-1] if "," in link else link
+                                            missing_padding = len(clean_b64) % 4
+                                            if missing_padding:
+                                                clean_b64 += '=' * (4 - missing_padding)
+                                            
+                                            img_bytes = base64.b64decode(clean_b64)
+                                            foto_cols[col_idx].image(img_bytes, caption=col_name, width="stretch")
+                                            col_idx += 1
+                                        except:
+                                            st.caption(f"⚠️ {col_name} (Format Teks Rusak)")
+                            st.divider()
+                    else:
+                        st.info(f"Belum ada riwayat laporan perbaikan untuk karyawan ini.")
                 else:
-                    st.info(f"Belum ada riwayat laporan perbaikan untuk karyawan ini.")
+                    st.error("Kolom 'Nama' tidak ditemukan di sheet Rekomendasi Perbaikan.")
             else:
                 st.info("Belum ada data riwayat perbaikan.")
