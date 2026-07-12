@@ -236,7 +236,7 @@ def extract_photos_robust(data_row, df_columns):
 
 
 # --- 8. TAMPILAN DASHBOARD UTAMA ---
-st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">🚀 SYSTEM MONITORING ASSET KINARYA | SIMAKIN REG KALIMANTAN</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
     df_sdm_filtered = df_sdm.copy()
