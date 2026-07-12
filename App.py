@@ -5,8 +5,7 @@ import re
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
-from PIL import Image
-import io
+import requests
 import base64
 
 # --- 1. KONFIGURASI HALAMAN ---
@@ -61,19 +60,26 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- 4. FUNGSI PEMROSESAN GAMBAR (COMPRESS TO BASE64) ---
-# Mengubah gambar jadi teks agar muat disimpan di Google Sheet (Maks 50.000 karakter per cell)
-def process_image(uploaded_file):
+# --- 4. FUNGSI UPLOAD FOTO KE CLOUD (IMGBB) ---
+# Menyimpan foto ke cloud dan hanya mengambil URL-nya agar muat di Google Sheet
+def upload_image_to_imgbb(uploaded_file):
     try:
-        img = Image.open(uploaded_file)
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
-        # Kompresi gambar menjadi max 400x400 pixel (agar text base64 aman dari batas limit cell GSheet)
-        img.thumbnail((400, 400))
-        buffered = io.BytesIO()
-        img.save(buffered, format="JPEG", quality=40) 
-        b64_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        return b64_str
+        api_key = st.secrets["imgbb_api_key"]
+        
+        # Konversi file upload Streamlit ke format base64
+        base64_image = base64.b64encode(uploaded_file.getvalue()).decode("utf-8")
+        
+        url = "https://api.imgbb.com/1/upload"
+        payload = {
+            "key": api_key,
+            "image": base64_image
+        }
+        res = requests.post(url, data=payload)
+        
+        if res.status_code == 200:
+            return res.json()["data"]["url"] # Berhasil, return URL gambar pendek
+        else:
+            return ""
     except Exception as e:
         return ""
 
@@ -99,7 +105,6 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
         try:
             worksheet = sh.worksheet("Rekomendasi Perbaikan")
         except:
-            # Buat sheet baru jika belum ada, sesuaikan Header hingga 5 Foto
             worksheet = sh.add_worksheet(title="Rekomendasi Perbaikan", rows="1000", cols="10")
             worksheet.append_row(["Timestamp", "NIK", "Nama", "Unit Asset (Mobil & Genset)", "Findings & Action Plan", "Foto 1", "Foto 2", "Foto 3", "Foto 4", "Foto 5"])
             
@@ -243,7 +248,6 @@ if not df_sdm.empty:
             st.markdown("### 📝 Findings & Action Plan")
             input_findings = st.text_area("Input Laporan/Rekomendasi perbaikan:", height=100)
             
-            # FITUR BARU: UPLOAD HINGGA 5 FOTO
             uploaded_files = st.file_uploader("📸 Upload Bukti Nota/Service (Maksimal 5 Foto, .JPG/.PNG)", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
             
             unit_mobil = str(data_asset_select['NOPOL (PLAT NOMOR)']) if data_asset_select is not None and 'NOPOL (PLAT NOMOR)' in data_asset_select else "Tidak Ada"
@@ -252,24 +256,29 @@ if not df_sdm.empty:
             
             if st.button("Push Update Data"):
                 if input_findings:
-                    # Array default berisi 5 teks kosong
-                    b64_images = ["", "", "", "", ""]
-                    if uploaded_files:
-                        if len(uploaded_files) > 5:
-                            st.warning("Hanya 5 foto pertama yang akan disimpan!")
-                        # Proses masing-masing foto (max 5)
-                        for idx, file in enumerate(uploaded_files[:5]):
-                            b64_images[idx] = process_image(file)
-                    
-                    with st.spinner("Menyimpan data dan foto ke Spreadsheet..."):
-                        sukses = save_findings_to_sheet(
-                            str(dict_karyawan.get('NIK', 'N/A')),
-                            str(dict_karyawan.get('NAMA', 'N/A')),
-                            info_gabungan,
-                            input_findings,
-                            b64_images[0], b64_images[1], b64_images[2], b64_images[3], b64_images[4]
-                        )
-                        if sukses: st.success("Data Laporan & 5 Foto berhasil tersimpan!")
+                    # Cek apakah ImgBB API Key sudah diatur
+                    if "imgbb_api_key" not in st.secrets:
+                        st.error("API Key ImgBB belum dimasukkan di Streamlit Secrets! Tambahkan: imgbb_api_key = 'KODE_ANDA'")
+                    else:
+                        img_urls = ["", "", "", "", ""]
+                        if uploaded_files:
+                            if len(uploaded_files) > 5:
+                                st.warning("Hanya 5 foto pertama yang akan disimpan!")
+                            
+                            with st.spinner("Mengupload foto ke server awan..."):
+                                for idx, file in enumerate(uploaded_files[:5]):
+                                    url_hasil = upload_image_to_imgbb(file)
+                                    img_urls[idx] = url_hasil
+                        
+                        with st.spinner("Menyimpan teks laporan ke Spreadsheet..."):
+                            sukses = save_findings_to_sheet(
+                                str(dict_karyawan.get('NIK', 'N/A')),
+                                str(dict_karyawan.get('NAMA', 'N/A')),
+                                info_gabungan,
+                                input_findings,
+                                img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
+                            )
+                            if sukses: st.success("Data Laporan & Foto berhasil tersimpan!")
                 else:
                     st.warning("Mohon isi text area laporan perbaikan sebelum melakukan Push Update.")
 
@@ -299,7 +308,7 @@ if not df_sdm.empty:
                 for i, (lbl, url) in enumerate(photos_tools): cols[i % 4].image(url, caption=f"Kolom: {lbl}", width="stretch")
             else: st.info("Tidak ada foto unit Tools.")
             
-        # MENAMPILKAN 5 BUKTI FOTO PERBAIKAN
+        # MENAMPILKAN BUKTI FOTO PERBAIKAN DARI URL IMGBB
         with tab_perbaikan:
             if not df_rekomendasi.empty and 'Nama' in df_rekomendasi.columns:
                 clean_target = selected_nama.strip().lower()
@@ -311,17 +320,16 @@ if not df_sdm.empty:
                         st.write(f"📅 **Tanggal:** {row.get('Timestamp', '-')}")
                         st.write(f"📝 **Laporan:** {row.get('Findings & Action Plan', '-')}")
                         
-                        # Layout 5 kolom untuk 5 foto
                         foto_cols = st.columns(5)
                         col_idx = 0
-                        # List semua kolom foto dari 1 sd 5
+                        # Cek kolom dari Foto 1 s/d Foto 5 di Spreadsheet
                         for col_name in ['Foto 1', 'Foto 2', 'Foto 3', 'Foto 4', 'Foto 5']:
-                            if col_name in row and isinstance(row[col_name], str) and len(row[col_name]) > 100:
-                                b64_str = row[col_name]
-                                try:
-                                    foto_cols[col_idx].image(f"data:image/jpeg;base64,{b64_str}", caption=col_name, width="stretch")
+                            if col_name in row and isinstance(row[col_name], str):
+                                img_link = row[col_name].strip()
+                                # Memastikan isi kolom adalah link URL, bukan teks biasa (misal dari sisa base64 error kemarin)
+                                if img_link.startswith("http"): 
+                                    foto_cols[col_idx].image(img_link, caption=col_name, width="stretch")
                                     col_idx += 1
-                                except: pass
                         st.divider()
                 else:
                     st.info(f"Belum ada riwayat laporan perbaikan untuk karyawan ini.")
