@@ -19,7 +19,7 @@ def login_form():
     st.markdown("""
         <div style="display: flex; justify-content: center; align-items: center; height: 80vh;">
             <div style="padding: 20px; border: 1px solid #444; border-radius: 10px; background-color: #262730; width: 350px;">
-                <h2 style="text-align: center; color: #d32f2f;">🔐 SICANTI & SIGANTENG LOGIN SIMAKIN</h2>
+                <h2 style="text-align: center; color: #d32f2f;">🔐 SICANTIK & SIGANTENG LOGIN SIMAKIN</h2>
                 <hr>
     """, unsafe_allow_html=True)
     
