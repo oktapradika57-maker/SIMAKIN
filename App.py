@@ -50,8 +50,8 @@ def login_form():
         }
         </style>
         <div class="login-box">
-            <div class="login-title">🔐 SYSTEM PORTAL LOGIN</div>
-            <div class="login-subtitle">Dashboard Operasional, Asset & Genset | Reg Kalimantan</div>
+            <div class="login-title">🔐 SIMAKIN</div>
+            <div class="login-subtitle">SIMAKIN MAKIN YAKIN | Reg Kalimantan</div>
     """, unsafe_allow_html=True)
     
     with st.form("login_form_fields"):
