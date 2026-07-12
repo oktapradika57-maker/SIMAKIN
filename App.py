@@ -5,6 +5,9 @@ import re
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
+from PIL import Image
+import io
+import base64
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="collapsed")
@@ -24,7 +27,6 @@ def login_form():
     with st.form("login"):
         user = st.text_input("Username")
         pwd = st.text_input("Password", type="password")
-        # Perbaikan Streamlit Deprecation: use_container_width -> width="stretch"
         submit = st.form_submit_button("Masuk", width="stretch")
         
     st.markdown("</div></div>", unsafe_allow_html=True)
@@ -36,7 +38,6 @@ def login_form():
         else:
             st.error("Username atau Password salah!")
 
-# HENTIKAN KODE JIKA BELUM LOGIN
 if not st.session_state.logged_in:
     login_form()
     st.stop() 
@@ -59,7 +60,25 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
+
+# --- 4. FUNGSI PEMROSESAN GAMBAR (COMPRESS TO BASE64) ---
+# Mengubah gambar jadi teks agar muat disimpan di Google Sheet (Maks 50.000 karakter per cell)
+def process_image(uploaded_file):
+    try:
+        img = Image.open(uploaded_file)
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        # Kompresi gambar menjadi max 500x500 pixel agar sizenya sangat kecil
+        img.thumbnail((500, 500))
+        buffered = io.BytesIO()
+        img.save(buffered, format="JPEG", quality=50) # Kualitas 50%
+        b64_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        return b64_str
+    except Exception as e:
+        return ""
+
+
+# --- 5. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
 def get_gspread_client():
     try:
         creds_dict = st.secrets["gcp_service_account"]
@@ -70,7 +89,7 @@ def get_gspread_client():
         st.error("Konfigurasi Google Secrets belum diatur di Streamlit Cloud. Fitur 'Push Update Data' dimatikan sementara.")
         return None
 
-def save_findings_to_sheet(nik, nama, unit_info, findings):
+def save_findings_to_sheet(nik, nama, unit_info, findings, foto1, foto2):
     try:
         client = get_gspread_client()
         if client is None: return False
@@ -80,34 +99,36 @@ def save_findings_to_sheet(nik, nama, unit_info, findings):
         try:
             worksheet = sh.worksheet("Rekomendasi Perbaikan")
         except:
-            worksheet = sh.add_worksheet(title="Rekomendasi Perbaikan", rows="1000", cols="6")
-            worksheet.append_row(["Timestamp", "NIK", "Nama", "Unit Asset (Mobil & Genset)", "Findings & Action Plan"])
+            # Jika sheet belum ada, buat baru lengkap dengan Header fotonya
+            worksheet = sh.add_worksheet(title="Rekomendasi Perbaikan", rows="1000", cols="7")
+            worksheet.append_row(["Timestamp", "NIK", "Nama", "Unit Asset (Mobil & Genset)", "Findings & Action Plan", "Foto 1", "Foto 2"])
             
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        worksheet.append_row([timestamp, nik, nama, unit_info, findings])
+        worksheet.append_row([timestamp, nik, nama, unit_info, findings, foto1, foto2])
         return True
     except Exception as e:
         st.error(f"Gagal menyimpan data: {e}")
         return False
 
-# --- 5. FUNGSI LOAD DATA UTAMA (ANTI SEGFAULT) ---
+
+# --- 6. FUNGSI LOAD DATA UTAMA ---
 @st.cache_data(ttl=600)
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
     excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
     try:
-        # PERBAIKAN: Tambahkan dtype=str untuk mencegah Segmentation fault karena sel tanggal yang rusak
         xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
         df_sdm = xls.get("SDM", pd.DataFrame())
         df_asset = xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame())
         df_genset = xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame())
         df_tools_asset = xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame())
-        return df_sdm, df_asset, df_genset, df_tools_asset
+        df_rekomendasi = xls.get("Rekomendasi Perbaikan", pd.DataFrame())
+        return df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi
     except Exception as e:
         st.error(f"❌ Gagal memuat data dari Spreadsheet. Error: {e}")
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-df_sdm, df_asset, df_genset, df_tools_asset = load_all_data()
+df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi = load_all_data()
 
 def get_row_by_name(df, target_name):
     if df.empty: return None
@@ -122,8 +143,7 @@ def get_row_by_name(df, target_name):
 
 def extract_photos_robust(data_row, df_columns, sheet_name=""):
     photos, all_logs = [], []
-    if data_row is None:
-        return photos, all_logs
+    if data_row is None: return photos, all_logs
 
     for idx in range(len(df_columns)):
         col_name = df_columns[idx]
@@ -139,10 +159,10 @@ def extract_photos_robust(data_row, df_columns, sheet_name=""):
                         match_id = re.search(r'[?&]id=([a-zA-Z0-9-_]+)', url)
                         if match_id: final_url = f"https://lh3.googleusercontent.com/d/{match_id.group(1)}"
                 photos.append((str(col_name), final_url))
-                
     return photos, all_logs
 
-# --- 6. TAMPILAN DASHBOARD ---
+
+# --- 7. TAMPILAN DASHBOARD ---
 st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
 st.markdown(f'<div style="text-align:right; margin-top:-20px; margin-bottom:20px;"><small>✅ Logged in as: <b>SIMAKINKUT</b></small></div>', unsafe_allow_html=True)
 
@@ -165,7 +185,6 @@ if not df_sdm.empty:
         st.markdown("### 👤 Data Karyawan (Profil)")
         karyawan_fields = ["NIK", "NAMA", "JOB", "LOKER", "NOP", "NO. KTP", "AKHIR PKWT", "Status Karyawan", "pakta Integritas", "Keahlian"]
         dict_karyawan = {field: str(data_karyawan_select[field]) if data_karyawan_select is not None and field in data_karyawan_select else "-" for field in karyawan_fields}
-        # Perbaikan width dataframe
         st.dataframe(pd.DataFrame(list(dict_karyawan.items()), columns=["Parameter", "Informasi"]), hide_index=True, width="stretch")
         st.write("---")
 
@@ -217,13 +236,15 @@ if not df_sdm.empty:
             if status_bagus > 0 or status_rusak > 0:
                 fig = px.pie(pd.DataFrame({"Kondisi": ["Bagus/Tersedia", "Rusak/Tidak Ada"], "Total": [status_bagus, status_rusak]}), values='Total', names='Kondisi', hole=0.4, color='Kondisi', color_discrete_map={'Bagus/Tersedia':'#00b4d8', 'Rusak/Tidak Ada':'#d62828'})
                 fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="white", margin=dict(t=20, b=20, l=20, r=20))
-                # Perbaikan Streamlit Deprecation
                 st.plotly_chart(fig, width="stretch")
             else: st.info("Kondisi tools bernilai kosong.")
             
         with col_plan:
             st.markdown("### 📝 Findings & Action Plan")
-            input_findings = st.text_area("Input Rekomendasi perbaikan berkala:", height=150)
+            input_findings = st.text_area("Input Laporan/Rekomendasi perbaikan:", height=100)
+            
+            # FITUR BARU: UPLOAD FOTO BUKTI
+            uploaded_files = st.file_uploader("📸 Upload Bukti Nota/Service (Maksimal 2 Foto, .JPG/.PNG)", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
             
             unit_mobil = str(data_asset_select['NOPOL (PLAT NOMOR)']) if data_asset_select is not None and 'NOPOL (PLAT NOMOR)' in data_asset_select else "Tidak Ada"
             unit_genset = str(data_genset_select['NOMER SERI MESIN']) if data_genset_select is not None and 'NOMER SERI MESIN' in data_genset_select else "Tidak Ada"
@@ -231,20 +252,32 @@ if not df_sdm.empty:
             
             if st.button("Push Update Data"):
                 if input_findings:
-                    with st.spinner("Menyimpan data ke Sheet 'Rekomendasi Perbaikan'..."):
+                    # Ambil dan kompres foto jika ada
+                    b64_images = ["", ""]
+                    if uploaded_files:
+                        if len(uploaded_files) > 2:
+                            st.warning("Hanya 2 foto pertama yang akan disimpan!")
+                        for idx, file in enumerate(uploaded_files[:2]):
+                            b64_images[idx] = process_image(file)
+                    
+                    with st.spinner("Menyimpan data dan foto ke Spreadsheet..."):
                         sukses = save_findings_to_sheet(
                             str(dict_karyawan.get('NIK', 'N/A')),
                             str(dict_karyawan.get('NAMA', 'N/A')),
                             info_gabungan,
-                            input_findings
+                            input_findings,
+                            b64_images[0],
+                            b64_images[1]
                         )
-                        if sukses: st.success("Data Rekomendasi berhasil tersimpan!")
+                        if sukses: st.success("Data Laporan & Foto berhasil tersimpan!")
                 else:
-                    st.warning("Mohon isi text area rekomendasi perbaikan sebelum melakukan Push Update.")
+                    st.warning("Mohon isi text area laporan perbaikan sebelum melakukan Push Update.")
 
         st.write("---")
         st.markdown("### 📸 Evidence & Documented Slide Gallery")
-        tab_r2r4, tab_genset, tab_tools = st.tabs(["🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools"])
+        
+        # FITUR BARU: TAB "Bukti Perbaikan" 
+        tab_r2r4, tab_genset, tab_tools, tab_perbaikan = st.tabs(["🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Bukti Perbaikan"])
         
         with tab_r2r4:
             photos_r2r4, _ = extract_photos_robust(data_asset_select, df_asset.columns, sheet_name="Asset R2/R4")
@@ -266,3 +299,31 @@ if not df_sdm.empty:
                 cols = st.columns(4)
                 for i, (lbl, url) in enumerate(photos_tools): cols[i % 4].image(url, caption=f"Kolom: {lbl}", width="stretch")
             else: st.info("Tidak ada foto unit Tools.")
+            
+        with tab_perbaikan:
+            if not df_rekomendasi.empty and 'Nama' in df_rekomendasi.columns:
+                clean_target = selected_nama.strip().lower()
+                matched_rek = df_rekomendasi[df_rekomendasi['Nama'].astype(str).str.strip().str.lower() == clean_target]
+                
+                if not matched_rek.empty:
+                    st.markdown(f"**Riwayat Bukti Perbaikan untuk: {selected_nama}**")
+                    # Tampilkan semua riwayat dari yang terbaru
+                    for index, row in matched_rek.iterrows():
+                        st.write(f"📅 **Tanggal:** {row.get('Timestamp', '-')}")
+                        st.write(f"📝 **Laporan:** {row.get('Findings & Action Plan', '-')}")
+                        
+                        foto_cols = st.columns(4)
+                        col_idx = 0
+                        for col_name in ['Foto 1', 'Foto 2']:
+                            if col_name in row and isinstance(row[col_name], str) and len(row[col_name]) > 100: # Cek jika bukan empty string
+                                b64_str = row[col_name]
+                                try:
+                                    foto_cols[col_idx].image(f"data:image/jpeg;base64,{b64_str}", caption=col_name, width="stretch")
+                                    col_idx += 1
+                                except: pass
+                        st.divider()
+                else:
+                    st.info(f"Belum ada riwayat laporan perbaikan untuk karyawan ini.")
+            else:
+                st.info("Belum ada data di sistem.")
+
