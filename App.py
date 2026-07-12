@@ -9,7 +9,7 @@ import requests
 import base64
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="collapsed")
 
 # --- 2. SISTEM LOGIN ---
 if 'logged_in' not in st.session_state:
