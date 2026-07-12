@@ -58,7 +58,7 @@ def login_form():
         user = st.text_input("👤 Username", placeholder="Masukkan username anda...")
         pwd = st.text_input("🔑 Password", type="password", placeholder="Masukkan password anda...")
         st.markdown("<br>", unsafe_allow_html=True)
-        submit = st.form_submit_button("🚀 OTENTIKASI MASUK", width="stretch")
+        submit = st.form_submit_button("🚀 MASUK SIMAKIN BIAR YAKIN", width="stretch")
         
     st.markdown("</div>", unsafe_allow_html=True)
     
