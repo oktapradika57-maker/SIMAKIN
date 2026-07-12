@@ -68,10 +68,10 @@ def process_image(uploaded_file):
         img = Image.open(uploaded_file)
         if img.mode != 'RGB':
             img = img.convert('RGB')
-        # Kompresi gambar menjadi max 500x500 pixel agar sizenya sangat kecil
-        img.thumbnail((500, 500))
+        # Kompresi gambar menjadi max 400x400 pixel (agar text base64 aman dari batas limit cell GSheet)
+        img.thumbnail((400, 400))
         buffered = io.BytesIO()
-        img.save(buffered, format="JPEG", quality=50) # Kualitas 50%
+        img.save(buffered, format="JPEG", quality=40) 
         b64_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
         return b64_str
     except Exception as e:
@@ -89,7 +89,7 @@ def get_gspread_client():
         st.error("Konfigurasi Google Secrets belum diatur di Streamlit Cloud. Fitur 'Push Update Data' dimatikan sementara.")
         return None
 
-def save_findings_to_sheet(nik, nama, unit_info, findings, foto1, foto2):
+def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
     try:
         client = get_gspread_client()
         if client is None: return False
@@ -99,12 +99,12 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, foto1, foto2):
         try:
             worksheet = sh.worksheet("Rekomendasi Perbaikan")
         except:
-            # Jika sheet belum ada, buat baru lengkap dengan Header fotonya
-            worksheet = sh.add_worksheet(title="Rekomendasi Perbaikan", rows="1000", cols="7")
-            worksheet.append_row(["Timestamp", "NIK", "Nama", "Unit Asset (Mobil & Genset)", "Findings & Action Plan", "Foto 1", "Foto 2"])
+            # Buat sheet baru jika belum ada, sesuaikan Header hingga 5 Foto
+            worksheet = sh.add_worksheet(title="Rekomendasi Perbaikan", rows="1000", cols="10")
+            worksheet.append_row(["Timestamp", "NIK", "Nama", "Unit Asset (Mobil & Genset)", "Findings & Action Plan", "Foto 1", "Foto 2", "Foto 3", "Foto 4", "Foto 5"])
             
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        worksheet.append_row([timestamp, nik, nama, unit_info, findings, foto1, foto2])
+        worksheet.append_row([timestamp, nik, nama, unit_info, findings, f1, f2, f3, f4, f5])
         return True
     except Exception as e:
         st.error(f"Gagal menyimpan data: {e}")
@@ -243,8 +243,8 @@ if not df_sdm.empty:
             st.markdown("### 📝 Findings & Action Plan")
             input_findings = st.text_area("Input Laporan/Rekomendasi perbaikan:", height=100)
             
-            # FITUR BARU: UPLOAD FOTO BUKTI
-            uploaded_files = st.file_uploader("📸 Upload Bukti Nota/Service (Maksimal 2 Foto, .JPG/.PNG)", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
+            # FITUR BARU: UPLOAD HINGGA 5 FOTO
+            uploaded_files = st.file_uploader("📸 Upload Bukti Nota/Service (Maksimal 5 Foto, .JPG/.PNG)", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
             
             unit_mobil = str(data_asset_select['NOPOL (PLAT NOMOR)']) if data_asset_select is not None and 'NOPOL (PLAT NOMOR)' in data_asset_select else "Tidak Ada"
             unit_genset = str(data_genset_select['NOMER SERI MESIN']) if data_genset_select is not None and 'NOMER SERI MESIN' in data_genset_select else "Tidak Ada"
@@ -252,12 +252,13 @@ if not df_sdm.empty:
             
             if st.button("Push Update Data"):
                 if input_findings:
-                    # Ambil dan kompres foto jika ada
-                    b64_images = ["", ""]
+                    # Array default berisi 5 teks kosong
+                    b64_images = ["", "", "", "", ""]
                     if uploaded_files:
-                        if len(uploaded_files) > 2:
-                            st.warning("Hanya 2 foto pertama yang akan disimpan!")
-                        for idx, file in enumerate(uploaded_files[:2]):
+                        if len(uploaded_files) > 5:
+                            st.warning("Hanya 5 foto pertama yang akan disimpan!")
+                        # Proses masing-masing foto (max 5)
+                        for idx, file in enumerate(uploaded_files[:5]):
                             b64_images[idx] = process_image(file)
                     
                     with st.spinner("Menyimpan data dan foto ke Spreadsheet..."):
@@ -266,17 +267,15 @@ if not df_sdm.empty:
                             str(dict_karyawan.get('NAMA', 'N/A')),
                             info_gabungan,
                             input_findings,
-                            b64_images[0],
-                            b64_images[1]
+                            b64_images[0], b64_images[1], b64_images[2], b64_images[3], b64_images[4]
                         )
-                        if sukses: st.success("Data Laporan & Foto berhasil tersimpan!")
+                        if sukses: st.success("Data Laporan & 5 Foto berhasil tersimpan!")
                 else:
                     st.warning("Mohon isi text area laporan perbaikan sebelum melakukan Push Update.")
 
         st.write("---")
         st.markdown("### 📸 Evidence & Documented Slide Gallery")
         
-        # FITUR BARU: TAB "Bukti Perbaikan" 
         tab_r2r4, tab_genset, tab_tools, tab_perbaikan = st.tabs(["🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Bukti Perbaikan"])
         
         with tab_r2r4:
@@ -300,6 +299,7 @@ if not df_sdm.empty:
                 for i, (lbl, url) in enumerate(photos_tools): cols[i % 4].image(url, caption=f"Kolom: {lbl}", width="stretch")
             else: st.info("Tidak ada foto unit Tools.")
             
+        # MENAMPILKAN 5 BUKTI FOTO PERBAIKAN
         with tab_perbaikan:
             if not df_rekomendasi.empty and 'Nama' in df_rekomendasi.columns:
                 clean_target = selected_nama.strip().lower()
@@ -307,15 +307,16 @@ if not df_sdm.empty:
                 
                 if not matched_rek.empty:
                     st.markdown(f"**Riwayat Bukti Perbaikan untuk: {selected_nama}**")
-                    # Tampilkan semua riwayat dari yang terbaru
                     for index, row in matched_rek.iterrows():
                         st.write(f"📅 **Tanggal:** {row.get('Timestamp', '-')}")
                         st.write(f"📝 **Laporan:** {row.get('Findings & Action Plan', '-')}")
                         
-                        foto_cols = st.columns(4)
+                        # Layout 5 kolom untuk 5 foto
+                        foto_cols = st.columns(5)
                         col_idx = 0
-                        for col_name in ['Foto 1', 'Foto 2']:
-                            if col_name in row and isinstance(row[col_name], str) and len(row[col_name]) > 100: # Cek jika bukan empty string
+                        # List semua kolom foto dari 1 sd 5
+                        for col_name in ['Foto 1', 'Foto 2', 'Foto 3', 'Foto 4', 'Foto 5']:
+                            if col_name in row and isinstance(row[col_name], str) and len(row[col_name]) > 100:
                                 b64_str = row[col_name]
                                 try:
                                     foto_cols[col_idx].image(f"data:image/jpeg;base64,{b64_str}", caption=col_name, width="stretch")
@@ -325,5 +326,5 @@ if not df_sdm.empty:
                 else:
                     st.info(f"Belum ada riwayat laporan perbaikan untuk karyawan ini.")
             else:
-                st.info("Belum ada data di sistem.")
+                st.info("Belum ada data riwayat perbaikan.")
 
