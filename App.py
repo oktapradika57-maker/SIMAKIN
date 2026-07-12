@@ -308,7 +308,7 @@ if not df_sdm.empty:
                 for i, (lbl, url) in enumerate(photos_tools): cols[i % 4].image(url, caption=f"Kolom: {lbl}", width="stretch")
             else: st.info("Tidak ada foto unit Tools.")
 
-        # MENAMPILKAN BUKTI FOTO PERBAIKAN DARI URL IMGBB
+        # MENAMPILKAN BUKTI FOTO PERBAIKAN DARI URL IMGBB ATAU KODE BASE64 (/9j/...)
         with tab_perbaikan:
             if not df_rekomendasi.empty and 'Nama' in df_rekomendasi.columns:
                 clean_target = selected_nama.strip().lower()
@@ -320,26 +320,41 @@ if not df_sdm.empty:
                         st.write(f"📅 **Tanggal:** {row.get('Timestamp', '-')}")
                         st.write(f"📝 **Laporan:** {row.get('Findings & Action Plan', '-')}")
                         
-                        # Tampilkan foto
+                        # Siapkan grid 5 kolom untuk foto
                         foto_cols = st.columns(5)
                         col_idx = 0
+                        
                         for col_name in ['Foto 1', 'Foto 2', 'Foto 3', 'Foto 4', 'Foto 5']:
                             if col_name in row:
                                 link = str(row[col_name]).strip()
-                                # CEK APAKAH ITU LINK FOTO
-                                if link.startswith("http"):
-                                    # Gunakan st.image untuk memaksa render sebagai gambar
-                                    foto_cols[col_idx].image(link, caption=f"Bukti {col_idx+1}", width=None, use_container_width=True)
+                                
+                                # KONDISI 1: Jika baris data berisi Link URL (Hasil Sistem Baru ImgBB)
+                                if link.startswith("http"): 
+                                    foto_cols[col_idx].image(link, caption=col_name, use_container_width=True)
                                     col_idx += 1
-                                elif len(link) > 100: # Jaga-jaga jika masih ada sisa data base64 lama
+                                    
+                                # KONDISI 2: Jika berisi kode teks Base64 (Sisa Data Lama /9j/...)
+                                elif link.startswith("/9j/") or len(link) > 50:
                                     try:
-                                        foto_cols[col_idx].image(f"data:image/jpeg;base64,{link}", caption=f"Bukti {col_idx+1}", use_container_width=True)
+                                        # Bersihkan teks jika ada awalan header data:image
+                                        clean_b64 = link.split(",")[-1] if "," in link else link
+                                        
+                                        # SISTEM FAILSAFE: Perbaiki otomatis padding '=' jika teks terpotong di GSheet
+                                        missing_padding = len(clean_b64) % 4
+                                        if missing_padding:
+                                            clean_b64 += '=' * (4 - missing_padding)
+                                        
+                                        # Dekode teks string menjadi Byte Gambar asli
+                                        img_bytes = base64.b64decode(clean_b64)
+                                        
+                                        # Render ke layar
+                                        foto_cols[col_idx].image(img_bytes, caption=col_name, use_container_width=True)
                                         col_idx += 1
-                                    except: pass
+                                    except Exception as e:
+                                        # Jika benar-benar rusak parah kodenya, lewati agar aplikasi tidak crash
+                                        pass
                         st.divider()
                 else:
                     st.info(f"Belum ada riwayat laporan perbaikan untuk karyawan ini.")
             else:
                 st.info("Belum ada data riwayat perbaikan.")
-
-
