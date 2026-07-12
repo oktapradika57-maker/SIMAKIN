@@ -9,7 +9,7 @@ import requests
 import base64
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="expanded")
 
 # --- 2. CUSTOM CSS & ANIMASI KORPORAT PREMIUM ---
 st.markdown("""
@@ -104,15 +104,15 @@ if 'logged_in' not in st.session_state:
 def login_form():
     st.markdown("""
         <div class="login-box">
-            <div class="login-title">⚡ SYSTEM PORTAL</div>
-            <div class="login-subtitle">Dashboard Operasional, Asset & Genset | Reg Kalimantan</div>
+            <div class="login-title">⚡ SYSTEM PORTAL SIMAKIN</div>
+            <div class="login-subtitle">SYSTEM MONITORING ASSET KINARYA | Reg Kalimantan</div>
     """, unsafe_allow_html=True)
     
     with st.form("login_form"):
         user = st.text_input("👤 Username", placeholder="Ketik username Anda...")
         pwd = st.text_input("🔑 Password", type="password", placeholder="Ketik password Anda...")
         st.markdown("<br>", unsafe_allow_html=True)
-        submit = st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True)
+        submit = st.form_submit_button("🚀 MAU MAKIN YAKIN MASUK SIMAKIN", use_container_width=True)
         
     st.markdown("</div>", unsafe_allow_html=True)
     
