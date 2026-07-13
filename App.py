@@ -92,16 +92,16 @@ with st.sidebar:
         st.rerun()
 
 
-# --- 5. FUNGSI UPLOAD FOTO LANGSUNG KE GOOGLE DRIVE ---
+# --- 5. FUNGSI UPLOAD FOTO KE FOLDER SPESIFIK GOOGLE DRIVE ---
 def upload_image_to_gdrive(uploaded_file):
     try:
-        # 1. Autentikasi Google Drive
+        # Autentikasi
         scopes = ['https://www.googleapis.com/auth/drive']
         creds_dict = st.secrets["gcp_service_account"]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scopes)
         service = build('drive', 'v3', credentials=creds)
         
-        # 2. Kompres Foto agar sangat ringan & prosesnya secepat kilat
+        # Kompres Gambar
         img = Image.open(uploaded_file)
         if img.mode != 'RGB': img = img.convert('RGB')
         img.thumbnail((800, 800))
@@ -109,22 +109,31 @@ def upload_image_to_gdrive(uploaded_file):
         img.save(buf, format="JPEG", quality=80)
         buf.seek(0)
         
-        # 3. Upload File Mentah ke Drive
-        file_metadata = {'name': f"Bukti_Perbaikan_{int(time.time())}.jpg"}
+        # ID FOLDER ANDA (DARI LINK YANG DIBERIKAN)
+        FOLDER_ID = '165qUkoKMTUzcVUP4HSTwWpVuoY5mkE9d'
+        
+        # Mengarahkan file ke folder tersebut
+        file_metadata = {
+            'name': f"Bukti_Perbaikan_{int(time.time())}.jpg",
+            'parents': [FOLDER_ID] 
+        }
+        
+        # Eksekusi Upload
         media = MediaIoBaseUpload(buf, mimetype='image/jpeg', resumable=True)
         file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
         file_id = file.get('id')
         
-        # 4. Buka Akses Foto menjadi Publik (Agar Streamlit & Google Sheet bisa melihatnya)
+        # Atur file menjadi Publik agar bisa dilihat di Streamlit
         service.permissions().create(
             fileId=file_id,
             body={'type': 'anyone', 'role': 'reader'}
         ).execute()
         
-        # 5. Return link persis seperti Google Form
         return f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
+        
     except Exception as e:
-        st.error(f"Gagal upload ke Google Drive: {e}")
+        # Memberikan notifikasi error yang jelas jika gagal
+        st.error(f"❌ Gagal upload ke Folder Google Drive: {e}")
         return ""
 
 
@@ -178,14 +187,12 @@ def get_row_by_name(df, target_name):
     matched = df[df[name_col].astype(str).str.strip().str.lower().str.contains(clean_target, regex=False, na=False)]
     return matched.iloc[0] if not matched.empty else None
 
-# PENGUBAH LINK GDRIVE MENJADI THUMBNAIL LANGSUNG
 def get_clean_image_url(url):
     match = re.search(r'([-\w]{25,})', url) 
     if match and ("drive.google" in url or "docs.google" in url):
         return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w800"
     return url
 
-# RENDERER FOTO 
 def render_image_html(col, raw_text, label="Foto"):
     urls = re.findall(r'(https?://[^\s"\'\)<>]+)', raw_text)
     if urls:
@@ -315,7 +322,6 @@ if not df_sdm.empty:
                 if uploaded_files:
                     with st.spinner("Mengupload foto ke Google Drive..."):
                         for idx, file in enumerate(uploaded_files[:5]):
-                            # Memanggil Fungsi Google Drive yang Baru!
                             url_hasil = upload_image_to_gdrive(file)
                             if url_hasil: 
                                 img_urls[idx] = url_hasil
