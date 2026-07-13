@@ -16,41 +16,20 @@ st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="w
 st.markdown("""
 <style>
     .reportview-container { background: #121212; color: #ffffff; }
-    
-    @keyframes slideUp {
-        0% { opacity: 0; transform: translateY(30px); }
-        100% { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes fadeIn {
-        0% { opacity: 0; }
-        100% { opacity: 1; }
-    }
+    @keyframes slideUp { 0% { opacity: 0; transform: translateY(30px); } 100% { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
     
     .header-style {
         background: linear-gradient(135deg, #d32f2f 0%, #9a0007 100%);
-        padding: 15px;
-        border-radius: 12px;
-        color: white;
-        font-weight: 800;
-        font-size: 24px;
-        text-align: center;
-        box-shadow: 0 10px 20px rgba(211, 47, 47, 0.3);
-        margin-bottom: 25px;
-        animation: slideUp 0.8s ease-out;
-        border: 1px solid #ff6659;
+        padding: 15px; border-radius: 12px; color: white; font-weight: 800; font-size: 24px;
+        text-align: center; box-shadow: 0 10px 20px rgba(211, 47, 47, 0.3); margin-bottom: 25px;
+        animation: slideUp 0.8s ease-out; border: 1px solid #ff6659;
     }
     
     .login-box {
-        background: rgba(30, 32, 40, 0.7);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 40px;
-        border-radius: 20px;
-        box-shadow: 0 25px 45px rgba(0,0,0,0.5);
-        max-width: 450px;
-        margin: 80px auto;
-        animation: fadeIn 1s ease-out;
+        background: rgba(30, 32, 40, 0.7); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1); padding: 40px; border-radius: 20px;
+        box-shadow: 0 25px 45px rgba(0,0,0,0.5); max-width: 450px; margin: 80px auto; animation: fadeIn 1s ease-out;
     }
     .login-title { color: #ff5252; font-size: 28px; font-weight: 900; text-align: center; margin-bottom: 10px; }
     .login-subtitle { color: #b0bec5; font-size: 14px; text-align: center; margin-bottom: 35px; }
@@ -77,13 +56,11 @@ def login_form():
             <div class="login-title">⚡ SYSTEM PORTAL</div>
             <div class="login-subtitle">Dashboard Operasional, Asset & Genset | Reg Kalimantan</div>
     """, unsafe_allow_html=True)
-    
     with st.form("login_form"):
         user = st.text_input("👤 Username", placeholder="Ketik username Anda...")
         pwd = st.text_input("🔑 Password", type="password", placeholder="Ketik password Anda...")
         st.markdown("<br>", unsafe_allow_html=True)
         submit = st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True)
-        
     st.markdown("</div>", unsafe_allow_html=True)
     
     if submit:
@@ -102,29 +79,34 @@ with st.sidebar:
     st.markdown("<h2 style='text-align: center; color: #ff5252;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.info("👤 **Aktif:** SIMAKINKUT")
     st.markdown("---")
-    
     if st.button("🔄 Refresh Data Server", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
-        
     st.markdown("<br>", unsafe_allow_html=True)
-    
     if st.button("🚪 Keluar Sistem", use_container_width=True):
         st.session_state.logged_in = False
         st.rerun()
 
-# --- 5. FUNGSI UPLOAD FOTO KE IMGBB ---
+# --- 5. FUNGSI UPLOAD FOTO KE IMGBB (MULTIPART FILE UPLOAD) ---
+# Diperbarui menggunakan files payload asli (anti-blokir)
 def upload_image_to_imgbb(uploaded_file):
     try:
         api_key = st.secrets["imgbb_api_key"]
-        base64_image = base64.b64encode(uploaded_file.getvalue()).decode("utf-8")
         url = "https://api.imgbb.com/1/upload"
-        payload = {"key": api_key, "image": base64_image}
-        res = requests.post(url, data=payload)
+        
+        # Kirim sebagai file mentah, bukan base64 string
+        payload = {"key": api_key}
+        files = {"image": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
+        
+        res = requests.post(url, data=payload, files=files)
         if res.status_code == 200:
             return res.json()["data"]["url"]
+        else:
+            st.error(f"Pesan Error ImgBB: {res.text}")
+            return ""
+    except Exception as e:
+        st.error(f"Error Sistem: {e}")
         return ""
-    except: return ""
 
 # --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
 def get_gspread_client():
@@ -153,7 +135,6 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
 @st.cache_data(ttl=2) 
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
-    # Menambahkan param "cb" (Cache Buster) menggunakan waktu saat ini agar Google terpaksa memberi data terbaru
     cb = int(time.time())
     excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx&cb={cb}"
     try:
@@ -164,7 +145,6 @@ def load_all_data():
                 xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), 
                 xls.get("Rekomendasi Perbaikan", pd.DataFrame()))
     except Exception as e:
-        st.error(f"❌ Gagal memuat data dari Spreadsheet. Error: {e}")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi = load_all_data()
@@ -304,22 +284,25 @@ if not df_sdm.empty:
                     img_urls = ["", "", "", "", ""]
                     upload_failed = False
                     if uploaded_files:
-                        with st.spinner("Mengupload foto ke Cloud..."):
+                        with st.spinner("Mengupload foto ke Cloud ImgBB..."):
                             for idx, file in enumerate(uploaded_files[:5]):
                                 url_hasil = upload_image_to_imgbb(file)
-                                if url_hasil: img_urls[idx] = url_hasil
-                                else: upload_failed = True
+                                if url_hasil: 
+                                    img_urls[idx] = url_hasil
+                                else: 
+                                    upload_failed = True
                     
-                    with st.spinner("Menyimpan teks laporan ke GSheet..."):
-                        sukses = save_findings_to_sheet(
-                            str(dict_karyawan.get('NIK', 'N/A')), str(dict_karyawan.get('NAMA', 'N/A')),
-                            info_gabungan, input_findings,
-                            img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
-                        )
-                        if sukses:
-                            st.success("✅ Data Laporan berhasil tersimpan!")
-                            st.cache_data.clear() # Paksa clear cache
-                            st.rerun()
+                    if not upload_failed or not uploaded_files:
+                        with st.spinner("Menyimpan teks laporan ke GSheet..."):
+                            sukses = save_findings_to_sheet(
+                                str(dict_karyawan.get('NIK', 'N/A')), str(dict_karyawan.get('NAMA', 'N/A')),
+                                info_gabungan, input_findings,
+                                img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
+                            )
+                            if sukses:
+                                st.success("✅ Data Laporan & Foto berhasil tersimpan!")
+                                st.cache_data.clear()
+                                st.rerun()
             else:
                 st.warning("⚠️ Mohon isi text area laporan perbaikan terlebih dahulu.")
 
@@ -385,8 +368,6 @@ if not df_sdm.empty:
                                 
                                 if extracted_urls:
                                     valid_img_url = extracted_urls[0]
-                                    
-                                    # Failsafe ganda: Menampilkan Foto langsung DAN Link teks yang bisa diklik!
                                     html_img = f'''
                                     <img src="{valid_img_url}" style="width:100%; border-radius:8px; border: 1px solid #444; box-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-top:5px; margin-bottom:5px;">
                                     <div style="text-align: center; margin-bottom: 10px;">
