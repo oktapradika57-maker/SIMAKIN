@@ -10,7 +10,6 @@ import base64
 import time
 from PIL import Image
 import io
-import urllib.parse
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
@@ -90,11 +89,12 @@ with st.sidebar:
         st.rerun()
 
 
-# --- 5. FUNGSI UPLOAD FOTO (AUTO COMPRESS ANTI GAGAL) ---
+# --- 5. FUNGSI UPLOAD FOTO (DENGAN KOMPRESI OTOMATIS) ---
 def compress_and_encode_image(uploaded_file):
+    # Mengecilkan foto agar upload PASTI berhasil (Anti-Error ImgBB)
     img = Image.open(uploaded_file)
     if img.mode != 'RGB': img = img.convert('RGB')
-    img.thumbnail((800, 800))
+    img.thumbnail((800, 800)) # Maksimal 800px agar ringan
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=75)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
@@ -136,22 +136,20 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
     except: return False
 
 
-# --- 7. FUNGSI LOAD DATA UTAMA (BYPASS CSV -> ANTI SEGFAULT CRASH) ---
-@st.cache_data(ttl=120) 
+# --- 7. FUNGSI LOAD DATA UTAMA (CEPAT & STABIL) ---
+@st.cache_data(ttl=300) # Cache 5 menit agar tidak lelet (akan dibersihkan otomatis jika tekan Push/Refresh)
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
-    cb = int(time.time())
-    # Menggunakan Export CSV agar melewati Bug Tanggal di Openpyxl yang bikin server mati
-    base_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&cb={cb}&sheet="
-    
+    cb = int(time.time()) # Kode penangkal lemot cache google
+    excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx&cb={cb}"
     try:
-        df_sdm = pd.read_csv(base_url + urllib.parse.quote("SDM"), dtype=str)
-        df_asset = pd.read_csv(base_url + urllib.parse.quote("ALL ASSET MBP CME TE REG KALIMA"), dtype=str)
-        df_genset = pd.read_csv(base_url + urllib.parse.quote("ALL ASSET GENSET REG KALIMANTAN"), dtype=str)
-        df_tools = pd.read_csv(base_url + urllib.parse.quote("ALL ASSET TOOLS KALIMANTAN"), dtype=str)
-        df_rek = pd.read_csv(base_url + urllib.parse.quote("Rekomendasi Perbaikan"), dtype=str)
-        return df_sdm, df_asset, df_genset, df_tools, df_rek
-    except Exception as e:
+        xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
+        return (xls.get("SDM", pd.DataFrame()), 
+                xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame()), 
+                xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), 
+                xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), 
+                xls.get("Rekomendasi Perbaikan", pd.DataFrame()))
+    except:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi = load_all_data()
@@ -166,12 +164,12 @@ def get_row_by_name(df, target_name):
 
 # PENGUBAH LINK GDRIVE MENJADI THUMBNAIL LANGSUNG
 def get_clean_image_url(url):
-    match = re.search(r'([-\w]{25,})', url) 
+    match = re.search(r'([-\w]{25,})', url) # Menarik ID Google Drive
     if match and ("drive.google" in url or "docs.google" in url):
         return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w800"
     return url
 
-# RENDERER FOTO (HTML BROWSER RENDER)
+# RENDERER FOTO TANPA BIKIN LELET (NATIVE HTML)
 def render_image_html(col, raw_text, label="Foto"):
     urls = re.findall(r'(https?://[^\s"\'\)<>]+)', raw_text)
     if urls:
@@ -179,11 +177,12 @@ def render_image_html(col, raw_text, label="Foto"):
         html = f'''
         <img src="{img_url}" style="width:100%; border-radius:8px; border: 1px solid #444; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
         <div style="text-align: center; margin-top: 5px;">
-            <a href="{img_url}" target="_blank" style="color: #64b5f6; font-size: 13px; text-decoration: none;">🔍 Buka Ukuran Penuh</a>
+            <a href="{img_url}" target="_blank" style="color: #64b5f6; font-size: 13px; text-decoration: none;">🔍 Buka Full</a>
         </div>
         '''
         col.markdown(html, unsafe_allow_html=True)
     elif raw_text.startswith("/9j/") or len(raw_text) > 50:
+        # Cadangan jika itu adalah file Base64 murni dari data lama
         try:
             clean_b64 = raw_text.split(",")[-1]
             missing_padding = len(clean_b64) % 4
@@ -313,8 +312,8 @@ if not df_sdm.empty:
                     )
                     if sukses:
                         st.success("✅ Data Laporan & Foto berhasil tersimpan!")
-                        st.cache_data.clear()
-                        st.rerun()
+                        st.cache_data.clear() # Langsung clear cache agar fresh
+                        st.rerun()            # Refresh instan
             else:
                 st.warning("⚠️ Mohon isi text area laporan perbaikan terlebih dahulu.")
 
