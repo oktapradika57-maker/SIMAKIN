@@ -11,8 +11,6 @@ import time
 from PIL import Image
 import io
 import urllib.parse
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
@@ -92,48 +90,39 @@ with st.sidebar:
         st.rerun()
 
 
-# --- 5. FUNGSI UPLOAD FOTO KE FOLDER SPESIFIK GOOGLE DRIVE ---
+# --- 5. FUNGSI UPLOAD VIA JALUR TOL APPS SCRIPT ---
+def compress_and_encode_image(uploaded_file):
+    img = Image.open(uploaded_file)
+    if img.mode != 'RGB': img = img.convert('RGB')
+    img.thumbnail((800, 800))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=80)
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
+
 def upload_image_to_gdrive(uploaded_file):
     try:
-        # Autentikasi
-        scopes = ['https://www.googleapis.com/auth/drive']
-        creds_dict = st.secrets["gcp_service_account"]
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scopes)
-        service = build('drive', 'v3', credentials=creds)
-        
-        # Kompres Gambar
-        img = Image.open(uploaded_file)
-        if img.mode != 'RGB': img = img.convert('RGB')
-        img.thumbnail((800, 800))
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=80)
-        buf.seek(0)
-        
-        # ID FOLDER ANDA (DARI LINK YANG DIBERIKAN)
-        FOLDER_ID = '165qUkoKMTUzcVUP4HSTwWpVuoY5mkE9d'
-        
-        # Mengarahkan file ke folder tersebut
-        file_metadata = {
-            'name': f"Bukti_Perbaikan_{int(time.time())}.jpg",
-            'parents': [FOLDER_ID] 
+        # ======= URL WEB APP ANDA SUDAH DIPASANG DI SINI =======
+        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzDhWqTx4vGoLSkzs8NGu3epuwbZhYPG7wYh5fGIYPxIEAO4uH22Go91-F9xjV4H-sm/exec"
+        # =======================================================
+
+        b64_img = compress_and_encode_image(uploaded_file)
+        payload = {
+            "filename": f"Bukti_Perbaikan_{int(time.time())}.jpg",
+            "base64": b64_img
         }
         
-        # Eksekusi Upload
-        media = MediaIoBaseUpload(buf, mimetype='image/jpeg', resumable=True)
-        file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-        file_id = file.get('id')
+        # Kirim ke Apps Script (Jalur Tol)
+        res = requests.post(GAS_WEB_APP_URL, json=payload)
+        result = res.json()
         
-        # Atur file menjadi Publik agar bisa dilihat di Streamlit
-        service.permissions().create(
-            fileId=file_id,
-            body={'type': 'anyone', 'role': 'reader'}
-        ).execute()
-        
-        return f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
-        
+        if result.get("status") == "success":
+            return result.get("url")
+        else:
+            st.error(f"❌ Error Drive: {result.get('message')}")
+            return ""
+            
     except Exception as e:
-        # Memberikan notifikasi error yang jelas jika gagal
-        st.error(f"❌ Gagal upload ke Folder Google Drive: {e}")
+        st.error(f"❌ Gagal upload ke Server: {e}")
         return ""
 
 
@@ -166,15 +155,16 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
     cb = int(time.time())
-    excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx&cb={cb}"
+    base_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&cb={cb}&sheet="
+    
     try:
-        xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
-        return (xls.get("SDM", pd.DataFrame()), 
-                xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame()), 
-                xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), 
-                xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), 
-                xls.get("Rekomendasi Perbaikan", pd.DataFrame()))
-    except:
+        df_sdm = pd.read_csv(base_url + urllib.parse.quote("SDM"), dtype=str)
+        df_asset = pd.read_csv(base_url + urllib.parse.quote("ALL ASSET MBP CME TE REG KALIMA"), dtype=str)
+        df_genset = pd.read_csv(base_url + urllib.parse.quote("ALL ASSET GENSET REG KALIMANTAN"), dtype=str)
+        df_tools = pd.read_csv(base_url + urllib.parse.quote("ALL ASSET TOOLS KALIMANTAN"), dtype=str)
+        df_rek = pd.read_csv(base_url + urllib.parse.quote("Rekomendasi Perbaikan"), dtype=str)
+        return df_sdm, df_asset, df_genset, df_tools, df_rek
+    except Exception as e:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi = load_all_data()
@@ -320,7 +310,7 @@ if not df_sdm.empty:
                 upload_failed = False
                 
                 if uploaded_files:
-                    with st.spinner("Mengupload foto ke Google Drive..."):
+                    with st.spinner("🚀 Mengupload foto langsung ke Google Drive..."):
                         for idx, file in enumerate(uploaded_files[:5]):
                             url_hasil = upload_image_to_gdrive(file)
                             if url_hasil: 
@@ -336,7 +326,7 @@ if not df_sdm.empty:
                             img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
                         )
                         if sukses:
-                            st.success("✅ Data Laporan & Foto berhasil tersimpan!")
+                            st.success("✅ Data Laporan & Foto berhasil tersimpan secara permanen!")
                             st.cache_data.clear()
                             st.rerun()
             else:
