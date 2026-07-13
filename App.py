@@ -10,7 +10,6 @@ import base64
 import time
 from PIL import Image
 import io
-import urllib.parse
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
@@ -90,40 +89,26 @@ with st.sidebar:
         st.rerun()
 
 
-# --- 5. FUNGSI UPLOAD VIA JALUR TOL APPS SCRIPT ---
+# --- 5. FUNGSI UPLOAD FOTO KE IMGBB (DENGAN KOMPRESI ANTI GAGAL) ---
 def compress_and_encode_image(uploaded_file):
     img = Image.open(uploaded_file)
     if img.mode != 'RGB': img = img.convert('RGB')
-    img.thumbnail((800, 800))
+    img.thumbnail((800, 800)) # Diperkecil agar upload selalu berhasil
     buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=80)
+    img.save(buf, format="JPEG", quality=75)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
-def upload_image_to_gdrive(uploaded_file):
+def upload_image_to_imgbb(uploaded_file):
     try:
-        # ======= URL WEB APP ANDA SUDAH SAYA MASUKKAN DI SINI =======
-        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzDhWqTx4vGoLSkzs8NGu3epuwbZhYPG7wYh5fGIYPxIEAO4uH22Go91-F9xjV4H-sm/exec"
-        # ============================================================
-
+        api_key = st.secrets["imgbb_api_key"]
         b64_img = compress_and_encode_image(uploaded_file)
-        payload = {
-            "filename": f"Bukti_Perbaikan_{int(time.time())}.jpg",
-            "base64": b64_img
-        }
-        
-        # Kirim ke Apps Script (Jalur Tol)
-        res = requests.post(GAS_WEB_APP_URL, json=payload)
-        result = res.json()
-        
-        if result.get("status") == "success":
-            return result.get("url")
-        else:
-            st.error(f"❌ Error Drive: {result.get('message')}")
-            return ""
-            
-    except Exception as e:
-        st.error(f"❌ Gagal upload ke Server: {e}")
+        url = "https://api.imgbb.com/1/upload"
+        payload = {"key": api_key, "image": b64_img}
+        res = requests.post(url, data=payload)
+        if res.status_code == 200:
+            return res.json()["data"]["url"]
         return ""
+    except: return ""
 
 
 # --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
@@ -150,21 +135,20 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
     except: return False
 
 
-# --- 7. FUNGSI LOAD DATA UTAMA (CEPAT & STABIL) ---
-@st.cache_data(ttl=300) 
+# --- 7. FUNGSI LOAD DATA UTAMA (MENGGUNAKAN METODE ORIGINAL ANDA) ---
+@st.cache_data(ttl=120) 
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
     cb = int(time.time())
-    base_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&cb={cb}&sheet="
-    
+    excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx&cb={cb}"
     try:
-        df_sdm = pd.read_csv(base_url + urllib.parse.quote("SDM"), dtype=str)
-        df_asset = pd.read_csv(base_url + urllib.parse.quote("ALL ASSET MBP CME TE REG KALIMA"), dtype=str)
-        df_genset = pd.read_csv(base_url + urllib.parse.quote("ALL ASSET GENSET REG KALIMANTAN"), dtype=str)
-        df_tools = pd.read_csv(base_url + urllib.parse.quote("ALL ASSET TOOLS KALIMANTAN"), dtype=str)
-        df_rek = pd.read_csv(base_url + urllib.parse.quote("Rekomendasi Perbaikan"), dtype=str)
-        return df_sdm, df_asset, df_genset, df_tools, df_rek
-    except Exception as e:
+        xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
+        return (xls.get("SDM", pd.DataFrame()), 
+                xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame()), 
+                xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), 
+                xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), 
+                xls.get("Rekomendasi Perbaikan", pd.DataFrame()))
+    except:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi = load_all_data()
@@ -209,6 +193,13 @@ st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSE
 if not df_sdm.empty:
     df_sdm_filtered = df_sdm.copy()
     
+    # PERBAIKAN ERROR (NameError: data_karyawan_select is not defined)
+    data_karyawan_select = None
+    data_asset_select = None
+    data_genset_select = None
+    data_tools_asset_select = None
+    selected_nama = "-"
+    
     st.markdown("### 🔍 Filter Pencarian Karyawan")
     col_f1, col_f2, col_f3 = st.columns(3)
     
@@ -229,12 +220,13 @@ if not df_sdm.empty:
     with col_f3:
         if 'NAMA' in df_sdm_filtered.columns:
             list_nama = df_sdm_filtered['NAMA'].dropna().unique()
-            selected_nama = st.selectbox("👤 Pilih Nama Karyawan:", list_nama)
-            
-            data_karyawan_select = get_row_by_name(df_sdm_filtered, selected_nama)
-            data_asset_select = get_row_by_name(df_asset, selected_nama)
-            data_genset_select = get_row_by_name(df_genset, selected_nama)
-            data_tools_asset_select = get_row_by_name(df_tools_asset, selected_nama)
+            if len(list_nama) > 0:
+                selected_nama = st.selectbox("👤 Pilih Nama Karyawan:", list_nama)
+                
+                data_karyawan_select = get_row_by_name(df_sdm_filtered, selected_nama)
+                data_asset_select = get_row_by_name(df_asset, selected_nama)
+                data_genset_select = get_row_by_name(df_genset, selected_nama)
+                data_tools_asset_select = get_row_by_name(df_tools_asset, selected_nama)
 
     st.write("---")
             
@@ -310,13 +302,16 @@ if not df_sdm.empty:
                 upload_failed = False
                 
                 if uploaded_files:
-                    with st.spinner("🚀 Mengupload foto langsung ke Google Drive Anda..."):
-                        for idx, file in enumerate(uploaded_files[:5]):
-                            url_hasil = upload_image_to_gdrive(file)
-                            if url_hasil: 
-                                img_urls[idx] = url_hasil
-                            else: 
-                                upload_failed = True
+                    if "imgbb_api_key" not in st.secrets:
+                        st.error("API Key ImgBB belum dimasukkan di Streamlit Secrets!")
+                    else:
+                        with st.spinner("Mengecilkan & Mengupload foto..."):
+                            for idx, file in enumerate(uploaded_files[:5]):
+                                url_hasil = upload_image_to_imgbb(file)
+                                if url_hasil: 
+                                    img_urls[idx] = url_hasil
+                                else:
+                                    upload_failed = True
                 
                 if not upload_failed or not uploaded_files:
                     with st.spinner("Menyimpan teks laporan ke GSheet..."):
@@ -326,7 +321,7 @@ if not df_sdm.empty:
                             img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
                         )
                         if sukses:
-                            st.success("✅ Data Laporan & Foto berhasil tersimpan secara permanen!")
+                            st.success("✅ Data Laporan & Foto berhasil tersimpan!")
                             st.cache_data.clear()
                             st.rerun()
             else:
@@ -361,7 +356,7 @@ if not df_sdm.empty:
     render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Tidak ada foto unit Tools.")
         
     with tab_perbaikan:
-        if not df_rekomendasi.empty:
+        if not df_rekomendasi.empty and selected_nama != "-":
             rec_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
             if rec_name_col:
                 clean_target = selected_nama.strip().lower()
@@ -394,4 +389,4 @@ if not df_sdm.empty:
                         st.write("<br><hr style='border-color: #333;'>", unsafe_allow_html=True)
                 else: st.info(f"Belum ada riwayat laporan perbaikan untuk karyawan ini.")
             else: st.error("Kolom 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
-        else: st.info("Belum ada data riwayat perbaikan di dalam server.")
+        else: st.info("Belum ada data riwayat perbaikan yang sesuai.")
