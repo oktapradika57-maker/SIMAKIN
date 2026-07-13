@@ -8,21 +8,25 @@ from datetime import datetime
 import requests
 import base64
 import time
+from PIL import Image
+import io
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
 
-# --- 2. CUSTOM CSS & ANIMASI ---
+# --- 2. CUSTOM CSS & ANIMASI KORPORAT ---
 st.markdown("""
 <style>
     .reportview-container { background: #121212; color: #ffffff; }
     @keyframes slideUp { 0% { opacity: 0; transform: translateY(30px); } 100% { opacity: 1; transform: translateY(0); } }
     @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+    
     .header-style {
         background: linear-gradient(135deg, #d32f2f 0%, #9a0007 100%); padding: 15px; border-radius: 12px; 
         color: white; font-weight: 800; font-size: 24px; text-align: center; box-shadow: 0 10px 20px rgba(211, 47, 47, 0.3); 
         margin-bottom: 25px; animation: slideUp 0.8s ease-out; border: 1px solid #ff6659;
     }
+    
     .login-box {
         background: rgba(30, 32, 40, 0.7); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.1); padding: 40px; border-radius: 20px;
@@ -30,8 +34,10 @@ st.markdown("""
     }
     .login-title { color: #ff5252; font-size: 28px; font-weight: 900; text-align: center; margin-bottom: 10px; }
     .login-subtitle { color: #b0bec5; font-size: 14px; text-align: center; margin-bottom: 35px; }
+    
     .stButton>button { transition: all 0.3s ease; border-radius: 8px; font-weight: bold; }
     .stButton>button:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(229, 57, 53, 0.4); border-color: #ff5252; color: #ff5252; }
+
     .report-card {
         background: #1e1e24; padding: 20px; border-radius: 12px; border-left: 6px solid #e53935;
         margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); animation: slideUp 0.5s ease-out;
@@ -57,11 +63,13 @@ def login_form():
         st.markdown("<br>", unsafe_allow_html=True)
         submit = st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
+    
     if submit:
         if user == "SIMAKINKUT" and pwd == "2026KUTPOSITIF":
             st.session_state.logged_in = True
             st.rerun()
-        else: st.error("❌ Kredensial Salah! Silakan periksa Username & Password.")
+        else:
+            st.error("❌ Kredensial Salah! Silakan periksa Username & Password.")
 
 if not st.session_state.logged_in:
     login_form()
@@ -80,17 +88,29 @@ with st.sidebar:
         st.session_state.logged_in = False
         st.rerun()
 
-# --- 5. FUNGSI UPLOAD FOTO KE IMGBB ---
+
+# --- 5. FUNGSI UPLOAD FOTO (DENGAN KOMPRESI OTOMATIS) ---
+def compress_and_encode_image(uploaded_file):
+    # Mengecilkan foto agar upload PASTI berhasil (Anti-Error ImgBB)
+    img = Image.open(uploaded_file)
+    if img.mode != 'RGB': img = img.convert('RGB')
+    img.thumbnail((800, 800)) # Maksimal 800px agar ringan
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=75)
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
+
 def upload_image_to_imgbb(uploaded_file):
     try:
         api_key = st.secrets["imgbb_api_key"]
-        base64_image = base64.b64encode(uploaded_file.getvalue()).decode("utf-8")
+        b64_img = compress_and_encode_image(uploaded_file)
         url = "https://api.imgbb.com/1/upload"
-        payload = {"key": api_key, "image": base64_image}
+        payload = {"key": api_key, "image": b64_img}
         res = requests.post(url, data=payload)
-        if res.status_code == 200: return res.json()["data"]["url"]
+        if res.status_code == 200:
+            return res.json()["data"]["url"]
         return ""
     except: return ""
+
 
 # --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
 def get_gspread_client():
@@ -109,23 +129,28 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
         except:
             worksheet = sh.add_worksheet(title="Rekomendasi Perbaikan", rows="1000", cols="10")
             worksheet.append_row(["Timestamp", "NIK", "Nama", "Unit Asset (Mobil & Genset)", "Findings & Action Plan", "Foto 1", "Foto 2", "Foto 3", "Foto 4", "Foto 5"])
+        
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         worksheet.append_row([timestamp, nik, nama, unit_info, findings, f1, f2, f3, f4, f5])
         return True
     except: return False
 
-# --- 7. FUNGSI LOAD DATA UTAMA & KONVERTER GDRIVE ---
-@st.cache_data(ttl=2) 
+
+# --- 7. FUNGSI LOAD DATA UTAMA (CEPAT & STABIL) ---
+@st.cache_data(ttl=300) # Cache 5 menit agar tidak lelet (akan dibersihkan otomatis jika tekan Push/Refresh)
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
-    cb = int(time.time())
+    cb = int(time.time()) # Kode penangkal lemot cache google
     excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx&cb={cb}"
     try:
         xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
-        return (xls.get("SDM", pd.DataFrame()), xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame()), 
-                xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), 
+        return (xls.get("SDM", pd.DataFrame()), 
+                xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame()), 
+                xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), 
+                xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), 
                 xls.get("Rekomendasi Perbaikan", pd.DataFrame()))
-    except: return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+    except:
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi = load_all_data()
 
@@ -137,26 +162,34 @@ def get_row_by_name(df, target_name):
     matched = df[df[name_col].astype(str).str.strip().str.lower().str.contains(clean_target, regex=False, na=False)]
     return matched.iloc[0] if not matched.empty else None
 
-def get_direct_gdrive_url(url):
-    """ Mengubah Link Google Form (Gdrive) jadi Direct Image URL """
-    if "drive.google.com" in url or "docs.google.com" in url:
-        match_d = re.search(r'/file/d/([a-zA-Z0-9-_]+)', url)
-        match_id = re.search(r'[?&]id=([a-zA-Z0-9-_]+)', url)
-        if match_d: return f"https://drive.google.com/uc?export=view&id={match_d.group(1)}"
-        elif match_id: return f"https://drive.google.com/uc?export=view&id={match_id.group(1)}"
+# PENGUBAH LINK GDRIVE MENJADI THUMBNAIL LANGSUNG
+def get_clean_image_url(url):
+    match = re.search(r'([-\w]{25,})', url) # Menarik ID Google Drive
+    if match and ("drive.google" in url or "docs.google" in url):
+        return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w800"
     return url
 
-def extract_photos_robust(data_row, df_columns):
-    photos = []
-    if data_row is None: return photos
-    for col_name in df_columns:
-        cell_val = str(data_row[col_name]).strip()
-        if cell_val and cell_val not in ["nan", "-", "None"]:
-            urls = re.findall(r'(https?://[^\s"\'\)<>]+)', cell_val)
-            for url in urls:
-                final_url = get_direct_gdrive_url(url)
-                photos.append((str(col_name), final_url))
-    return photos
+# RENDERER FOTO TANPA BIKIN LELET (NATIVE HTML)
+def render_image_html(col, raw_text, label="Foto"):
+    urls = re.findall(r'(https?://[^\s"\'\)<>]+)', raw_text)
+    if urls:
+        img_url = get_clean_image_url(urls[0])
+        html = f'''
+        <img src="{img_url}" style="width:100%; border-radius:8px; border: 1px solid #444; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+        <div style="text-align: center; margin-top: 5px;">
+            <a href="{img_url}" target="_blank" style="color: #64b5f6; font-size: 13px; text-decoration: none;">🔍 Buka Full</a>
+        </div>
+        '''
+        col.markdown(html, unsafe_allow_html=True)
+    elif raw_text.startswith("/9j/") or len(raw_text) > 50:
+        # Cadangan jika itu adalah file Base64 murni dari data lama
+        try:
+            clean_b64 = raw_text.split(",")[-1]
+            missing_padding = len(clean_b64) % 4
+            if missing_padding: clean_b64 += '=' * (4 - missing_padding)
+            col.image(base64.b64decode(clean_b64), caption=label, use_container_width=True)
+        except: pass
+
 
 # --- 8. TAMPILAN DASHBOARD UTAMA ---
 st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
@@ -262,29 +295,25 @@ if not df_sdm.empty:
         if st.button("🚀 Push Update Data ke Server", use_container_width=True):
             if input_findings:
                 img_urls = ["", "", "", "", ""]
-                upload_failed = False
                 if uploaded_files:
                     if "imgbb_api_key" not in st.secrets:
                         st.error("API Key ImgBB belum dimasukkan di Streamlit Secrets!")
-                        upload_failed = True
                     else:
-                        with st.spinner("Mengupload foto ke Cloud..."):
+                        with st.spinner("Mengecilkan & Mengupload foto ke Cloud..."):
                             for idx, file in enumerate(uploaded_files[:5]):
                                 url_hasil = upload_image_to_imgbb(file)
                                 if url_hasil: img_urls[idx] = url_hasil
-                                else: upload_failed = True
                 
-                if not upload_failed or not uploaded_files:
-                    with st.spinner("Menyimpan teks laporan ke GSheet..."):
-                        sukses = save_findings_to_sheet(
-                            str(dict_karyawan.get('NIK', 'N/A')), str(dict_karyawan.get('NAMA', 'N/A')),
-                            info_gabungan, input_findings,
-                            img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
-                        )
-                        if sukses:
-                            st.success("✅ Data Laporan & Foto berhasil tersimpan!")
-                            st.cache_data.clear()
-                            st.rerun()
+                with st.spinner("Menyimpan teks laporan ke GSheet..."):
+                    sukses = save_findings_to_sheet(
+                        str(dict_karyawan.get('NIK', 'N/A')), str(dict_karyawan.get('NAMA', 'N/A')),
+                        info_gabungan, input_findings,
+                        img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
+                    )
+                    if sukses:
+                        st.success("✅ Data Laporan & Foto berhasil tersimpan!")
+                        st.cache_data.clear() # Langsung clear cache agar fresh
+                        st.rerun()            # Refresh instan
             else:
                 st.warning("⚠️ Mohon isi text area laporan perbaikan terlebih dahulu.")
 
@@ -293,37 +322,29 @@ if not df_sdm.empty:
     
     tab_r2r4, tab_genset, tab_tools, tab_perbaikan = st.tabs(["🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Riwayat Bukti Perbaikan"])
     
-    # Fungsi Pembantu Menampilkan Gambar Server-Side
-    def display_image_safely(col, url, label):
-        try:
-            res = requests.get(url, timeout=5)
-            if res.status_code == 200: col.image(res.content, caption=label, use_container_width=True)
-            else: col.image(url, caption=label, use_container_width=True)
-        except:
-            col.image(url, caption=label, use_container_width=True)
-            
-    with tab_r2r4:
-        photos_r2r4 = extract_photos_robust(data_asset_select, df_asset.columns)
-        if photos_r2r4:
-            cols = st.columns(4)
-            for i, (lbl, url) in enumerate(photos_r2r4): display_image_safely(cols[i % 4], url, f"Kolom {lbl}")
-        else: st.info("Tidak ada foto kendaraan R2/R4.")
+    def render_gallery_fast(tab_context, df, df_columns, data_row, empty_msg):
+        with tab_context:
+            if data_row is not None:
+                photos_exist = False
+                cols = st.columns(4)
+                idx = 0
+                for col_name in df_columns:
+                    cell_val = str(data_row[col_name]).strip()
+                    if cell_val and cell_val not in ["nan", "-", "None"]:
+                        urls = re.findall(r'(https?://[^\s"\'\)<>]+)', cell_val)
+                        if urls:
+                            photos_exist = True
+                            img_url = get_clean_image_url(urls[0])
+                            html = f'<img src="{img_url}" style="width:100%; border-radius:10px; margin-bottom:5px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);"><p style="text-align:center; font-size:12px;">Kolom {col_name}</p>'
+                            cols[idx % 4].markdown(html, unsafe_allow_html=True)
+                            idx += 1
+                if not photos_exist: st.info(empty_msg)
+            else: st.info(empty_msg)
 
-    with tab_genset:
-        photos_genset = extract_photos_robust(data_genset_select, df_genset.columns)
-        if photos_genset:
-            cols = st.columns(4)
-            for i, (lbl, url) in enumerate(photos_genset): display_image_safely(cols[i % 4], url, f"Kolom {lbl}")
-        else: st.info("Tidak ada foto unit Genset.")
-
-    with tab_tools:
-        photos_tools = extract_photos_robust(data_tools_asset_select, df_tools_asset.columns)
-        if photos_tools:
-            cols = st.columns(4)
-            for i, (lbl, url) in enumerate(photos_tools): display_image_safely(cols[i % 4], url, f"Kolom {lbl}")
-        else: st.info("Tidak ada foto unit Tools.")
+    render_gallery_fast(tab_r2r4, df_asset, df_asset.columns, data_asset_select, "Tidak ada foto kendaraan R2/R4.")
+    render_gallery_fast(tab_genset, df_genset, df_genset.columns, data_genset_select, "Tidak ada foto unit Genset.")
+    render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Tidak ada foto unit Tools.")
         
-    # TAB BUKTI PERBAIKAN: SUPER EXTRACTOR (Google Drive + ImgBB + Base64)
     with tab_perbaikan:
         if not df_rekomendasi.empty:
             rec_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
@@ -352,25 +373,9 @@ if not df_sdm.empty:
                         for col_name in foto_columns:
                             cell_raw_value = str(row[col_name]).strip()
                             if cell_raw_value and cell_raw_value not in ["nan", "-", "None", ""]:
-                                # 1. Ekstrak Link (Google Form / ImgBB)
-                                extracted_urls = re.findall(r'(https?://[^\s"\'\)<>]+)', cell_raw_value)
+                                render_image_html(foto_cols[col_idx], cell_raw_value, col_name)
+                                col_idx += 1
                                 
-                                if extracted_urls:
-                                    # Ubah link Google Form jadi Link Gambar Langsung
-                                    valid_img_url = get_direct_gdrive_url(extracted_urls[0])
-                                    display_image_safely(foto_cols[col_idx], valid_img_url, col_name)
-                                    foto_cols[col_idx].markdown(f'<div style="text-align: center;"><a href="{valid_img_url}" target="_blank" style="color: #64b5f6; font-size: 13px;">🔍 Lihat Ukuran Penuh</a></div>', unsafe_allow_html=True)
-                                    col_idx += 1
-                                    
-                                # 2. Ekstrak Base64 (Data Lama Anda)
-                                elif cell_raw_value.startswith("/9j/") or len(cell_raw_value) > 50:
-                                    try:
-                                        clean_b64 = cell_raw_value.split(",")[-1] if "," in cell_raw_value else cell_raw_value
-                                        missing_padding = len(clean_b64) % 4
-                                        if missing_padding: clean_b64 += '=' * (4 - missing_padding)
-                                        foto_cols[col_idx].image(base64.b64decode(clean_b64), caption=col_name, use_container_width=True)
-                                        col_idx += 1
-                                    except: pass
                         st.write("<br><hr style='border-color: #333;'>", unsafe_allow_html=True)
                 else: st.info(f"Belum ada riwayat laporan perbaikan untuk karyawan ini.")
             else: st.error("Kolom 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
