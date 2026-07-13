@@ -7,17 +7,16 @@ from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 import requests
 import base64
+import time
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
 
 # --- 2. CUSTOM CSS & ANIMASI KORPORAT PREMIUM ---
 st.markdown("""
 <style>
-    /* Latar Belakang & Warna Teks */
     .reportview-container { background: #121212; color: #ffffff; }
     
-    /* Animasi Smooth Slide-Up */
     @keyframes slideUp {
         0% { opacity: 0; transform: translateY(30px); }
         100% { opacity: 1; transform: translateY(0); }
@@ -27,7 +26,6 @@ st.markdown("""
         100% { opacity: 1; }
     }
     
-    /* Efek Header Utama */
     .header-style {
         background: linear-gradient(135deg, #d32f2f 0%, #9a0007 100%);
         padding: 15px;
@@ -42,7 +40,6 @@ st.markdown("""
         border: 1px solid #ff6659;
     }
     
-    /* Kartu Login Glassmorphism */
     .login-box {
         background: rgba(30, 32, 40, 0.7);
         backdrop-filter: blur(10px);
@@ -55,42 +52,15 @@ st.markdown("""
         margin: 80px auto;
         animation: fadeIn 1s ease-out;
     }
-    .login-title {
-        color: #ff5252;
-        font-size: 28px;
-        font-weight: 900;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-    .login-subtitle {
-        color: #b0bec5;
-        font-size: 14px;
-        text-align: center;
-        margin-bottom: 35px;
-    }
+    .login-title { color: #ff5252; font-size: 28px; font-weight: 900; text-align: center; margin-bottom: 10px; }
+    .login-subtitle { color: #b0bec5; font-size: 14px; text-align: center; margin-bottom: 35px; }
     
-    /* Tombol Efek Hover */
-    .stButton>button {
-        transition: all 0.3s ease;
-        border-radius: 8px;
-        font-weight: bold;
-    }
-    .stButton>button:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 20px rgba(229, 57, 53, 0.4);
-        border-color: #ff5252;
-        color: #ff5252;
-    }
+    .stButton>button { transition: all 0.3s ease; border-radius: 8px; font-weight: bold; }
+    .stButton>button:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(229, 57, 53, 0.4); border-color: #ff5252; color: #ff5252; }
 
-    /* Kartu Bukti Perbaikan yang Rapi */
     .report-card {
-        background: #1e1e24;
-        padding: 20px;
-        border-radius: 12px;
-        border-left: 6px solid #e53935;
-        margin-bottom: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        animation: slideUp 0.5s ease-out;
+        background: #1e1e24; padding: 20px; border-radius: 12px; border-left: 6px solid #e53935;
+        margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); animation: slideUp 0.5s ease-out;
     }
     .report-date { color: #ff5252; font-size: 14px; font-weight: bold; margin-bottom: 8px;}
     .report-text { color: #e0e0e0; font-size: 15px; line-height: 1.6; white-space: pre-wrap;}
@@ -104,15 +74,15 @@ if 'logged_in' not in st.session_state:
 def login_form():
     st.markdown("""
         <div class="login-box">
-            <div class="login-title">⚡ SYSTEM PORTAL SIMAKIN</div>
-            <div class="login-subtitle">SYSTEM MONITORING ASSET KINARYA | Reg Kalimantan</div>
+            <div class="login-title">⚡ SYSTEM PORTAL</div>
+            <div class="login-subtitle">Dashboard Operasional, Asset & Genset | Reg Kalimantan</div>
     """, unsafe_allow_html=True)
     
     with st.form("login_form"):
         user = st.text_input("👤 Username", placeholder="Ketik username Anda...")
         pwd = st.text_input("🔑 Password", type="password", placeholder="Ketik password Anda...")
         st.markdown("<br>", unsafe_allow_html=True)
-        submit = st.form_submit_button("🚀 MAU MAKIN YAKIN MASUK SIMAKIN", use_container_width=True)
+        submit = st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True)
         
     st.markdown("</div>", unsafe_allow_html=True)
     
@@ -127,27 +97,23 @@ if not st.session_state.logged_in:
     login_form()
     st.stop() 
 
-
-# --- 4. SIDEBAR MENU (REFRESH & LOGOUT) ---
+# --- 4. SIDEBAR MENU ---
 with st.sidebar:
     st.markdown("<h2 style='text-align: center; color: #ff5252;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.info("👤 **Aktif:** SIMAKINKUT")
     st.markdown("---")
     
-    # Tombol Refresh Cache GSheet
-    if st.button("🔄 Refresh Data (Tarik Ulang)", use_container_width=True):
-        st.cache_data.clear() # Membersihkan memori
-        st.rerun()            # Memuat ulang halaman
+    if st.button("🔄 Refresh Data Server", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
         
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Tombol Logout
     if st.button("🚪 Keluar Sistem", use_container_width=True):
         st.session_state.logged_in = False
         st.rerun()
 
-
-# --- 5. FUNGSI UPLOAD FOTO KE CLOUD (IMGBB) ---
+# --- 5. FUNGSI UPLOAD FOTO KE IMGBB ---
 def upload_image_to_imgbb(uploaded_file):
     try:
         api_key = st.secrets["imgbb_api_key"]
@@ -158,8 +124,7 @@ def upload_image_to_imgbb(uploaded_file):
         if res.status_code == 200:
             return res.json()["data"]["url"]
         return ""
-    except Exception as e:
-        return ""
+    except: return ""
 
 # --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
 def get_gspread_client():
@@ -167,17 +132,14 @@ def get_gspread_client():
         creds_dict = st.secrets["gcp_service_account"]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict)
         return gspread.authorize(creds)
-    except Exception as e:
-        st.error("Konfigurasi Google Secrets belum diatur di Streamlit Cloud.")
-        return None
+    except: return None
 
 def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
     try:
         client = get_gspread_client()
         if client is None: return False
         sh = client.open_by_key("1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw")
-        try:
-            worksheet = sh.worksheet("Rekomendasi Perbaikan")
+        try: worksheet = sh.worksheet("Rekomendasi Perbaikan")
         except:
             worksheet = sh.add_worksheet(title="Rekomendasi Perbaikan", rows="1000", cols="10")
             worksheet.append_row(["Timestamp", "NIK", "Nama", "Unit Asset (Mobil & Genset)", "Findings & Action Plan", "Foto 1", "Foto 2", "Foto 3", "Foto 4", "Foto 5"])
@@ -185,16 +147,15 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         worksheet.append_row([timestamp, nik, nama, unit_info, findings, f1, f2, f3, f4, f5])
         return True
-    except Exception as e:
-        st.error(f"Gagal menyimpan data: {e}")
-        return False
+    except: return False
 
-
-# --- 7. FUNGSI LOAD DATA UTAMA ---
-@st.cache_data(ttl=600) 
+# --- 7. FUNGSI LOAD DATA UTAMA (ANTI-CACHE GOOGLE) ---
+@st.cache_data(ttl=2) 
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
-    excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
+    # Menambahkan param "cb" (Cache Buster) menggunakan waktu saat ini agar Google terpaksa memberi data terbaru
+    cb = int(time.time())
+    excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx&cb={cb}"
     try:
         xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
         return (xls.get("SDM", pd.DataFrame()), 
@@ -234,9 +195,8 @@ def extract_photos_robust(data_row, df_columns):
                 photos.append((str(col_name), final_url))
     return photos
 
-
 # --- 8. TAMPILAN DASHBOARD UTAMA ---
-st.markdown('<div class="header-style">🚀 SYSTEM MONITORING ASSET KINARYA | SIMAKIN REG KALIMANTAN</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
     df_sdm_filtered = df_sdm.copy()
@@ -244,7 +204,6 @@ if not df_sdm.empty:
     st.markdown("### 🔍 Filter Pencarian Karyawan")
     col_f1, col_f2, col_f3 = st.columns(3)
     
-    # FILTER 1: JOB (JABATAN)
     with col_f1:
         if 'JOB' in df_sdm.columns:
             list_job = ["SEMUA JABATAN"] + list(df_sdm['JOB'].dropna().unique())
@@ -252,7 +211,6 @@ if not df_sdm.empty:
             if selected_job != "SEMUA JABATAN":
                 df_sdm_filtered = df_sdm_filtered[df_sdm_filtered['JOB'] == selected_job]
 
-    # FILTER 2: LOKER
     with col_f2:
         if 'LOKER' in df_sdm_filtered.columns:
             list_loker = ["SEMUA LOKER"] + list(df_sdm_filtered['LOKER'].dropna().unique())
@@ -260,7 +218,6 @@ if not df_sdm.empty:
             if selected_loker != "SEMUA LOKER":
                 df_sdm_filtered = df_sdm_filtered[df_sdm_filtered['LOKER'] == selected_loker]
 
-    # FILTER 3: NAMA
     with col_f3:
         if 'NAMA' in df_sdm_filtered.columns:
             list_nama = df_sdm_filtered['NAMA'].dropna().unique()
@@ -361,8 +318,8 @@ if not df_sdm.empty:
                         )
                         if sukses:
                             st.success("✅ Data Laporan berhasil tersimpan!")
-                            st.cache_data.clear() # Paksa pembersihan cache
-                            st.rerun()            # Auto-Refresh halaman
+                            st.cache_data.clear() # Paksa clear cache
+                            st.rerun()
             else:
                 st.warning("⚠️ Mohon isi text area laporan perbaikan terlebih dahulu.")
 
@@ -376,7 +333,6 @@ if not df_sdm.empty:
         if photos_r2r4:
             cols = st.columns(4)
             for i, (lbl, url) in enumerate(photos_r2r4): 
-                # Menggunakan HTML tag img agar anti blokir dari ImgBB
                 cols[i % 4].markdown(f'<img src="{url}" style="width:100%; border-radius:10px; margin-bottom:10px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);"><p style="text-align:center; font-size:12px;">Kolom {lbl}</p>', unsafe_allow_html=True)
         else: st.info("Tidak ada foto kendaraan R2/R4.")
 
@@ -396,9 +352,6 @@ if not df_sdm.empty:
                 cols[i % 4].markdown(f'<img src="{url}" style="width:100%; border-radius:10px; margin-bottom:10px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);"><p style="text-align:center; font-size:12px;">Kolom {lbl}</p>', unsafe_allow_html=True)
         else: st.info("Tidak ada foto unit Tools.")
         
-    # ==========================================
-    # TAB BUKTI PERBAIKAN: HTML RENDERER & CSS CARD
-    # ==========================================
     with tab_perbaikan:
         if not df_rekomendasi.empty:
             rec_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
@@ -411,12 +364,10 @@ if not df_sdm.empty:
                     st.markdown(f"<h4 style='color:#ff5252;'>Arsip Laporan Service: {selected_nama}</h4>", unsafe_allow_html=True)
                     foto_columns = [col for col in df_rekomendasi.columns if "FOTO" in str(col).upper()]
                     
-                    # Looping membalik urutan agar laporan terbaru ada di atas
                     for index, row in matched_rek.iloc[::-1].iterrows():
                         tanggal_laporan = row.get('Timestamp', '-')
                         teks_laporan = row.get('Findings & Action Plan', row.get('Findings', '-'))
                         
-                        # Desain Kartu Teks HTML
                         st.markdown(f"""
                         <div class="report-card">
                             <div class="report-date">🕒 Diposting pada: {tanggal_laporan}</div>
@@ -424,20 +375,24 @@ if not df_sdm.empty:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Grid Foto HTML (Anti-Blokir Browser)
                         foto_cols = st.columns(max(1, len(foto_columns)))
                         col_idx = 0
                         
                         for col_name in foto_columns:
                             cell_raw_value = str(row[col_name]).strip()
                             if cell_raw_value and cell_raw_value not in ["nan", "-", "None", ""]:
-                                # Ekstraksi Link Aman
                                 extracted_urls = re.findall(r'(https?://[^\s"\'\)<>]+)', cell_raw_value)
                                 
                                 if extracted_urls:
                                     valid_img_url = extracted_urls[0]
-                                    # Menggunakan tag HTML <img> memaksa BROWSER mendownload foto langsung dari server ImgBB
-                                    html_img = f'<img src="{valid_img_url}" style="width:100%; border-radius:8px; border: 1px solid #444; box-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-top:5px;">'
+                                    
+                                    # Failsafe ganda: Menampilkan Foto langsung DAN Link teks yang bisa diklik!
+                                    html_img = f'''
+                                    <img src="{valid_img_url}" style="width:100%; border-radius:8px; border: 1px solid #444; box-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-top:5px; margin-bottom:5px;">
+                                    <div style="text-align: center; margin-bottom: 10px;">
+                                        <a href="{valid_img_url}" target="_blank" style="color: #64b5f6; font-size: 13px; text-decoration: none;">🔍 Lihat Ukuran Penuh</a>
+                                    </div>
+                                    '''
                                     foto_cols[col_idx].markdown(html_img, unsafe_allow_html=True)
                                     col_idx += 1
                         st.write("<br><hr style='border-color: #333;'>", unsafe_allow_html=True)
