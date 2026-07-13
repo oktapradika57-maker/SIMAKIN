@@ -10,7 +10,7 @@ import base64
 import time
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="expanded")
 
 # --- 2. CUSTOM CSS & ANIMASI KORPORAT PREMIUM ---
 st.markdown("""
@@ -53,14 +53,14 @@ if 'logged_in' not in st.session_state:
 def login_form():
     st.markdown("""
         <div class="login-box">
-            <div class="login-title">⚡ SYSTEM PORTAL</div>
-            <div class="login-subtitle">Dashboard Operasional, Asset & Genset | Reg Kalimantan</div>
+            <div class="login-title">⚡ SYSTEM PORTAL SIMAKIN</div>
+            <div class="login-subtitle">SYSTEM MONITORING ASSET KINARYA | SIMAKIN Reg Kalimantan</div>
     """, unsafe_allow_html=True)
     with st.form("login_form"):
         user = st.text_input("👤 Username", placeholder="Ketik username Anda...")
         pwd = st.text_input("🔑 Password", type="password", placeholder="Ketik password Anda...")
         st.markdown("<br>", unsafe_allow_html=True)
-        submit = st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True)
+        submit = st.form_submit_button("🚀 MAU MAKIN YAKIN LOGIN SIMAKIN", use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
     
     if submit:
@@ -176,7 +176,7 @@ def extract_photos_robust(data_row, df_columns):
     return photos
 
 # --- 8. TAMPILAN DASHBOARD UTAMA ---
-st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">🚀 SYSTEM MONITORING ASSET KINARYA | SIMAKIN REG KALIMANTAN</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
     df_sdm_filtered = df_sdm.copy()
