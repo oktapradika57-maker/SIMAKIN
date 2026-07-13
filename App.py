@@ -10,6 +10,9 @@ import base64
 import time
 from PIL import Image
 import io
+import urllib.parse
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
@@ -89,27 +92,40 @@ with st.sidebar:
         st.rerun()
 
 
-# --- 5. FUNGSI UPLOAD FOTO (DENGAN KOMPRESI OTOMATIS) ---
-def compress_and_encode_image(uploaded_file):
-    # Mengecilkan foto agar upload PASTI berhasil (Anti-Error ImgBB)
-    img = Image.open(uploaded_file)
-    if img.mode != 'RGB': img = img.convert('RGB')
-    img.thumbnail((800, 800)) # Maksimal 800px agar ringan
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=75)
-    return base64.b64encode(buf.getvalue()).decode("utf-8")
-
-def upload_image_to_imgbb(uploaded_file):
+# --- 5. FUNGSI UPLOAD FOTO LANGSUNG KE GOOGLE DRIVE ---
+def upload_image_to_gdrive(uploaded_file):
     try:
-        api_key = st.secrets["imgbb_api_key"]
-        b64_img = compress_and_encode_image(uploaded_file)
-        url = "https://api.imgbb.com/1/upload"
-        payload = {"key": api_key, "image": b64_img}
-        res = requests.post(url, data=payload)
-        if res.status_code == 200:
-            return res.json()["data"]["url"]
+        # 1. Autentikasi Google Drive
+        scopes = ['https://www.googleapis.com/auth/drive']
+        creds_dict = st.secrets["gcp_service_account"]
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scopes)
+        service = build('drive', 'v3', credentials=creds)
+        
+        # 2. Kompres Foto agar sangat ringan & prosesnya secepat kilat
+        img = Image.open(uploaded_file)
+        if img.mode != 'RGB': img = img.convert('RGB')
+        img.thumbnail((800, 800))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=80)
+        buf.seek(0)
+        
+        # 3. Upload File Mentah ke Drive
+        file_metadata = {'name': f"Bukti_Perbaikan_{int(time.time())}.jpg"}
+        media = MediaIoBaseUpload(buf, mimetype='image/jpeg', resumable=True)
+        file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+        file_id = file.get('id')
+        
+        # 4. Buka Akses Foto menjadi Publik (Agar Streamlit & Google Sheet bisa melihatnya)
+        service.permissions().create(
+            fileId=file_id,
+            body={'type': 'anyone', 'role': 'reader'}
+        ).execute()
+        
+        # 5. Return link persis seperti Google Form
+        return f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
+    except Exception as e:
+        st.error(f"Gagal upload ke Google Drive: {e}")
         return ""
-    except: return ""
 
 
 # --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
@@ -137,10 +153,10 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
 
 
 # --- 7. FUNGSI LOAD DATA UTAMA (CEPAT & STABIL) ---
-@st.cache_data(ttl=300) # Cache 5 menit agar tidak lelet (akan dibersihkan otomatis jika tekan Push/Refresh)
+@st.cache_data(ttl=300) 
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
-    cb = int(time.time()) # Kode penangkal lemot cache google
+    cb = int(time.time())
     excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx&cb={cb}"
     try:
         xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
@@ -164,12 +180,12 @@ def get_row_by_name(df, target_name):
 
 # PENGUBAH LINK GDRIVE MENJADI THUMBNAIL LANGSUNG
 def get_clean_image_url(url):
-    match = re.search(r'([-\w]{25,})', url) # Menarik ID Google Drive
+    match = re.search(r'([-\w]{25,})', url) 
     if match and ("drive.google" in url or "docs.google" in url):
         return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w800"
     return url
 
-# RENDERER FOTO TANPA BIKIN LELET (NATIVE HTML)
+# RENDERER FOTO 
 def render_image_html(col, raw_text, label="Foto"):
     urls = re.findall(r'(https?://[^\s"\'\)<>]+)', raw_text)
     if urls:
@@ -182,7 +198,6 @@ def render_image_html(col, raw_text, label="Foto"):
         '''
         col.markdown(html, unsafe_allow_html=True)
     elif raw_text.startswith("/9j/") or len(raw_text) > 50:
-        # Cadangan jika itu adalah file Base64 murni dari data lama
         try:
             clean_b64 = raw_text.split(",")[-1]
             missing_padding = len(clean_b64) % 4
@@ -295,25 +310,29 @@ if not df_sdm.empty:
         if st.button("🚀 Push Update Data ke Server", use_container_width=True):
             if input_findings:
                 img_urls = ["", "", "", "", ""]
-                if uploaded_files:
-                    if "imgbb_api_key" not in st.secrets:
-                        st.error("API Key ImgBB belum dimasukkan di Streamlit Secrets!")
-                    else:
-                        with st.spinner("Mengecilkan & Mengupload foto ke Cloud..."):
-                            for idx, file in enumerate(uploaded_files[:5]):
-                                url_hasil = upload_image_to_imgbb(file)
-                                if url_hasil: img_urls[idx] = url_hasil
+                upload_failed = False
                 
-                with st.spinner("Menyimpan teks laporan ke GSheet..."):
-                    sukses = save_findings_to_sheet(
-                        str(dict_karyawan.get('NIK', 'N/A')), str(dict_karyawan.get('NAMA', 'N/A')),
-                        info_gabungan, input_findings,
-                        img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
-                    )
-                    if sukses:
-                        st.success("✅ Data Laporan & Foto berhasil tersimpan!")
-                        st.cache_data.clear() # Langsung clear cache agar fresh
-                        st.rerun()            # Refresh instan
+                if uploaded_files:
+                    with st.spinner("Mengupload foto ke Google Drive..."):
+                        for idx, file in enumerate(uploaded_files[:5]):
+                            # Memanggil Fungsi Google Drive yang Baru!
+                            url_hasil = upload_image_to_gdrive(file)
+                            if url_hasil: 
+                                img_urls[idx] = url_hasil
+                            else: 
+                                upload_failed = True
+                
+                if not upload_failed or not uploaded_files:
+                    with st.spinner("Menyimpan teks laporan ke GSheet..."):
+                        sukses = save_findings_to_sheet(
+                            str(dict_karyawan.get('NIK', 'N/A')), str(dict_karyawan.get('NAMA', 'N/A')),
+                            info_gabungan, input_findings,
+                            img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
+                        )
+                        if sukses:
+                            st.success("✅ Data Laporan & Foto berhasil tersimpan!")
+                            st.cache_data.clear()
+                            st.rerun()
             else:
                 st.warning("⚠️ Mohon isi text area laporan perbaikan terlebih dahulu.")
 
