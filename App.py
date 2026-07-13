@@ -101,9 +101,9 @@ def compress_and_encode_image(uploaded_file):
 
 def upload_image_to_gdrive(uploaded_file):
     try:
-        # ======= URL WEB APP ANDA SUDAH DIPASANG DI SINI =======
+        # ======= URL WEB APP ANDA SUDAH SAYA MASUKKAN DI SINI =======
         GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzDhWqTx4vGoLSkzs8NGu3epuwbZhYPG7wYh5fGIYPxIEAO4uH22Go91-F9xjV4H-sm/exec"
-        # =======================================================
+        # ============================================================
 
         b64_img = compress_and_encode_image(uploaded_file)
         payload = {
@@ -310,7 +310,7 @@ if not df_sdm.empty:
                 upload_failed = False
                 
                 if uploaded_files:
-                    with st.spinner("🚀 Mengupload foto langsung ke Google Drive..."):
+                    with st.spinner("🚀 Mengupload foto langsung ke Google Drive Anda..."):
                         for idx, file in enumerate(uploaded_files[:5]):
                             url_hasil = upload_image_to_gdrive(file)
                             if url_hasil: 
