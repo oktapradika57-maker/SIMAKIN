@@ -10,6 +10,7 @@ import base64
 import time
 from PIL import Image
 import io
+import urllib.parse
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
@@ -89,26 +90,38 @@ with st.sidebar:
         st.rerun()
 
 
-# --- 5. FUNGSI UPLOAD FOTO KE IMGBB (DENGAN KOMPRESI ANTI GAGAL) ---
+# --- 5. FUNGSI UPLOAD MENGGUNAKAN GOOGLE APPS SCRIPT ANDA ---
 def compress_and_encode_image(uploaded_file):
     img = Image.open(uploaded_file)
     if img.mode != 'RGB': img = img.convert('RGB')
-    img.thumbnail((800, 800)) # Diperkecil agar upload selalu berhasil
+    img.thumbnail((800, 800))
     buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=75)
+    img.save(buf, format="JPEG", quality=80)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
-def upload_image_to_imgbb(uploaded_file):
+def upload_image_to_gdrive(uploaded_file):
     try:
-        api_key = st.secrets["imgbb_api_key"]
+        # LINK APPS SCRIPT ANDA YANG SUDAH JADI
+        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzDhWqTx4vGoLSkzs8NGu3epuwbZhYPG7wYh5fGIYPxIEAO4uH22Go91-F9xjV4H-sm/exec"
+        
         b64_img = compress_and_encode_image(uploaded_file)
-        url = "https://api.imgbb.com/1/upload"
-        payload = {"key": api_key, "image": b64_img}
-        res = requests.post(url, data=payload)
-        if res.status_code == 200:
-            return res.json()["data"]["url"]
+        payload = {
+            "filename": f"Bukti_Perbaikan_{int(time.time())}.jpg",
+            "base64": b64_img
+        }
+        
+        res = requests.post(GAS_WEB_APP_URL, json=payload)
+        result = res.json()
+        
+        if result.get("status") == "success":
+            return result.get("url")
+        else:
+            st.error(f"❌ Error Drive: {result.get('message')}")
+            return ""
+            
+    except Exception as e:
+        st.error(f"❌ Gagal upload ke Server: {e}")
         return ""
-    except: return ""
 
 
 # --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
@@ -135,7 +148,7 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
     except: return False
 
 
-# --- 7. FUNGSI LOAD DATA UTAMA (MENGGUNAKAN METODE ORIGINAL ANDA) ---
+# --- 7. FUNGSI LOAD DATA UTAMA ---
 @st.cache_data(ttl=120) 
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
@@ -193,7 +206,7 @@ st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSE
 if not df_sdm.empty:
     df_sdm_filtered = df_sdm.copy()
     
-    # PERBAIKAN ERROR (NameError: data_karyawan_select is not defined)
+    # VARIABEL DEFAULT PENANGKAL ERROR
     data_karyawan_select = None
     data_asset_select = None
     data_genset_select = None
@@ -302,16 +315,14 @@ if not df_sdm.empty:
                 upload_failed = False
                 
                 if uploaded_files:
-                    if "imgbb_api_key" not in st.secrets:
-                        st.error("API Key ImgBB belum dimasukkan di Streamlit Secrets!")
-                    else:
-                        with st.spinner("Mengecilkan & Mengupload foto..."):
-                            for idx, file in enumerate(uploaded_files[:5]):
-                                url_hasil = upload_image_to_imgbb(file)
-                                if url_hasil: 
-                                    img_urls[idx] = url_hasil
-                                else:
-                                    upload_failed = True
+                    with st.spinner("🚀 Mengupload foto langsung ke Google Drive..."):
+                        for idx, file in enumerate(uploaded_files[:5]):
+                            # Menggunakan fungsi Google Drive
+                            url_hasil = upload_image_to_gdrive(file)
+                            if url_hasil: 
+                                img_urls[idx] = url_hasil
+                            else:
+                                upload_failed = True
                 
                 if not upload_failed or not uploaded_files:
                     with st.spinner("Menyimpan teks laporan ke GSheet..."):
