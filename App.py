@@ -101,7 +101,6 @@ def compress_and_encode_image(uploaded_file):
 
 def upload_image_to_gdrive(uploaded_file):
     try:
-        # LINK APPS SCRIPT ANDA YANG SUDAH JADI
         GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzDhWqTx4vGoLSkzs8NGu3epuwbZhYPG7wYh5fGIYPxIEAO4uH22Go91-F9xjV4H-sm/exec"
         
         b64_img = compress_and_encode_image(uploaded_file)
@@ -174,50 +173,33 @@ def get_row_by_name(df, target_name):
     matched = df[df[name_col].astype(str).str.strip().str.lower().str.contains(clean_target, regex=False, na=False)]
     return matched.iloc[0] if not matched.empty else None
 
-
-# --- 8. PERBAIKAN MESIN PENAMPIL FOTO GOOGLE DRIVE (JALUR BYPASS UC) ---
+# --- FUNGSI ORIGINAL UNTUK GALERI ASSET, GENSET, TOOLS (TIDAK DIRUBAH) ---
 def get_clean_image_url(url):
     match = re.search(r'([-\w]{25,})', url) 
-    if match and ("drive" in url.lower() or "google" in url.lower()):
-        # Memaksa Google Drive memberikan file gambarnya langsung tanpa diblokir
-        return f"https://drive.google.com/uc?export=view&id={match.group(1)}"
+    if match and ("drive.google" in url or "docs.google" in url):
+        return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w800"
     return url
 
-def render_image_html(col, raw_text, label="Foto"):
-    raw_text = str(raw_text).strip()
-    
-    # 1. Menarik ID Google Drive secara paksa jika ada
-    match_id = re.search(r'([-\w]{25,})', raw_text)
-    
-    if match_id and ("drive" in raw_text.lower() or "google" in raw_text.lower()):
-        drive_id = match_id.group(1)
-        img_url = f"https://drive.google.com/uc?export=view&id={drive_id}"
-        full_url = f"https://drive.google.com/file/d/{drive_id}/view"
-        
-        html = f'''
-        <img src="{img_url}" style="width:100%; border-radius:8px; border: 1px solid #444; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
-        <div style="text-align: center; margin-top: 5px;">
-            <a href="{full_url}" target="_blank" style="color: #64b5f6; font-size: 13px; text-decoration: none;">🔍 Buka Full ({label})</a>
-        </div>
-        '''
-        col.markdown(html, unsafe_allow_html=True)
-        return
-        
-    # 2. Jika itu bukan URL Drive, coba pakai Regex umum
+# --- FUNGSI KHUSUS HANYA UNTUK TAB "RIWAYAT BUKTI PERBAIKAN" ---
+def render_image_html_khusus_riwayat(col, raw_text, label="Foto"):
     urls = re.findall(r'(https?://[^\s"\'\)<>]+)', raw_text)
     if urls:
-        img_url = urls[0]
+        original_url = urls[0]
+        # Paksa Google Drive pakai jalur /uc agar tampil di Riwayat
+        match = re.search(r'([-\w]{25,})', original_url)
+        if match and ("drive.google" in original_url or "docs.google" in original_url):
+            img_url = f"https://drive.google.com/uc?export=view&id={match.group(1)}"
+        else:
+            img_url = get_clean_image_url(original_url)
+            
         html = f'''
         <img src="{img_url}" style="width:100%; border-radius:8px; border: 1px solid #444; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
         <div style="text-align: center; margin-top: 5px;">
-            <a href="{img_url}" target="_blank" style="color: #64b5f6; font-size: 13px; text-decoration: none;">🔍 Buka Full ({label})</a>
+            <a href="{original_url}" target="_blank" style="color: #64b5f6; font-size: 13px; text-decoration: none;">🔍 Buka Full</a>
         </div>
         '''
         col.markdown(html, unsafe_allow_html=True)
-        return
-        
-    # 3. Fallback jika itu format Base64 murni dari sistem lama
-    if raw_text.startswith("/9j/") or len(raw_text) > 100:
+    elif raw_text.startswith("/9j/") or len(raw_text) > 50:
         try:
             clean_b64 = raw_text.split(",")[-1]
             missing_padding = len(clean_b64) % 4
@@ -226,7 +208,7 @@ def render_image_html(col, raw_text, label="Foto"):
         except: pass
 
 
-# --- 9. TAMPILAN DASHBOARD UTAMA ---
+# --- 8. TAMPILAN DASHBOARD UTAMA ---
 st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
@@ -343,7 +325,7 @@ if not df_sdm.empty:
                 if uploaded_files:
                     with st.spinner("🚀 Mengupload foto langsung ke Google Drive..."):
                         for idx, file in enumerate(uploaded_files[:5]):
-                            url_hasil = upload_image_to_gdrive(file) # Memakai fungsi Google Drive
+                            url_hasil = upload_image_to_gdrive(file)
                             if url_hasil: 
                                 img_urls[idx] = url_hasil
                             else:
@@ -368,6 +350,7 @@ if not df_sdm.empty:
     
     tab_r2r4, tab_genset, tab_tools, tab_perbaikan = st.tabs(["🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Riwayat Bukti Perbaikan"])
     
+    # --- FUNGSI ORIGINAL UNTUK GALERI ASSET, GENSET, TOOLS (TIDAK DIRUBAH SAMA SEKALI) ---
     def render_gallery_fast(tab_context, df, df_columns, data_row, empty_msg):
         with tab_context:
             if data_row is not None:
@@ -381,8 +364,7 @@ if not df_sdm.empty:
                         if urls:
                             photos_exist = True
                             img_url = get_clean_image_url(urls[0])
-                            full_url = urls[0]
-                            html = f'<img src="{img_url}" style="width:100%; border-radius:10px; margin-bottom:5px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);"><p style="text-align:center; font-size:12px;"><a href="{full_url}" target="_blank" style="color: #64b5f6; text-decoration: none;">🔍 Buka Full</a></p>'
+                            html = f'<img src="{img_url}" style="width:100%; border-radius:10px; margin-bottom:5px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);"><p style="text-align:center; font-size:12px;">Kolom {col_name}</p>'
                             cols[idx % 4].markdown(html, unsafe_allow_html=True)
                             idx += 1
                 if not photos_exist: st.info(empty_msg)
@@ -402,8 +384,8 @@ if not df_sdm.empty:
                 if not matched_rek.empty:
                     st.markdown(f"<h4 style='color:#ff5252;'>Arsip Laporan Service: {selected_nama}</h4>", unsafe_allow_html=True)
                     
-                    # DI SINI KITA PERKUAT RADAR DETEKSI KOLOM FOTONYA (Entah itu Foto, Gambar, Bukti)
-                    foto_columns = [col for col in df_rekomendasi.columns if any(x in str(col).upper() for x in ["FOTO", "GAMBAR", "BUKTI", "FILE", "IMAGE"])]
+                    # FORMAT DETEKSI KOLOM ORIGINAL (TIDAK DIRUBAH)
+                    foto_columns = [col for col in df_rekomendasi.columns if "FOTO" in str(col).upper()]
                     
                     for index, row in matched_rek.iloc[::-1].iterrows():
                         tanggal_laporan = row.get('Timestamp', '-')
@@ -422,7 +404,8 @@ if not df_sdm.empty:
                         for col_name in foto_columns:
                             cell_raw_value = str(row[col_name]).strip()
                             if cell_raw_value and cell_raw_value not in ["nan", "-", "None", ""]:
-                                render_image_html(foto_cols[col_idx], cell_raw_value, col_name)
+                                # MENGGUNAKAN FUNGSI BARU KHUSUS RIWAYAT
+                                render_image_html_khusus_riwayat(foto_cols[col_idx], cell_raw_value, col_name)
                                 col_idx += 1
                                 
                         st.write("<br><hr style='border-color: #333;'>", unsafe_allow_html=True)
