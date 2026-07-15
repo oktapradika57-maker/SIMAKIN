@@ -456,7 +456,7 @@ if not df_sdm.empty:
         }
     </style>
     <div class="footer-sidebar">
-        ⚡ DEVELOPED BY OKTA PRADIKA<br>
+        ⚡ DEVELOPED BY OKTA PRADIKA ⚙️<br>
         © 2026 SYSTEM OPERATIONS
     </div>
     """, unsafe_allow_html=True)
