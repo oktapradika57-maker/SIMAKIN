@@ -12,7 +12,7 @@ from PIL import Image
 import io
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="collapsed")
 
 # --- 2. CUSTOM CSS (DESAIN LOGIN 3D PREMIUM & ANIMASI) ---
 st.markdown("""
@@ -87,12 +87,12 @@ if 'logged_in' not in st.session_state:
 def login_form():
     st.markdown("<br><br>", unsafe_allow_html=True)
     with st.form("login_form"):
-        st.markdown('<h1 style="color:#ff5252; text-align:center; font-weight:900; letter-spacing:2px; margin-bottom:0px;">⚡ SYSTEM PORTAL</h1>', unsafe_allow_html=True)
-        st.markdown('<p style="color:#b0bec5; text-align:center; font-size:13px; margin-bottom:30px; letter-spacing:1px; text-transform:uppercase;">Operational, Asset & Genset | Reg Kalimantan</p>', unsafe_allow_html=True)
+        st.markdown('<h1 style="color:#ff5252; text-align:center; font-weight:900; letter-spacing:2px; margin-bottom:0px;">⚡ SYSTEM SIMAKIN</h1>', unsafe_allow_html=True)
+        st.markdown('<p style="color:#b0bec5; text-align:center; font-size:13px; margin-bottom:30px; letter-spacing:1px; text-transform:uppercase;">System Monitoring Asset Kinarya | Reg Kalimantan</p>', unsafe_allow_html=True)
         user = st.text_input("👤 USERNAME", placeholder="Ketik username Anda...")
         pwd = st.text_input("🔑 PASSWORD", type="password", placeholder="Ketik password Anda...")
         st.markdown("<br>", unsafe_allow_html=True)
-        submit = st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True)
+        submit = st.form_submit_button("🚀 MAKIN YAKIN DENGAN SIMAKIN", use_container_width=True)
     
     if submit:
         if user == "SIMAKINKUT" and pwd == "2026KUTPOSITIF":
@@ -190,7 +190,7 @@ def get_clean_image_url(url):
     return url
 
 # --- 8. TAMPILAN DASHBOARD UTAMA ---
-st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">🚀 SIMAKIN BIKIN MAKIN YAKIN | REG KALIMANTAN</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
     df_sdm_filtered = df_sdm.copy()
