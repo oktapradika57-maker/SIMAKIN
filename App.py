@@ -12,44 +12,87 @@ from PIL import Image
 import io
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. CUSTOM CSS ORIGINAL ---
+# --- 2. CUSTOM CSS (DESAIN LOGIN 3D PREMIUM & ANIMASI) ---
 st.markdown("""
 <style>
-    .reportview-container { background: #121212; color: #ffffff; }
+    /* Background Utama */
+    .stApp { background-color: #0e1117; }
+    
+    /* ==== ANIMASI LOGIN 3D PREMIUM MENGGUNAKAN CSS NATIVE STREAMLIT ==== */
+    div[data-testid="stForm"] {
+        background: linear-gradient(145deg, rgba(30, 32, 40, 0.8), rgba(15, 15, 20, 0.9)) !important;
+        backdrop-filter: blur(20px) !important;
+        -webkit-backdrop-filter: blur(20px) !important;
+        border: 1px solid rgba(255, 82, 82, 0.4) !important;
+        padding: 40px !important;
+        border-radius: 20px !important;
+        box-shadow: 0px 20px 40px rgba(0,0,0,0.8), inset 0px 0px 15px rgba(255, 82, 82, 0.1) !important;
+        max-width: 450px !important;
+        margin: 50px auto !important;
+        transform: perspective(1000px) rotateX(2deg) translateY(0);
+        animation: float3D 6s ease-in-out infinite;
+        transition: transform 0.4s ease, box-shadow 0.4s ease;
+    }
+    div[data-testid="stForm"]:hover {
+        transform: perspective(1000px) rotateX(0deg) translateY(-5px);
+        box-shadow: 0px 30px 50px rgba(255, 82, 82, 0.3), inset 0px 0px 20px rgba(255, 82, 82, 0.2) !important;
+    }
+    @keyframes float3D {
+        0% { transform: perspective(1000px) rotateX(2deg) translateY(0px); }
+        50% { transform: perspective(1000px) rotateX(4deg) translateY(-8px); }
+        100% { transform: perspective(1000px) rotateX(2deg) translateY(0px); }
+    }
+    
+    /* Desain Input Box Login */
+    div[data-testid="stTextInput"] label { color: #ff5252 !important; font-weight: bold !important; letter-spacing: 1px; }
+    div[data-testid="stTextInput"] input {
+        border-radius: 10px !important; border: 1px solid rgba(255, 82, 82, 0.3) !important;
+        background-color: rgba(0,0,0,0.4) !important; color: white !important; font-size: 16px !important;
+        transition: all 0.3s ease;
+    }
+    div[data-testid="stTextInput"] input:focus { border-color: #ff5252 !important; box-shadow: 0 0 15px rgba(255, 82, 82, 0.5) !important; }
+    
+    /* Tombol Submit Login 3D */
+    button[kind="primaryFormSubmit"], .stButton>button { 
+        background: linear-gradient(45deg, #ff5252, #9a0007) !important; border: none !important; border-radius: 10px !important; 
+        color: white !important; font-size: 16px !important; font-weight: bold !important; padding: 10px 0 !important; 
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; 
+        box-shadow: 0 8px 20px rgba(229, 57, 53, 0.4) !important; text-transform: uppercase; letter-spacing: 1.5px;
+    }
+    button[kind="primaryFormSubmit"]:hover, .stButton>button:hover { 
+        transform: translateY(-4px) scale(1.03) !important; box-shadow: 0 15px 30px rgba(229, 57, 53, 0.7) !important;
+    }
+
+    /* ==== DESAIN DASHBOARD ==== */
     .header-style {
         background: linear-gradient(135deg, #d32f2f 0%, #9a0007 100%); padding: 15px; border-radius: 12px; 
-        color: white; font-weight: 800; font-size: 24px; text-align: center; box-shadow: 0 10px 20px rgba(211, 47, 47, 0.3); 
-        margin-bottom: 25px; border: 1px solid #ff6659;
+        color: white; font-weight: 800; font-size: 24px; text-align: center; 
+        box-shadow: 0 10px 20px rgba(211, 47, 47, 0.3); margin-bottom: 25px; border: 1px solid #ff6659;
     }
-    .login-box {
-        background: rgba(30, 32, 40, 0.9); border: 1px solid rgba(255, 255, 255, 0.1); padding: 40px; border-radius: 15px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-width: 450px; margin: 80px auto;
+    .report-card {
+        background: #1e1e24; padding: 20px; border-radius: 12px; border-left: 6px solid #e53935;
+        margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
-    .login-title { color: #ff5252; font-size: 28px; font-weight: 900; text-align: center; margin-bottom: 10px; }
-    .login-subtitle { color: #b0bec5; font-size: 14px; text-align: center; margin-bottom: 35px; }
-    .stButton>button { border-radius: 8px; font-weight: bold; transition: 0.3s; }
-    .stButton>button:hover { border-color: #ff5252; color: #ff5252; }
+    .report-date { color: #ff5252; font-size: 14px; font-weight: bold; margin-bottom: 8px;}
+    .report-text { color: #e0e0e0; font-size: 15px; line-height: 1.6; white-space: pre-wrap;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. SISTEM LOGIN ---
+# --- 3. SISTEM LOGIN (TANPA BUNGKUSAN HTML AGAR TIDAK ERROR) ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
 def login_form():
-    st.markdown("""
-        <div class="login-box">
-            <div class="login-title">⚡ SYSTEM PORTAL</div>
-            <div class="login-subtitle">Dashboard Operasional, Asset & Genset | Reg Kalimantan</div>
-    """, unsafe_allow_html=True)
+    st.markdown("<br><br>", unsafe_allow_html=True)
     with st.form("login_form"):
-        user = st.text_input("👤 Username", placeholder="Ketik username Anda...")
-        pwd = st.text_input("🔑 Password", type="password", placeholder="Ketik password Anda...")
+        st.markdown('<h1 style="color:#ff5252; text-align:center; font-weight:900; letter-spacing:2px; margin-bottom:0px;">⚡ SYSTEM PORTAL</h1>', unsafe_allow_html=True)
+        st.markdown('<p style="color:#b0bec5; text-align:center; font-size:13px; margin-bottom:30px; letter-spacing:1px; text-transform:uppercase;">Operational, Asset & Genset | Reg Kalimantan</p>', unsafe_allow_html=True)
+        user = st.text_input("👤 USERNAME", placeholder="Ketik username Anda...")
+        pwd = st.text_input("🔑 PASSWORD", type="password", placeholder="Ketik password Anda...")
         st.markdown("<br>", unsafe_allow_html=True)
         submit = st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
     
     if submit:
         if user == "SIMAKINKUT" and pwd == "2026KUTPOSITIF":
@@ -75,7 +118,7 @@ with st.sidebar:
         st.session_state.logged_in = False
         st.rerun()
 
-# --- 5. FUNGSI UPLOAD GOOGLE DRIVE (MENGGUNAKAN LINK TERBARU ANDA) ---
+# --- 5. FUNGSI UPLOAD APPS SCRIPT DRIVE ---
 def compress_and_encode_image(uploaded_file):
     img = Image.open(uploaded_file)
     if img.mode != 'RGB': img = img.convert('RGB')
@@ -86,28 +129,14 @@ def compress_and_encode_image(uploaded_file):
 
 def upload_image_to_gdrive(uploaded_file):
     try:
-        # INI ADALAH LINK BARU ANDA YANG SUDAH DIBERIKAN IZIN
-        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby5e7m61_i0CvPDj9zD_hLXvgxWvtj69AhizYJQqVv_QAEphAnBxKkuUK39UIxABCn_/exec"
-        
+        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzDhWqTx4vGoLSkzs8NGu3epuwbZhYPG7wYh5fGIYPxIEAO4uH22Go91-F9xjV4H-sm/exec"
         b64_img = compress_and_encode_image(uploaded_file)
-        payload = {"filename": f"Bukti_{int(time.time())}.jpg", "base64": b64_img}
-        
+        payload = {"filename": f"Bukti_Perbaikan_{int(time.time())}.jpg", "base64": b64_img}
         res = requests.post(GAS_WEB_APP_URL, json=payload)
-        
-        try:
-            result = res.json()
-            if result.get("status") == "success": 
-                return result.get("url")
-            else: 
-                st.error(f"❌ Akses Ditolak Drive: {result.get('message')}")
-                return ""
-        except Exception as e_json:
-            st.error(f"❌ Error Server Apps Script (Bukan JSON). Pastikan Execute as: 'Me' & Access: 'Anyone'. Detail: {e_json}")
-            return ""
-            
-    except Exception as e: 
-        st.error(f"❌ Jaringan terputus saat upload foto: {e}")
-        return ""
+        result = res.json()
+        if result.get("status") == "success": return result.get("url")
+        else: return ""
+    except: return ""
 
 # --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
 def get_gspread_client():
@@ -115,26 +144,21 @@ def get_gspread_client():
         creds_dict = st.secrets["gcp_service_account"]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict)
         return gspread.authorize(creds)
-    except Exception as e: 
-        st.error(f"⚠️ Gagal membaca st.secrets! Detail: {e}")
-        return None
+    except: return None
 
 def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
     try:
         client = get_gspread_client()
         if client is None: return False
         sh = client.open_by_key("1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw")
-        try: 
-            worksheet = sh.worksheet("Rekomendasi Perbaikan")
+        try: worksheet = sh.worksheet("Rekomendasi Perbaikan")
         except:
             worksheet = sh.add_worksheet(title="Rekomendasi Perbaikan", rows="1000", cols="10")
             worksheet.append_row(["Timestamp", "NIK", "Nama", "Unit Asset (Mobil & Genset)", "Findings & Action Plan", "Foto 1", "Foto 2", "Foto 3", "Foto 4", "Foto 5"])
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         worksheet.append_row([timestamp, nik, nama, unit_info, findings, f1, f2, f3, f4, f5])
         return True
-    except Exception as e: 
-        st.error(f"⚠️ Gagal Input ke Spreadsheet (Google Sheets menolak koneksi): {e}")
-        return False
+    except: return False
 
 # --- 7. FUNGSI LOAD DATA UTAMA ---
 @st.cache_data(ttl=120) 
@@ -144,13 +168,10 @@ def load_all_data():
     excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx&cb={cb}"
     try:
         xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
-        return (xls.get("SDM", pd.DataFrame()), 
-                xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame()), 
-                xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), 
-                xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), 
+        return (xls.get("SDM", pd.DataFrame()), xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame()), 
+                xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), 
                 xls.get("Rekomendasi Perbaikan", pd.DataFrame()))
-    except:
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+    except: return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi = load_all_data()
 
@@ -162,40 +183,11 @@ def get_row_by_name(df, target_name):
     matched = df[df[name_col].astype(str).str.strip().str.lower().str.contains(clean_target, regex=False, na=False)]
     return matched.iloc[0] if not matched.empty else None
 
-# --- FUNGSI RENDER FOTO ANTI BLANK (Dilengkapi Tombol Buka Foto Asli) ---
-def render_image_html(col, raw_text, label="Foto"):
-    raw_text = str(raw_text).strip()
-    if not raw_text or raw_text in ["nan", "-", "None"]: return
-    
-    match = re.search(r'([-\w]{25,})', raw_text)
-    if match and ("drive.google" in raw_text or "docs.google" in raw_text):
-        drive_id = match.group(1)
-        img_url = f"https://drive.google.com/uc?id={drive_id}"
-        
-        html = f'''
-        <div style="text-align: center; margin-bottom: 10px; background: #1e1e24; padding: 10px; border-radius: 10px; border: 1px solid #444;">
-            <p style="font-size: 12px; color: #aaa; margin-bottom: 5px;">{label}</p>
-            <img src="{img_url}" style="width:100%; border-radius:8px; object-fit:cover;" referrerpolicy="no-referrer" onerror="this.style.display='none'">
-            <br>
-            <a href="{raw_text}" target="_blank" style="display:inline-block; margin-top:10px; padding: 8px 15px; background-color: #e53935; color: white; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: bold; width: 100%;">🔍 Buka Foto Asli</a>
-        </div>
-        '''
-        col.markdown(html, unsafe_allow_html=True)
-        return
-        
-    urls = re.findall(r'(https?://[^\s"\'\)<>]+)', raw_text)
-    if urls:
-        img_url = urls[0]
-        html = f'''
-        <div style="text-align: center; margin-bottom: 10px; background: #1e1e24; padding: 10px; border-radius: 10px; border: 1px solid #444;">
-            <p style="font-size: 12px; color: #aaa; margin-bottom: 5px;">{label}</p>
-            <img src="{img_url}" style="width:100%; border-radius:8px; object-fit:cover;" referrerpolicy="no-referrer">
-            <br>
-            <a href="{img_url}" target="_blank" style="display:inline-block; margin-top:10px; padding: 8px 15px; background-color: #e53935; color: white; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: bold; width: 100%;">🔍 Buka Foto Asli</a>
-        </div>
-        '''
-        col.markdown(html, unsafe_allow_html=True)
-
+def get_clean_image_url(url):
+    match = re.search(r'([-\w]{25,})', url) 
+    if match and ("drive.google" in url or "docs.google" in url):
+        return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w800"
+    return url
 
 # --- 8. TAMPILAN DASHBOARD UTAMA ---
 st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
@@ -203,7 +195,10 @@ st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSE
 if not df_sdm.empty:
     df_sdm_filtered = df_sdm.copy()
     
-    data_karyawan_select = None; data_asset_select = None; data_genset_select = None; data_tools_asset_select = None
+    data_karyawan_select = None
+    data_asset_select = None
+    data_genset_select = None
+    data_tools_asset_select = None
     selected_nama = "-"
     
     st.markdown("### 🔍 Filter Pencarian Karyawan")
@@ -214,13 +209,11 @@ if not df_sdm.empty:
             list_job = ["SEMUA JABATAN"] + list(df_sdm['JOB'].dropna().unique())
             selected_job = st.selectbox("💼 Filter Jabatan:", list_job)
             if selected_job != "SEMUA JABATAN": df_sdm_filtered = df_sdm_filtered[df_sdm_filtered['JOB'] == selected_job]
-
     with col_f2:
         if 'LOKER' in df_sdm_filtered.columns:
             list_loker = ["SEMUA LOKER"] + list(df_sdm_filtered['LOKER'].dropna().unique())
             selected_loker = st.selectbox("📍 Filter Loker Kerja:", list_loker)
             if selected_loker != "SEMUA LOKER": df_sdm_filtered = df_sdm_filtered[df_sdm_filtered['LOKER'] == selected_loker]
-
     with col_f3:
         if 'NAMA' in df_sdm_filtered.columns:
             list_nama = df_sdm_filtered['NAMA'].dropna().unique()
@@ -232,7 +225,6 @@ if not df_sdm.empty:
                 data_tools_asset_select = get_row_by_name(df_tools_asset, selected_nama)
 
     st.write("---")
-            
     st.markdown("### 👤 Profil & Identitas Karyawan")
     karyawan_fields = ["NIK", "NAMA", "JOB", "LOKER", "NOP", "NO. KTP", "AKHIR PKWT", "Status Karyawan", "pakta Integritas", "Keahlian"]
     dict_karyawan = {field: str(data_karyawan_select[field]) if data_karyawan_select is not None and field in data_karyawan_select else "-" for field in karyawan_fields}
@@ -302,45 +294,38 @@ if not df_sdm.empty:
         if st.button("🚀 Push Update Data ke Server", use_container_width=True):
             if input_findings:
                 img_urls = ["", "", "", "", ""]
-                upload_berhasil = True
+                upload_failed = False
                 
                 if uploaded_files:
-                    with st.spinner("🚀 Mengupload foto ke Google Drive... (Mohon tunggu)"):
+                    with st.spinner("🚀 Mengupload foto langsung ke Google Drive..."):
                         for idx, file in enumerate(uploaded_files[:5]):
                             url_hasil = upload_image_to_gdrive(file)
-                            if url_hasil: 
-                                img_urls[idx] = url_hasil
-                            else: 
-                                upload_berhasil = False
-                                st.error(f"❌ GAGAL Upload Foto ke-{idx+1}. Proses penyimpanan dihentikan.")
-                                break 
+                            if url_hasil: img_urls[idx] = url_hasil
+                            else: upload_failed = True
                 
-                if upload_berhasil:
-                    with st.spinner("Menyimpan Laporan Teks Anda ke Spreadsheet..."):
-                        sukses_simpan = save_findings_to_sheet(
+                if not upload_failed or not uploaded_files:
+                    with st.spinner("Menyimpan teks laporan ke GSheet..."):
+                        sukses = save_findings_to_sheet(
                             str(dict_karyawan.get('NIK', 'N/A')), str(dict_karyawan.get('NAMA', 'N/A')),
                             info_gabungan, input_findings, img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
                         )
-                        
-                        if sukses_simpan:
-                            st.success("✅ KEREN! Laporan & Foto berhasil tersimpan permanen di Spreadsheet!")
-                            time.sleep(1.5)
+                        if sukses:
+                            st.success("✅ Data Laporan & Foto berhasil tersimpan permanen di Drive!")
                             st.cache_data.clear()
                             st.rerun()
             else:
-                st.warning("⚠️ Oups! Ketik dulu Laporan Perbaikannya di dalam Text Area ya.")
+                st.warning("⚠️ Mohon isi text area laporan perbaikan terlebih dahulu.")
 
     st.write("---")
     st.markdown("### 📸 Evidence & Documented Slide Gallery")
     
-    tab_r2r4, tab_genset, tab_tools, tab_perbaikan = st.tabs(["🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Riwayat Bukti Perbaikan"])
+    # 5 TAB SEPERTI SEBELUMNYA (TAB 5 SEKARANG MEMILIKI SISTEM PENAMPIL FOTO STREAMLIT & PEMBATAS TANGGAL)
+    tab_r2r4, tab_genset, tab_tools, tab_perbaikan_text, tab_galeri_foto = st.tabs([
+        "🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", 
+        "📝 Riwayat Teks Laporan", "🖼️ Galeri Foto Perbaikan"
+    ])
     
-    def get_clean_image_url_legacy(url):
-        match = re.search(r'([-\w]{25,})', url) 
-        if match and ("drive.google" in url or "docs.google" in url):
-            return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w800"
-        return url
-
+    # FUNGSI LAMA UNTUK TAB 1, 2, 3
     def render_gallery_fast(tab_context, df, df_columns, data_row, empty_msg):
         with tab_context:
             if data_row is not None:
@@ -353,7 +338,7 @@ if not df_sdm.empty:
                         urls = re.findall(r'(https?://[^\s"\'\)<>]+)', cell_val)
                         if urls:
                             photos_exist = True
-                            img_url = get_clean_image_url_legacy(urls[0])
+                            img_url = get_clean_image_url(urls[0])
                             html = f'<img src="{img_url}" style="width:100%; border-radius:10px; margin-bottom:5px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);"><p style="text-align:center; font-size:12px;">Kolom {col_name}</p>'
                             cols[idx % 4].markdown(html, unsafe_allow_html=True)
                             idx += 1
@@ -365,7 +350,8 @@ if not df_sdm.empty:
     render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Tidak ada foto unit Tools.")
         
     
-    with tab_perbaikan:
+    # --- TAB 4: HANYA TEKS LAPORAN KARYAWAN ---
+    with tab_perbaikan_text:
         if not df_rekomendasi.empty and selected_nama != "-":
             rec_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
             if rec_name_col:
@@ -373,31 +359,82 @@ if not df_sdm.empty:
                 matched_rek = df_rekomendasi[df_rekomendasi[rec_name_col].astype(str).str.strip().str.lower() == clean_target]
                 
                 if not matched_rek.empty:
-                    st.markdown(f"<h4 style='color:#ff5252;'>Arsip Laporan Service: {selected_nama}</h4>", unsafe_allow_html=True)
-                    
-                    foto_columns = [col for col in df_rekomendasi.columns if "FOTO" in str(col).upper()]
+                    st.markdown(f"<h4 style='color:#ff5252;'>Arsip Teks Laporan Service: {selected_nama}</h4>", unsafe_allow_html=True)
                     
                     for index, row in matched_rek.iloc[::-1].iterrows():
                         tanggal_laporan = row.get('Timestamp', '-')
                         teks_laporan = row.get('Findings & Action Plan', row.get('Findings', '-'))
                         
                         st.markdown(f"""
-                        <div style="background: #1e1e24; padding: 15px; border-radius: 10px; border-left: 5px solid #ff5252; margin-bottom: 15px; margin-top: 20px;">
-                            <h5 style="color:#00b4d8; margin-top:0;">📅 Update Service: {tanggal_laporan}</h5>
-                            <p style="color:#e0e0e0; font-size:14px; white-space: pre-wrap; margin-bottom:0;">{teks_laporan}</p>
+                        <div class="report-card">
+                            <div class="report-date">🕒 Diposting pada: {tanggal_laporan}</div>
+                            <div class="report-text">{teks_laporan}</div>
                         </div>
                         """, unsafe_allow_html=True)
-                        
-                        foto_cols = st.columns(max(1, len(foto_columns)))
-                        col_idx = 0
-                        
-                        for col_name in foto_columns:
-                            cell_raw_value = str(row[col_name]).strip()
-                            if cell_raw_value and cell_raw_value not in ["nan", "-", "None", ""]:
-                                render_image_html(foto_cols[col_idx], cell_raw_value, col_name)
-                                col_idx += 1
-                                
-                        st.write("<br><hr style='border-color: #333;'>", unsafe_allow_html=True)
                 else: st.info(f"Belum ada riwayat laporan perbaikan untuk karyawan ini.")
+            else: st.error("Kolom 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
+        else: st.info("Belum ada data riwayat perbaikan yang sesuai.")
+
+    
+    # --- TAB 5 (BARU): GALERI FOTO DIPISAHKAN BERDASARKAN TANGGAL SERVICE ---
+    with tab_galeri_foto:
+        if not df_rekomendasi.empty and selected_nama != "-":
+            rec_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
+            if rec_name_col:
+                clean_target = selected_nama.strip().lower()
+                matched_rek = df_rekomendasi[df_rekomendasi[rec_name_col].astype(str).str.strip().str.lower() == clean_target]
+                
+                if not matched_rek.empty:
+                    st.markdown(f"<h3 style='color:#00b4d8; text-align:center;'>📸 Galeri Foto Service: {selected_nama}</h3><hr>", unsafe_allow_html=True)
+                    
+                    # Looping setiap baris Service (Agar terpisah per tanggalnya)
+                    for index, row in matched_rek.iloc[::-1].iterrows():
+                        tanggal = row.get('Timestamp', 'Tanggal Tidak Diketahui')
+                        teks = row.get('Findings & Action Plan', row.get('Findings', '-'))
+                        
+                        # Kumpulkan semua link foto di tanggal service ini
+                        row_links = []
+                        foto_columns = [col for col in matched_rek.columns if any(x in str(col).upper() for x in ["FOTO", "GAMBAR", "BUKTI", "FILE", "IMAGE"])]
+                        
+                        for col in foto_columns:
+                            val_str = str(row[col]).strip()
+                            if val_str and val_str not in ["nan", "-", "None", ""]:
+                                links = re.findall(r'(https?://[^\s]+)', val_str)
+                                row_links.extend(links)
+                        
+                        # Jika di tanggal service ini ada fotonya, kita buat pembatas khusus
+                        if len(row_links) > 0:
+                            st.markdown(f"""
+                            <div style="background: linear-gradient(90deg, #9a0007 0%, transparent 100%); padding: 12px 15px; border-left: 6px solid #ff5252; border-radius: 8px; margin-top: 30px; margin-bottom: 20px;">
+                                <h4 style="margin:0; color:white;">📅 Update Service: {tanggal}</h4>
+                                <p style="margin:5px 0 0 0; color:#e0e0e0; font-size: 14px; font-style: italic;">"{teks}"</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            cols = st.columns(3)
+                            col_idx = 0
+                            
+                            for link in row_links:
+                                # Ambil ID Drive
+                                file_id = None
+                                if "/d/" in link: file_id = link.split("/d/")[1].split("/")[0]
+                                elif "id=" in link: file_id = link.split("id=")[1].split("&")[0]
+                                
+                                if file_id:
+                                    # Menggunakan API resmi Thumbnail Drive & Dirender langsung oleh Streamlit (Anti Blank)
+                                    direct_img = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
+                                    
+                                    with cols[col_idx % 3]:
+                                        st.image(direct_img, use_container_width=True)
+                                        st.markdown(f'''
+                                        <div style="text-align:center; margin-bottom: 25px;">
+                                            <a href="{link}" target="_blank" style="background-color: #ff5252; color: white; padding: 5px 15px; border-radius: 20px; text-decoration: none; font-size: 12px; font-weight: bold;">🔍 Buka Full Resolusi</a>
+                                        </div>
+                                        ''', unsafe_allow_html=True)
+                                    col_idx += 1
+                                    
+                            st.markdown("<hr style='border-color: rgba(255, 255, 255, 0.1); margin-top: 10px; margin-bottom: 10px;'>", unsafe_allow_html=True)
+                            
+                else: st.info("Belum ada riwayat perbaikan untuk karyawan ini.")
             else: st.error("Kolom 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
         else: st.info("Belum ada data riwayat perbaikan yang sesuai.")
