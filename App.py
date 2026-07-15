@@ -75,7 +75,7 @@ with st.sidebar:
         st.session_state.logged_in = False
         st.rerun()
 
-# --- 5. FUNGSI UPLOAD GOOGLE DRIVE (MENGGUNAKAN LINK BARU ANDA) ---
+# --- 5. FUNGSI UPLOAD GOOGLE DRIVE (MENGGUNAKAN LINK TERBARU ANDA) ---
 def compress_and_encode_image(uploaded_file):
     img = Image.open(uploaded_file)
     if img.mode != 'RGB': img = img.convert('RGB')
@@ -86,8 +86,8 @@ def compress_and_encode_image(uploaded_file):
 
 def upload_image_to_gdrive(uploaded_file):
     try:
-        # LINK BARU YANG SUDAH DIBUKA IZINNYA
-        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwxnLSW6SiXNtDiW-t_aJ36OvBtI1hqBg7oKPZ3cqDhp5X5i-sFn2OJCGymsmcH1xVd/exec"
+        # INI ADALAH LINK BARU ANDA YANG SUDAH DIBERIKAN IZIN
+        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby5e7m61_i0CvPDj9zD_hLXvgxWvtj69AhizYJQqVv_QAEphAnBxKkuUK39UIxABCn_/exec"
         
         b64_img = compress_and_encode_image(uploaded_file)
         payload = {"filename": f"Bukti_{int(time.time())}.jpg", "base64": b64_img}
@@ -102,7 +102,7 @@ def upload_image_to_gdrive(uploaded_file):
                 st.error(f"❌ Akses Ditolak Drive: {result.get('message')}")
                 return ""
         except Exception as e_json:
-            st.error(f"❌ Error Server Apps Script (Bukan JSON). Apakah Deploy sudah di-set ke 'Anyone'? Detail: {e_json}")
+            st.error(f"❌ Error Server Apps Script (Bukan JSON). Pastikan Execute as: 'Me' & Access: 'Anyone'. Detail: {e_json}")
             return ""
             
     except Exception as e: 
