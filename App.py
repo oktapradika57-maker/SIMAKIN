@@ -438,3 +438,43 @@ if not df_sdm.empty:
                 else: st.info("Belum ada riwayat perbaikan untuk karyawan ini.")
             else: st.error("Kolom 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
         else: st.info("Belum ada data riwayat perbaikan yang sesuai.")
+# --- FOOTER 3D ANIMASI ---
+st.markdown("""
+<style>
+    .footer-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 50px;
+        padding: 20px;
+    }
+    .footer-text {
+        font-family: 'Arial', sans-serif;
+        font-weight: 800;
+        font-size: 16px;
+        color: #ff5252;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        padding: 10px 25px;
+        border: 2px solid #ff5252;
+        border-radius: 50px;
+        background: rgba(255, 82, 82, 0.05);
+        cursor: pointer;
+        transition: all 0.5s ease;
+        animation: rotate3D 5s linear infinite;
+        text-shadow: 0 0 10px rgba(255, 82, 82, 0.5);
+    }
+    .footer-text:hover {
+        background: rgba(255, 82, 82, 0.2);
+        transform: scale(1.1);
+    }
+    @keyframes rotate3D {
+        0% { transform: perspective(200px) rotateY(0deg); }
+        100% { transform: perspective(200px) rotateY(360deg); }
+    }
+</style>
+
+<div class="footer-container">
+    <div class="footer-text">⚡ CREATED BY OKTA PRADIKA ⚡</div>
+</div>
+""", unsafe_allow_html=True)
