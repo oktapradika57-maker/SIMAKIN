@@ -75,7 +75,7 @@ with st.sidebar:
         st.session_state.logged_in = False
         st.rerun()
 
-# --- 5. FUNGSI UPLOAD GOOGLE DRIVE (Diperkuat Error Handling-nya) ---
+# --- 5. FUNGSI UPLOAD GOOGLE DRIVE (MENGGUNAKAN LINK BARU ANDA) ---
 def compress_and_encode_image(uploaded_file):
     img = Image.open(uploaded_file)
     if img.mode != 'RGB': img = img.convert('RGB')
@@ -86,7 +86,9 @@ def compress_and_encode_image(uploaded_file):
 
 def upload_image_to_gdrive(uploaded_file):
     try:
-        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzDhWqTx4vGoLSkzs8NGu3epuwbZhYPG7wYh5fGIYPxIEAO4uH22Go91-F9xjV4H-sm/exec"
+        # LINK BARU YANG SUDAH DIBUKA IZINNYA
+        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwxnLSW6SiXNtDiW-t_aJ36OvBtI1hqBg7oKPZ3cqDhp5X5i-sFn2OJCGymsmcH1xVd/exec"
+        
         b64_img = compress_and_encode_image(uploaded_file)
         payload = {"filename": f"Bukti_{int(time.time())}.jpg", "base64": b64_img}
         
@@ -107,7 +109,7 @@ def upload_image_to_gdrive(uploaded_file):
         st.error(f"❌ Jaringan terputus saat upload foto: {e}")
         return ""
 
-# --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS (Diperkuat Error Handling-nya) ---
+# --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
 def get_gspread_client():
     try:
         creds_dict = st.secrets["gcp_service_account"]
@@ -159,7 +161,6 @@ def get_row_by_name(df, target_name):
     clean_target = str(target_name).strip().lower()
     matched = df[df[name_col].astype(str).str.strip().str.lower().str.contains(clean_target, regex=False, na=False)]
     return matched.iloc[0] if not matched.empty else None
-
 
 # --- FUNGSI RENDER FOTO ANTI BLANK (Dilengkapi Tombol Buka Foto Asli) ---
 def render_image_html(col, raw_text, label="Foto"):
@@ -298,13 +299,11 @@ if not df_sdm.empty:
         unit_genset = str(data_genset_select['NOMER SERI MESIN']) if data_genset_select is not None and 'NOMER SERI MESIN' in data_genset_select else "Tidak Ada"
         info_gabungan = f"Mobil/Motor: {unit_mobil} | Genset: {unit_genset}"
         
-        # --- BLOK SISTEM SUBMIT (MENGATASI JEBAKAN SILUMAN) ---
         if st.button("🚀 Push Update Data ke Server", use_container_width=True):
             if input_findings:
                 img_urls = ["", "", "", "", ""]
-                upload_berhasil = True # Kita asumsikan berhasil dulu
+                upload_berhasil = True
                 
-                # Tahap 1: Upload Foto (Hanya jika ada)
                 if uploaded_files:
                     with st.spinner("🚀 Mengupload foto ke Google Drive... (Mohon tunggu)"):
                         for idx, file in enumerate(uploaded_files[:5]):
@@ -314,9 +313,8 @@ if not df_sdm.empty:
                             else: 
                                 upload_berhasil = False
                                 st.error(f"❌ GAGAL Upload Foto ke-{idx+1}. Proses penyimpanan dihentikan.")
-                                break # Langsung stop jika salah satu foto gagal!
+                                break 
                 
-                # Tahap 2: Simpan Data ke GSheet (HANYA JIKA TAHAP 1 TIDAK ERROR)
                 if upload_berhasil:
                     with st.spinner("Menyimpan Laporan Teks Anda ke Spreadsheet..."):
                         sukses_simpan = save_findings_to_sheet(
@@ -335,7 +333,6 @@ if not df_sdm.empty:
     st.write("---")
     st.markdown("### 📸 Evidence & Documented Slide Gallery")
     
-    # KEMBALI KE 4 TAB ORIGINAL
     tab_r2r4, tab_genset, tab_tools, tab_perbaikan = st.tabs(["🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Riwayat Bukti Perbaikan"])
     
     def get_clean_image_url_legacy(url):
@@ -368,7 +365,6 @@ if not df_sdm.empty:
     render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Tidak ada foto unit Tools.")
         
     
-    # --- TAB 4: RIWAYAT BUKTI PERBAIKAN ---
     with tab_perbaikan:
         if not df_rekomendasi.empty and selected_nama != "-":
             rec_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
@@ -381,12 +377,10 @@ if not df_sdm.empty:
                     
                     foto_columns = [col for col in df_rekomendasi.columns if "FOTO" in str(col).upper()]
                     
-                    # Looping setiap riwayat laporan
                     for index, row in matched_rek.iloc[::-1].iterrows():
                         tanggal_laporan = row.get('Timestamp', '-')
                         teks_laporan = row.get('Findings & Action Plan', row.get('Findings', '-'))
                         
-                        # Kotak Pembatas Tanggal
                         st.markdown(f"""
                         <div style="background: #1e1e24; padding: 15px; border-radius: 10px; border-left: 5px solid #ff5252; margin-bottom: 15px; margin-top: 20px;">
                             <h5 style="color:#00b4d8; margin-top:0;">📅 Update Service: {tanggal_laporan}</h5>
@@ -394,7 +388,6 @@ if not df_sdm.empty:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Load Foto
                         foto_cols = st.columns(max(1, len(foto_columns)))
                         col_idx = 0
                         
