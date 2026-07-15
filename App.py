@@ -104,7 +104,6 @@ with st.sidebar:
         st.session_state.logged_in = False
         st.rerun()
         
-    # Footer Minimalis Okta Pradika
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; font-size: 11px; color: #7f8c8d; letter-spacing: 1px; margin-top: 20px;">
@@ -113,7 +112,7 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. FUNGSI UPLOAD GOOGLE DRIVE (FOKUS PERBAIKAN) ---
+# --- 5. FUNGSI UPLOAD GOOGLE DRIVE ---
 def compress_and_encode_image(uploaded_file):
     img = Image.open(uploaded_file).convert('RGB')
     img.thumbnail((800, 800))
@@ -123,8 +122,8 @@ def compress_and_encode_image(uploaded_file):
 
 def upload_image_to_gdrive(uploaded_file):
     try:
-        # Link Apps Script Terbaru Anda
-        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby5e7m61_i0CvPDj9zD_hLXvgxWvtj69AhizYJQqVv_QAEphAnBxKkuUK39UIxABCn_/exec"
+        # MASUKKAN URL DEPLOYMENT BARU ANDA DI BAWAH INI:
+        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby54Ao7zrCuqM46hzXM9kU_RSgOJzvGdKLQ4UbVeZWqThJlKVZ4hw7d3LyXw7cce-Q/exec"
         
         b64_img = compress_and_encode_image(uploaded_file)
         payload = {"filename": f"Bukti_{int(time.time())}.jpg", "base64": b64_img}
@@ -132,20 +131,15 @@ def upload_image_to_gdrive(uploaded_file):
         res = requests.post(GAS_WEB_APP_URL, json=payload)
         
         if res.status_code == 200:
-            try:
-                result = res.json()
-                if result.get("status") == "success": 
-                    return result.get("url") # Berhasil mengembalikan URL Drive
-                else: 
-                    st.error(f"❌ Error Drive: {result.get('message')}")
-                    return ""
-            except:
-                st.error("❌ Respon dari Drive tidak dapat dibaca.")
+            result = res.json()
+            if result.get("status") == "success": 
+                return result.get("url") 
+            else: 
+                st.error(f"❌ Error Drive: {result.get('message')}")
                 return ""
         else:
-            st.error(f"❌ Gagal koneksi ke Apps Script. Kode: {res.status_code}")
+            st.error(f"❌ Gagal koneksi ke Apps Script.")
             return ""
-            
     except Exception as e: 
         st.error(f"❌ Jaringan terputus saat upload: {e}")
         return ""
@@ -280,7 +274,7 @@ if not df_sdm.empty:
     
     with col_chart:
         st.markdown("### 📊 Statistik Kondisi Tools")
-        st.info("Kondisi tools sedang dihitung...") # Placeholder sederhana
+        st.info("Visualisasi tools tersedia saat data terisi penuh.") 
         
     with col_plan:
         st.markdown("### 📝 Form Laporan & Action Plan")
@@ -323,10 +317,8 @@ if not df_sdm.empty:
     st.write("---")
     st.markdown("### 📸 Evidence & Documented Slide Gallery")
     
-    # KEMBALI KE 4 TAB ORIGINAL 
     tab_r2r4, tab_genset, tab_tools, tab_perbaikan = st.tabs(["🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Riwayat Bukti Perbaikan"])
     
-    # Fungsi asli tab 1,2,3
     def get_clean_image_url_legacy(url):
         match = re.search(r'([-\w]{25,})', url) 
         if match and ("drive.google" in url or "docs.google" in url):
@@ -357,7 +349,7 @@ if not df_sdm.empty:
     render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Tidak ada foto unit Tools.")
         
     
-    # --- FOKUS PERBAIKAN: MENAMPILKAN FOTO DI TAB 4 DENGAN AMAN ---
+    # --- FOKUS PERBAIKAN: MENAMPILKAN FOTO DI TAB 4 (RIWAYAT BUKTI PERBAIKAN) ---
     with tab_perbaikan:
         if not df_rekomendasi.empty and selected_nama != "-":
             rec_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
@@ -374,7 +366,6 @@ if not df_sdm.empty:
                         tanggal_laporan = row.get('Timestamp', '-')
                         teks_laporan = row.get('Findings & Action Plan', row.get('Findings', '-'))
                         
-                        # Tampilkan Tanggal dan Laporan Teks
                         st.markdown(f"""
                         <div style="background: #1e1e24; padding: 15px; border-radius: 10px; border-left: 5px solid #ff5252; margin-bottom: 15px; margin-top: 20px;">
                             <h5 style="color:#00b4d8; margin-top:0;">📅 Update Service: {tanggal_laporan}</h5>
@@ -382,7 +373,6 @@ if not df_sdm.empty:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Tampilkan Foto Menggunakan Streamlit Murni (Anti-Blokir Browser)
                         valid_photos = []
                         for col_name in foto_columns:
                             val = str(row[col_name]).strip()
@@ -395,15 +385,13 @@ if not df_sdm.empty:
                                 match = re.search(r'([-\w]{25,})', raw_url)
                                 if match and ("drive.google" in raw_url or "docs.google" in raw_url):
                                     file_id = match.group(1)
-                                    # Menggunakan thumbnail ID langsung ke st.image
+                                    # MENGGUNAKAN ST.IMAGE BAWAAN STREAMLIT
                                     safe_image_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
                                     
                                     with cols[i]:
                                         st.image(safe_image_url, use_container_width=True)
-                                        # Tombol Link ke Drive Asli
                                         st.markdown(f'<div style="text-align:center;"><a href="{raw_url}" target="_blank" style="background-color: #e53935; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; font-size: 12px; font-weight: bold;">🔍 Buka Foto Asli</a></div>', unsafe_allow_html=True)
                                 else:
-                                    # Fallback jika url foto biasa (bukan google drive)
                                     if "http" in raw_url:
                                         with cols[i]:
                                             st.image(raw_url, use_container_width=True)
