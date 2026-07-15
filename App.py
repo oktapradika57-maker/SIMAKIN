@@ -123,7 +123,7 @@ def compress_and_encode_image(uploaded_file):
 def upload_image_to_gdrive(uploaded_file):
     try:
         # MASUKKAN URL DEPLOYMENT BARU ANDA DI BAWAH INI:
-        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby54Ao7zrCuqM46hzXM9kU_RSgOJzvGdKLQ4UbVeZWqThJlKVZ4hw7d3LyXw7cce-Q/exec"
+        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby5e7m61_i0CvPDj9zD_hLXvgxWvtj69AhizYJQqVv_QAEphAnBxKkuUK39UIxABCn_/exec"
         
         b64_img = compress_and_encode_image(uploaded_file)
         payload = {"filename": f"Bukti_{int(time.time())}.jpg", "base64": b64_img}
