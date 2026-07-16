@@ -112,22 +112,21 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. FUNGSI UPLOAD GOOGLE DRIVE (DIPERBAIKI AGAR TIDAK GAGAL & LEBIH RINGAN) ---
+# --- 5. FUNGSI UPLOAD GOOGLE DRIVE (MENGGUNAKAN URL BARU & AMAN) ---
 def compress_and_encode_image(uploaded_file):
     img = Image.open(uploaded_file).convert('RGB')
-    # DIPERKECIL MENJADI 600 AGAR PROSES UPLOAD JAUH LEBIH CEPAT DAN TIDAK DITOLAK GOOGLE
     img.thumbnail((600, 600)) 
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=70)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 def upload_image_to_gdrive(uploaded_file):
-    GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby5e7m61_i0CvPDj9zD_hLXvgxWvtj69AhizYJQqVv_QAEphAnBxKkuUK39UIxABCn_/exec"
+    # INI ADALAH URL APLIKASI WEB ANDA YANG BARU
+    GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby2uc0fP3dJ0-vwesuFVG-_DImf0-qaisAedFPG4H5Z5GyPnESdFSUp9N9QexgGyleP/exec"
     try:
         b64_img = compress_and_encode_image(uploaded_file)
         payload = {"filename": f"Bukti_{int(time.time())}.jpg", "base64": b64_img}
         
-        # TIMEOUT DIPERPANJANG JADI 60 DETIK AGAR TIDAK PUTUS DI TENGAH JALAN
         response = requests.post(GAS_WEB_APP_URL, json=payload, timeout=60)
         
         if response.status_code == 200:
@@ -167,12 +166,10 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
         return True
     except: return False
 
-# --- 7. FUNGSI LOAD DATA UTAMA (DIPERBAIKI AGAR APLIKASI KEMBALI NGEBUT) ---
-# Mengubah TTL menjadi 600 (10 Menit) agar tidak selalu download berulang-ulang dari Google Sheets
+# --- 7. FUNGSI LOAD DATA UTAMA (CEPAT/NGEBUT) ---
 @st.cache_data(ttl=600) 
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
-    # Menghapus 'cb=time' yang sebelumnya membuat cache rusak dan web jadi lelet
     excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
     try:
         xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
@@ -300,7 +297,6 @@ if not df_sdm.empty:
                                 img_urls[idx] = url_hasil
                             else: 
                                 upload_berhasil = False
-                                st.error(f"❌ Gagal upload foto ke-{idx+1}. Proses dihentikan.")
                                 break 
                 
                 if upload_berhasil:
@@ -321,7 +317,7 @@ if not df_sdm.empty:
     st.markdown("### 📸 Evidence & Documented Slide Gallery")
     
     # -------------------------------------------------------------------------
-    # TAB GALLERY DENGAN FAKTA INTEGRITAS
+    # TAB GALLERY (5 TAB TERMASUK FAKTA INTEGRITAS)
     # -------------------------------------------------------------------------
     tab_r2r4, tab_genset, tab_tools, tab_perbaikan, tab_fakta = st.tabs([
         "🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Riwayat Bukti Perbaikan", "📄 Fakta Integritas"
@@ -408,7 +404,7 @@ if not df_sdm.empty:
             else: st.error("Kolom 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
         else: st.info("Belum ada data riwayat perbaikan yang sesuai.")
 
-    # --- TAB 5 (BARU): FAKTA INTEGRITAS DARI GOOGLE FORM ---
+    # --- TAB 5: FAKTA INTEGRITAS DARI GOOGLE FORM ---
     with tab_fakta:
         if not df_fakta.empty and selected_nama != "-":
             fakta_name_col = next((col for col in df_fakta.columns if "NAMA" in str(col).upper()), None)
