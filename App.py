@@ -10,11 +10,12 @@ import base64
 import time
 from PIL import Image
 import io
+import json
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
 
-# --- 2. CUSTOM CSS (Desain 3D Login & Premium UI Asli Anda) ---
+# --- 2. CUSTOM CSS (Desain 3D Login & Premium UI Asli) ---
 st.markdown("""
 <style>
     .stApp { background-color: #0e1117; }
@@ -22,7 +23,6 @@ st.markdown("""
     div[data-testid="stForm"] {
         background: linear-gradient(145deg, rgba(30, 32, 40, 0.8), rgba(15, 15, 20, 0.9)) !important;
         backdrop-filter: blur(20px) !important;
-        -webkit-backdrop-filter: blur(20px) !important;
         border: 1px solid rgba(255, 82, 82, 0.4) !important;
         padding: 40px !important;
         border-radius: 20px !important;
@@ -91,7 +91,7 @@ if not st.session_state.logged_in:
     login_form()
     st.stop() 
 
-# --- 4. SIDEBAR MENU & FOOTER MINIMALIS ---
+# --- 4. SIDEBAR MENU & FOOTER ---
 with st.sidebar:
     st.markdown("<h2 style='text-align: center; color: #ff5252;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.info("👤 **Aktif:** SIMAKINKUT")
@@ -112,42 +112,58 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. FUNGSI UPLOAD GOOGLE DRIVE (MENGGUNAKAN URL BARU & AMAN) ---
-def compress_and_encode_image(uploaded_file):
-    img = Image.open(uploaded_file).convert('RGB')
-    img.thumbnail((600, 600)) 
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=70)
-    return base64.b64encode(buf.getvalue()).decode("utf-8")
-
+# --- 5. FUNGSI UPLOAD GOOGLE DRIVE NATIVE PYTHON (BYPASS APPS SCRIPT) ---
 def upload_image_to_gdrive(uploaded_file):
-    # INI ADALAH URL APLIKASI WEB ANDA YANG BARU
-    GAS_WEB_APP_URL = "https://script.google.com/macros/library/d/1ZCgCBWiwsOtB5ogkTsT898uxRvTb91jgncuaKfed1-scuHMJqdOYiBIq/2"
     try:
-        b64_img = compress_and_encode_image(uploaded_file)
-        payload = {"filename": f"Bukti_{int(time.time())}.jpg", "base64": b64_img}
+        # Panggil Secret dan buka hak akses penuh ke Drive
+        creds_dict = st.secrets["gcp_service_account"]
+        scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scopes)
+        access_token = creds.get_access_token().access_token
         
-        response = requests.post(GAS_WEB_APP_URL, json=payload, timeout=60)
+        folder_id = "165qUkoKMTUzcVUP4HSTwWpVuoY5mkE9d"
         
-        if response.status_code == 200:
-            result = response.json()
-            if result.get("status") == "success":
-                return result.get("url")
-            else:
-                st.error(f"❌ Server Drive Menolak: {result.get('message')}")
-                return None
+        # Kompres Gambar
+        img = Image.open(uploaded_file).convert('RGB')
+        img.thumbnail((800, 800))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=75)
+        
+        # Payload API Google Drive Langsung
+        metadata = {"name": f"Bukti_{int(time.time())}.jpg", "parents": [folder_id]}
+        files = {
+            'metadata': ('metadata', json.dumps(metadata), 'application/json; charset=UTF-8'),
+            'file': ('image', buf.getvalue(), 'image/jpeg')
+        }
+        headers = {"Authorization": f"Bearer {access_token}"}
+        
+        # Eksekusi Upload
+        res = requests.post(
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+            headers=headers, files=files, timeout=60
+        )
+        
+        if res.status_code == 200:
+            file_id = res.json().get('id')
+            # Buka izin gambar agar publik bisa lihat
+            perm_headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+            requests.post(f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions", 
+                          headers=perm_headers, json={"role": "reader", "type": "anyone"})
+            
+            return f"https://drive.google.com/file/d/{file_id}/view"
         else:
-            st.error(f"❌ Gagal koneksi (Status Code: {response.status_code})")
+            st.error(f"❌ Tolong pastikan Email Service Account sudah jadi EDITOR di Folder Drive Anda. Detail: {res.text}")
             return None
     except Exception as e:
-        st.error(f"❌ Jaringan Terputus / Time Out. Coba sekali lagi. Detail: {e}")
+        st.error(f"❌ Gagal Terhubung: {e}")
         return None
 
 # --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
 def get_gspread_client():
     try:
         creds_dict = st.secrets["gcp_service_account"]
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict)
+        scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scopes)
         return gspread.authorize(creds)
     except: return None
 
@@ -290,7 +306,7 @@ if not df_sdm.empty:
                 upload_berhasil = True
                 
                 if uploaded_files:
-                    with st.spinner("🚀 Mengupload foto ke Google Drive... (Mohon tunggu, bisa memakan waktu hingga 1 menit)"):
+                    with st.spinner("🚀 Mengupload foto ke Google Drive melalui sistem Python..."):
                         for idx, file in enumerate(uploaded_files[:5]):
                             url_hasil = upload_image_to_gdrive(file)
                             if url_hasil: 
@@ -404,34 +420,29 @@ if not df_sdm.empty:
             else: st.error("Kolom 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
         else: st.info("Belum ada data riwayat perbaikan yang sesuai.")
 
-    # --- TAB 5: FAKTA INTEGRITAS DARI GOOGLE FORM ---
+    # --- TAB 5: FAKTA INTEGRITAS DARI GOOGLE FORM (SISTEM PENCARIAN SAPU JAGAT) ---
     with tab_fakta:
         if not df_fakta.empty and selected_nama != "-":
-            fakta_name_col = next((col for col in df_fakta.columns if "NAMA" in str(col).upper()), None)
-            fakta_nik_col = next((col for col in df_fakta.columns if "NIK" in str(col).upper()), None)
+            # Sistem Pencarian Super Agresif: Cari nama karyawan di seluruh kolom baris Excel!
+            matched_fakta = df_fakta[df_fakta.apply(lambda row: row.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)]
             
-            matched_fakta = pd.DataFrame()
-            
-            if fakta_name_col:
-                matched_fakta = df_fakta[df_fakta[fakta_name_col].astype(str).str.strip().str.lower() == selected_nama.strip().lower()]
-            elif fakta_nik_col and data_karyawan_select is not None:
-                karyawan_nik = str(data_karyawan_select.get('NIK', '')).strip().lower()
-                matched_fakta = df_fakta[df_fakta[fakta_nik_col].astype(str).str.strip().str.lower() == karyawan_nik]
-                
             if not matched_fakta.empty:
                 st.markdown(f"<h4 style='color:#00b4d8;'>Arsip Dokumen Fakta Integritas: {selected_nama}</h4>", unsafe_allow_html=True)
                 
                 for index, row in matched_fakta.iloc[::-1].iterrows():
-                    tanggal = row.get('Timestamp', row.get('TANGGAL', '-'))
+                    tanggal = row.get('Timestamp', row.get('TANGGAL', 'Tanggal Tidak Diketahui'))
                     st.markdown(f"**📅 Diupload pada: {tanggal}**")
                     
                     valid_files = []
+                    # Scan seluruh data dalam baris tersebut untuk mencari link Drive Google Form
                     for col_name in matched_fakta.columns:
                         val = str(row[col_name]).strip()
-                        if "http" in val:
+                        if "drive.google.com" in val:
                             urls = re.findall(r'(https?://[^\s,]+)', val)
-                            valid_files.extend(urls)
-                            
+                            for u in urls:
+                                if u not in valid_files:
+                                    valid_files.append(u)
+                                    
                     if valid_files:
                         cols = st.columns(len(valid_files))
                         for i, raw_url in enumerate(valid_files):
@@ -440,12 +451,19 @@ if not df_sdm.empty:
                                 if match:
                                     file_id = match.group(1)
                                     safe_image_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
-                                    st.image(safe_image_url, use_container_width=True)
-                                    st.markdown(f'<div style="text-align:center;"><a href="{raw_url}" target="_blank" style="background-color: #00b4d8; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; font-size: 12px; font-weight: bold;">📥 Buka Dokumen Asli</a></div>', unsafe_allow_html=True)
+                                    # Coba render thumbnail dokumen
+                                    try:
+                                        st.image(safe_image_url, use_container_width=True)
+                                    except:
+                                        st.info("Dokumen PDF (Klik tombol di bawah)")
+                                        
+                                    st.markdown(f'<div style="text-align:center; margin-top:10px;"><a href="{raw_url}" target="_blank" style="background-color: #00b4d8; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; width:100%; display:inline-block;">📥 BUKA DOKUMEN PDF/FOTO</a></div>', unsafe_allow_html=True)
                                 else:
-                                    st.markdown(f'<div style="text-align:center;"><a href="{raw_url}" target="_blank" style="background-color: #00b4d8; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; font-size: 12px; font-weight: bold;">📥 Buka Link</a></div>', unsafe_allow_html=True)
+                                    st.markdown(f'<div style="text-align:center; margin-top:10px;"><a href="{raw_url}" target="_blank" style="background-color: #00b4d8; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; width:100%; display:inline-block;">📥 BUKA LINK FILE</a></div>', unsafe_allow_html=True)
+                    else:
+                        st.info("Tidak ada dokumen PDF/Foto yang terlampir pada laporan ini.")
                     st.write("<br><hr style='border-color: #333;'>", unsafe_allow_html=True)
             else:
-                st.info("Tidak ditemukan arsip Fakta Integritas untuk karyawan ini.")
+                st.warning(f"Belum ada arsip form Fakta Integritas atas nama: {selected_nama}")
         else:
-            st.info("Data sheet FAKTA INTERITAR masih kosong atau belum tersedia.")
+            st.info("Data sheet FAKTA INTERITAR masih kosong atau belum dimuat.")
