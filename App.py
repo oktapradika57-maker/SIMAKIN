@@ -104,7 +104,6 @@ with st.sidebar:
         st.session_state.logged_in = False
         st.rerun()
         
-    # Footer Minimalis Okta Pradika
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; font-size: 11px; color: #7f8c8d; letter-spacing: 1px; margin-top: 20px;">
@@ -113,12 +112,13 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. FUNGSI UPLOAD GOOGLE DRIVE ---
+# --- 5. FUNGSI UPLOAD GOOGLE DRIVE (DIPERBAIKI AGAR TIDAK GAGAL & LEBIH RINGAN) ---
 def compress_and_encode_image(uploaded_file):
     img = Image.open(uploaded_file).convert('RGB')
-    img.thumbnail((800, 800))
+    # DIPERKECIL MENJADI 600 AGAR PROSES UPLOAD JAUH LEBIH CEPAT DAN TIDAK DITOLAK GOOGLE
+    img.thumbnail((600, 600)) 
     buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=80)
+    img.save(buf, format="JPEG", quality=70)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 def upload_image_to_gdrive(uploaded_file):
@@ -126,14 +126,22 @@ def upload_image_to_gdrive(uploaded_file):
     try:
         b64_img = compress_and_encode_image(uploaded_file)
         payload = {"filename": f"Bukti_{int(time.time())}.jpg", "base64": b64_img}
-        response = requests.post(GAS_WEB_APP_URL, json=payload, timeout=30)
+        
+        # TIMEOUT DIPERPANJANG JADI 60 DETIK AGAR TIDAK PUTUS DI TENGAH JALAN
+        response = requests.post(GAS_WEB_APP_URL, json=payload, timeout=60)
         
         if response.status_code == 200:
             result = response.json()
-            return result.get("url")
+            if result.get("status") == "success":
+                return result.get("url")
+            else:
+                st.error(f"❌ Server Drive Menolak: {result.get('message')}")
+                return None
         else:
+            st.error(f"❌ Gagal koneksi (Status Code: {response.status_code})")
             return None
-    except Exception:
+    except Exception as e:
+        st.error(f"❌ Jaringan Terputus / Time Out. Coba sekali lagi. Detail: {e}")
         return None
 
 # --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
@@ -159,12 +167,13 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
         return True
     except: return False
 
-# --- 7. FUNGSI LOAD DATA UTAMA (DITAMBAH FAKTA INTERITAR) ---
-@st.cache_data(ttl=120) 
+# --- 7. FUNGSI LOAD DATA UTAMA (DIPERBAIKI AGAR APLIKASI KEMBALI NGEBUT) ---
+# Mengubah TTL menjadi 600 (10 Menit) agar tidak selalu download berulang-ulang dari Google Sheets
+@st.cache_data(ttl=600) 
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
-    cb = int(time.time())
-    excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx&cb={cb}"
+    # Menghapus 'cb=time' yang sebelumnya membuat cache rusak dan web jadi lelet
+    excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
     try:
         xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
         return (xls.get("SDM", pd.DataFrame()), 
@@ -172,11 +181,10 @@ def load_all_data():
                 xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), 
                 xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), 
                 xls.get("Rekomendasi Perbaikan", pd.DataFrame()),
-                xls.get("FAKTA INTERITAR", pd.DataFrame())) # MEMBACA SHEET BARU
+                xls.get("FAKTA INTERITAR", pd.DataFrame())) 
     except:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-# UNPACKING DATA DITAMBAH df_fakta
 df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi, df_fakta = load_all_data()
 
 def get_row_by_name(df, target_name):
@@ -285,14 +293,14 @@ if not df_sdm.empty:
                 upload_berhasil = True
                 
                 if uploaded_files:
-                    with st.spinner("🚀 Mengupload foto ke Google Drive... (Mohon tunggu)"):
+                    with st.spinner("🚀 Mengupload foto ke Google Drive... (Mohon tunggu, bisa memakan waktu hingga 1 menit)"):
                         for idx, file in enumerate(uploaded_files[:5]):
                             url_hasil = upload_image_to_gdrive(file)
                             if url_hasil: 
                                 img_urls[idx] = url_hasil
                             else: 
                                 upload_berhasil = False
-                                st.error("❌ Gagal upload salah satu foto, pastikan format JPG/PNG.")
+                                st.error(f"❌ Gagal upload foto ke-{idx+1}. Proses dihentikan.")
                                 break 
                 
                 if upload_berhasil:
@@ -313,13 +321,12 @@ if not df_sdm.empty:
     st.markdown("### 📸 Evidence & Documented Slide Gallery")
     
     # -------------------------------------------------------------------------
-    # TAB GALLERY: KINI ADA 5 TAB (DITAMBAH TAB FAKTA INTEGRITAS)
+    # TAB GALLERY DENGAN FAKTA INTEGRITAS
     # -------------------------------------------------------------------------
     tab_r2r4, tab_genset, tab_tools, tab_perbaikan, tab_fakta = st.tabs([
         "🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Riwayat Bukti Perbaikan", "📄 Fakta Integritas"
     ])
     
-    # Fungsi asli tab 1,2,3
     def get_clean_image_url_legacy(url):
         match = re.search(r'([-\w]{25,})', url) 
         if match and ("drive.google" in url or "docs.google" in url):
@@ -404,16 +411,13 @@ if not df_sdm.empty:
     # --- TAB 5 (BARU): FAKTA INTEGRITAS DARI GOOGLE FORM ---
     with tab_fakta:
         if not df_fakta.empty and selected_nama != "-":
-            # Cari kolom NAMA dan NIK secara dinamis
             fakta_name_col = next((col for col in df_fakta.columns if "NAMA" in str(col).upper()), None)
             fakta_nik_col = next((col for col in df_fakta.columns if "NIK" in str(col).upper()), None)
             
             matched_fakta = pd.DataFrame()
             
-            # Prioritas 1: Filter by NAMA
             if fakta_name_col:
                 matched_fakta = df_fakta[df_fakta[fakta_name_col].astype(str).str.strip().str.lower() == selected_nama.strip().lower()]
-            # Prioritas 2: Filter by NIK (Jika filter NAMA gagal/kosong)
             elif fakta_nik_col and data_karyawan_select is not None:
                 karyawan_nik = str(data_karyawan_select.get('NIK', '')).strip().lower()
                 matched_fakta = df_fakta[df_fakta[fakta_nik_col].astype(str).str.strip().str.lower() == karyawan_nik]
@@ -426,7 +430,6 @@ if not df_sdm.empty:
                     st.markdown(f"**📅 Diupload pada: {tanggal}**")
                     
                     valid_files = []
-                    # Scan semua kolom untuk mencari link upload (Biasanya dipisahkan koma oleh GForm)
                     for col_name in matched_fakta.columns:
                         val = str(row[col_name]).strip()
                         if "http" in val:
@@ -440,7 +443,6 @@ if not df_sdm.empty:
                             with cols[i]:
                                 if match:
                                     file_id = match.group(1)
-                                    # Thumbnail API Google Drive bisa merender Gambar sekaligus halaman pertama PDF!
                                     safe_image_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
                                     st.image(safe_image_url, use_container_width=True)
                                     st.markdown(f'<div style="text-align:center;"><a href="{raw_url}" target="_blank" style="background-color: #00b4d8; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; font-size: 12px; font-weight: bold;">📥 Buka Dokumen Asli</a></div>', unsafe_allow_html=True)
