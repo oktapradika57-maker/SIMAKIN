@@ -104,6 +104,7 @@ with st.sidebar:
         st.session_state.logged_in = False
         st.rerun()
         
+    # Footer Minimalis Okta Pradika
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; font-size: 11px; color: #7f8c8d; letter-spacing: 1px; margin-top: 20px;">
@@ -121,28 +122,19 @@ def compress_and_encode_image(uploaded_file):
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 def upload_image_to_gdrive(uploaded_file):
+    GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby5e7m61_i0CvPDj9zD_hLXvgxWvtj69AhizYJQqVv_QAEphAnBxKkuUK39UIxABCn_/exec"
     try:
-        # MASUKKAN URL DEPLOYMENT BARU ANDA DI BAWAH INI:
-        GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby5e7m61_i0CvPDj9zD_hLXvgxWvtj69AhizYJQqVv_QAEphAnBxKkuUK39UIxABCn_/exec"
-        
         b64_img = compress_and_encode_image(uploaded_file)
         payload = {"filename": f"Bukti_{int(time.time())}.jpg", "base64": b64_img}
+        response = requests.post(GAS_WEB_APP_URL, json=payload, timeout=30)
         
-        res = requests.post(GAS_WEB_APP_URL, json=payload)
-        
-        if res.status_code == 200:
-            result = res.json()
-            if result.get("status") == "success": 
-                return result.get("url") 
-            else: 
-                st.error(f"❌ Error Drive: {result.get('message')}")
-                return ""
+        if response.status_code == 200:
+            result = response.json()
+            return result.get("url")
         else:
-            st.error(f"❌ Gagal koneksi ke Apps Script.")
-            return ""
-    except Exception as e: 
-        st.error(f"❌ Jaringan terputus saat upload: {e}")
-        return ""
+            return None
+    except Exception:
+        return None
 
 # --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
 def get_gspread_client():
@@ -167,7 +159,7 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
         return True
     except: return False
 
-# --- 7. FUNGSI LOAD DATA UTAMA ---
+# --- 7. FUNGSI LOAD DATA UTAMA (DITAMBAH FAKTA INTERITAR) ---
 @st.cache_data(ttl=120) 
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
@@ -179,11 +171,13 @@ def load_all_data():
                 xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame()), 
                 xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), 
                 xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), 
-                xls.get("Rekomendasi Perbaikan", pd.DataFrame()))
+                xls.get("Rekomendasi Perbaikan", pd.DataFrame()),
+                xls.get("FAKTA INTERITAR", pd.DataFrame())) # MEMBACA SHEET BARU
     except:
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi = load_all_data()
+# UNPACKING DATA DITAMBAH df_fakta
+df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi, df_fakta = load_all_data()
 
 def get_row_by_name(df, target_name):
     if df.empty: return None
@@ -298,6 +292,7 @@ if not df_sdm.empty:
                                 img_urls[idx] = url_hasil
                             else: 
                                 upload_berhasil = False
+                                st.error("❌ Gagal upload salah satu foto, pastikan format JPG/PNG.")
                                 break 
                 
                 if upload_berhasil:
@@ -317,8 +312,14 @@ if not df_sdm.empty:
     st.write("---")
     st.markdown("### 📸 Evidence & Documented Slide Gallery")
     
-    tab_r2r4, tab_genset, tab_tools, tab_perbaikan = st.tabs(["🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Riwayat Bukti Perbaikan"])
+    # -------------------------------------------------------------------------
+    # TAB GALLERY: KINI ADA 5 TAB (DITAMBAH TAB FAKTA INTEGRITAS)
+    # -------------------------------------------------------------------------
+    tab_r2r4, tab_genset, tab_tools, tab_perbaikan, tab_fakta = st.tabs([
+        "🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Riwayat Bukti Perbaikan", "📄 Fakta Integritas"
+    ])
     
+    # Fungsi asli tab 1,2,3
     def get_clean_image_url_legacy(url):
         match = re.search(r'([-\w]{25,})', url) 
         if match and ("drive.google" in url or "docs.google" in url):
@@ -349,7 +350,7 @@ if not df_sdm.empty:
     render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Tidak ada foto unit Tools.")
         
     
-    # --- FOKUS PERBAIKAN: MENAMPILKAN FOTO DI TAB 4 (RIWAYAT BUKTI PERBAIKAN) ---
+    # --- TAB 4: RIWAYAT BUKTI PERBAIKAN ---
     with tab_perbaikan:
         if not df_rekomendasi.empty and selected_nama != "-":
             rec_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
@@ -385,7 +386,6 @@ if not df_sdm.empty:
                                 match = re.search(r'([-\w]{25,})', raw_url)
                                 if match and ("drive.google" in raw_url or "docs.google" in raw_url):
                                     file_id = match.group(1)
-                                    # MENGGUNAKAN ST.IMAGE BAWAAN STREAMLIT
                                     safe_image_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
                                     
                                     with cols[i]:
@@ -400,3 +400,54 @@ if not df_sdm.empty:
                 else: st.info(f"Belum ada riwayat laporan perbaikan untuk karyawan ini.")
             else: st.error("Kolom 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
         else: st.info("Belum ada data riwayat perbaikan yang sesuai.")
+
+    # --- TAB 5 (BARU): FAKTA INTEGRITAS DARI GOOGLE FORM ---
+    with tab_fakta:
+        if not df_fakta.empty and selected_nama != "-":
+            # Cari kolom NAMA dan NIK secara dinamis
+            fakta_name_col = next((col for col in df_fakta.columns if "NAMA" in str(col).upper()), None)
+            fakta_nik_col = next((col for col in df_fakta.columns if "NIK" in str(col).upper()), None)
+            
+            matched_fakta = pd.DataFrame()
+            
+            # Prioritas 1: Filter by NAMA
+            if fakta_name_col:
+                matched_fakta = df_fakta[df_fakta[fakta_name_col].astype(str).str.strip().str.lower() == selected_nama.strip().lower()]
+            # Prioritas 2: Filter by NIK (Jika filter NAMA gagal/kosong)
+            elif fakta_nik_col and data_karyawan_select is not None:
+                karyawan_nik = str(data_karyawan_select.get('NIK', '')).strip().lower()
+                matched_fakta = df_fakta[df_fakta[fakta_nik_col].astype(str).str.strip().str.lower() == karyawan_nik]
+                
+            if not matched_fakta.empty:
+                st.markdown(f"<h4 style='color:#00b4d8;'>Arsip Dokumen Fakta Integritas: {selected_nama}</h4>", unsafe_allow_html=True)
+                
+                for index, row in matched_fakta.iloc[::-1].iterrows():
+                    tanggal = row.get('Timestamp', row.get('TANGGAL', '-'))
+                    st.markdown(f"**📅 Diupload pada: {tanggal}**")
+                    
+                    valid_files = []
+                    # Scan semua kolom untuk mencari link upload (Biasanya dipisahkan koma oleh GForm)
+                    for col_name in matched_fakta.columns:
+                        val = str(row[col_name]).strip()
+                        if "http" in val:
+                            urls = re.findall(r'(https?://[^\s,]+)', val)
+                            valid_files.extend(urls)
+                            
+                    if valid_files:
+                        cols = st.columns(len(valid_files))
+                        for i, raw_url in enumerate(valid_files):
+                            match = re.search(r'([-\w]{25,})', raw_url)
+                            with cols[i]:
+                                if match:
+                                    file_id = match.group(1)
+                                    # Thumbnail API Google Drive bisa merender Gambar sekaligus halaman pertama PDF!
+                                    safe_image_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
+                                    st.image(safe_image_url, use_container_width=True)
+                                    st.markdown(f'<div style="text-align:center;"><a href="{raw_url}" target="_blank" style="background-color: #00b4d8; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; font-size: 12px; font-weight: bold;">📥 Buka Dokumen Asli</a></div>', unsafe_allow_html=True)
+                                else:
+                                    st.markdown(f'<div style="text-align:center;"><a href="{raw_url}" target="_blank" style="background-color: #00b4d8; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; font-size: 12px; font-weight: bold;">📥 Buka Link</a></div>', unsafe_allow_html=True)
+                    st.write("<br><hr style='border-color: #333;'>", unsafe_allow_html=True)
+            else:
+                st.info("Tidak ditemukan arsip Fakta Integritas untuk karyawan ini.")
+        else:
+            st.info("Data sheet FAKTA INTERITAR masih kosong atau belum tersedia.")
