@@ -8,6 +8,7 @@ import requests
 import time
 from PIL import Image
 import io
+import os
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
@@ -15,65 +16,35 @@ st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="w
 # --- 2. CUSTOM CSS (Premium Dark Mode & Glassmorphism) ---
 st.markdown("""
 <style>
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(15px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .stApp { 
-        background-color: #0b0f19; 
-        color: #e2e8f0; 
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    .stApp { background-color: #0b0f19; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     .main .block-container { animation: fadeIn 0.6s ease-out; }
     
     div[data-testid="stForm"] {
-        background: rgba(26, 32, 53, 0.7) !important;
-        backdrop-filter: blur(15px) !important;
-        border: 1px solid rgba(59, 130, 246, 0.3) !important;
-        padding: 40px !important;
-        border-radius: 20px !important;
-        box-shadow: 0px 15px 35px rgba(0, 0, 0, 0.6), inset 0px 0px 20px rgba(59, 130, 246, 0.1) !important;
-        max-width: 450px !important;
-        margin: 50px auto !important;
+        background: rgba(26, 32, 53, 0.7) !important; backdrop-filter: blur(15px) !important;
+        border: 1px solid rgba(59, 130, 246, 0.3) !important; padding: 40px !important;
+        border-radius: 20px !important; box-shadow: 0px 15px 35px rgba(0, 0, 0, 0.6) !important;
+        max-width: 450px !important; margin: 50px auto !important;
     }
     
     div[data-testid="stTextInput"] label, div[data-testid="stSelectbox"] label, div[data-testid="stTextArea"] label { 
         color: #60a5fa !important; font-weight: bold !important; letter-spacing: 1px; 
     }
     div[data-testid="stTextInput"] input, div[data-testid="stSelectbox"] select, div[data-testid="stTextArea"] textarea {
-        border-radius: 10px !important; 
-        border: 1px solid #334155 !important;
-        background-color: #1e293b !important; 
-        color: #ffffff !important; 
-    }
-    div[data-testid="stTextInput"] input:focus, div[data-testid="stSelectbox"] select:focus, div[data-testid="stTextArea"] textarea:focus { 
-        border-color: #3b82f6 !important; 
-        box-shadow: 0 0 12px rgba(59, 130, 246, 0.4) !important; 
+        border-radius: 10px !important; border: 1px solid #334155 !important;
+        background-color: #1e293b !important; color: #ffffff !important; 
     }
     
     button[kind="primaryFormSubmit"], .stButton>button { 
-        background: linear-gradient(135deg, #2563eb, #0ea5e9) !important; 
-        border: none !important; 
-        border-radius: 10px !important; 
-        color: white !important; 
-        font-weight: 700 !important; 
-        padding: 10px 0 !important; 
-        box-shadow: 0 6px 15px rgba(37, 99, 235, 0.4) !important; 
+        background: linear-gradient(135deg, #2563eb, #0ea5e9) !important; border: none !important; 
+        border-radius: 10px !important; color: white !important; font-weight: 700 !important; 
+        padding: 10px 0 !important; box-shadow: 0 6px 15px rgba(37, 99, 235, 0.4) !important; 
     }
     
     .header-style {
-        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); 
-        padding: 18px; 
-        border-radius: 15px; 
-        color: #ffffff; 
-        font-weight: 800; 
-        font-size: 26px; 
-        text-align: center; 
-        box-shadow: 0 10px 25px rgba(30, 58, 138, 0.5); 
-        margin-bottom: 30px; 
-        border: 1px solid #3b82f6;
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 18px; border-radius: 15px; 
+        color: #ffffff; font-weight: 800; font-size: 26px; text-align: center; 
+        box-shadow: 0 10px 25px rgba(30, 58, 138, 0.5); margin-bottom: 30px; border: 1px solid #3b82f6;
     }
     
     h1, h2, h3, h4, h5 { color: #f8fafc !important; }
@@ -88,10 +59,10 @@ if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 def login_form():
     st.markdown("<br><br>", unsafe_allow_html=True)
     with st.form("login_form"):
-        st.markdown('<h1 style="color:#60a5fa; text-align:center; font-weight:900; letter-spacing:2px; margin-bottom:0px;">⚡ SYSTEM PORTAL</h1>', unsafe_allow_html=True)
+        st.markdown('<h1 style="color:#60a5fa; text-align:center; font-weight:900; margin-bottom:0px;">⚡ SYSTEM PORTAL</h1>', unsafe_allow_html=True)
         st.markdown('<p style="text-align:center; font-size:13px; margin-bottom:30px;">Operational, Asset & Genset | Reg Kalimantan</p>', unsafe_allow_html=True)
-        user = st.text_input("👤 USERNAME", placeholder="Ketik username Anda...")
-        pwd = st.text_input("🔑 PASSWORD", type="password", placeholder="Ketik password Anda...")
+        user = st.text_input("👤 USERNAME", placeholder="Ketik username...")
+        pwd = st.text_input("🔑 PASSWORD", type="password", placeholder="Ketik password...")
         submit = st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True)
     if submit:
         if user == "SIMAKINKUT" and pwd == "2026KUTPOSITIF":
@@ -101,17 +72,23 @@ def login_form():
 if not st.session_state.logged_in:
     login_form(); st.stop() 
 
-# --- 4. SIDEBAR MENU DENGAN LOGO ASLI & LINK JELAJAH ---
+# --- 4. SIDEBAR (LOGO & TOMBOL JELAJAH) ---
 with st.sidebar:
-    # Memanggil Logo langsung dari file lokal Anda
-    try:
-        st.image("koperasi-jasa-konstruksi-tower-event-organizer-network-monitoring-telekomunikasi-kisel-group-logo-kut.webp", use_container_width=True)
-    except:
-        st.error("⚠️ Pastikan file 'koperasi-jasa-konstruksi-tower-event-organizer-network-monitoring-telekomunikasi-kisel-group-logo-kut.webp' diletakkan 1 folder dengan App.py")
+    # SISTEM LOGO KUT (Aman dari error)
+    logo_file = "koperasi-jasa-konstruksi-tower-event-organizer-network-monitoring-telekomunikasi-kisel-group-logo-kut.webp"
+    if os.path.exists(logo_file):
+        st.image(logo_file, use_container_width=True)
+    else:
+        st.markdown("""
+        <div style="background: white; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 20px;">
+            <h3 style="color: #1e3a8a; margin: 0; font-weight: 900;">KINARYA</h3>
+            <p style="color: #64748b; margin: 0; font-size: 12px; font-weight: bold;">UTAMA TEKNIK<br>by Kisel Group</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-    st.markdown("<h2 style='text-align: center; color: #60a5fa; margin-top:20px;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #60a5fa;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     
-    # MENU LINK JELAJAH (Tombol Baru)
+    # TOMBOL MENU BARU (Jelajah lebih jauh)
     st.markdown("""
     <a href="https://regkalimantan-kut.vercel.app/#sva" target="_blank" style="text-decoration: none;">
         <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 12px; border-radius: 10px; text-align: center; color: white; font-weight: bold; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(16,185,129,0.4); font-size: 13px; transition: transform 0.3s ease;">
@@ -129,35 +106,55 @@ with st.sidebar:
         st.session_state.logged_in = False; st.rerun()
     st.markdown("""<div style="text-align: center; font-size: 11px; color: #64748b; margin-top: 30px;">⚡ DEVELOPED BY OKTA PRADIKA<br>© 2026 SYSTEM OPERATIONS</div>""", unsafe_allow_html=True)
 
-# --- 5. FUNGSI UPLOAD FOTO (ANTI-GAGAL: MENGGUNAKAN TELEGRAPH API) ---
+# --- 5. FUNGSI UPLOAD FOTO (ANTI-GAGAL 3 LAPIS) ---
 def upload_image_to_server(uploaded_file):
     try:
-        # Kompres gambar agar ringan
+        # Kompresi Foto
         img = Image.open(uploaded_file).convert('RGB')
         img.thumbnail((800, 800)) 
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=80)
-        buf.seek(0)
         
-        # Upload langsung ke Server Publik (Tidak butuh izin Google, tidak butuh kunci)
-        files = {'file': ('image.jpg', buf, 'image/jpeg')}
-        response = requests.post("https://telegra.ph/upload", files=files, timeout=30)
+        # WAJIB: Ambil bytes-nya secara eksplisit agar bebas dari Error HTTP 400
+        img_bytes = buf.getvalue() 
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         
-        if response.status_code == 200:
-            res_json = response.json()
-            if isinstance(res_json, list) and 'src' in res_json[0]:
-                return "https://telegra.ph" + res_json[0]['src']
-            else:
-                return f"ERROR_API: {res_json}"
-        else: return f"ERROR_HTTP: {response.status_code}"
-    except Exception as e: return f"ERROR_NETWORK: {str(e)}"
+        # --- LAPIS 1: API TELEGRAPH ---
+        try:
+            files1 = {'file': ('image.jpg', img_bytes, 'image/jpeg')}
+            res1 = requests.post("https://telegra.ph/upload", files=files1, headers=headers, timeout=15)
+            if res1.status_code == 200:
+                rj = res1.json()
+                if isinstance(rj, list) and 'src' in rj[0]:
+                    return "https://telegra.ph" + rj[0]['src']
+        except: pass
+        
+        # --- LAPIS 2: API FREEIMAGE (Jika Telegraph gagal) ---
+        try:
+            payload2 = {'key': '6d207e02198a847aa98d0a2a901485a5', 'action': 'upload', 'format': 'json'}
+            files2 = {'source': ('image.jpg', img_bytes, 'image/jpeg')}
+            res2 = requests.post("https://freeimage.host/api/1/upload", data=payload2, files=files2, timeout=15)
+            if res2.status_code == 200:
+                return res2.json()['image']['url']
+        except: pass
+        
+        # --- LAPIS 3: API CATBOX (Jika 1 & 2 gagal) ---
+        try:
+            data3 = {'reqtype': 'fileupload'}
+            files3 = {'fileToUpload': ('image.jpg', img_bytes, 'image/jpeg')}
+            res3 = requests.post("https://catbox.moe/user/api.php", data=data3, files=files3, timeout=15)
+            if res3.status_code == 200 and "catbox.moe" in res3.text:
+                return res3.text.strip()
+        except: pass
+        
+        return "ERROR: Server penyimpanan gambar sedang gangguan. Coba lagi nanti."
+    except Exception as e: return f"ERROR_SYSTEM: {str(e)}"
 
-# --- 6. FUNGSI GOOGLE SHEETS (Hanya untuk Teks, ini sudah terbukti aman) ---
+# --- 6. FUNGSI GOOGLE SHEETS (HANYA UNTUK TEKS & LINK) ---
 def get_gspread_client():
     try:
         creds_dict = st.secrets["gcp_service_account"]
-        scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scopes)
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'])
         return gspread.authorize(creds)
     except: return None
 
@@ -173,7 +170,7 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
         return True
     except: return False
 
-# --- 7. LOAD DATA UTAMA ---
+# --- 7. LOAD DATA ---
 @st.cache_data(ttl=600) 
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
@@ -204,16 +201,14 @@ if not df_sdm.empty:
     col_f1, col_f2, col_f3, col_f4 = st.columns(4) 
     
     with col_f1:
-        if 'JOB' in df_sdm.columns:
-            list_job = ["SEMUA JABATAN"] + list(df_sdm['JOB'].dropna().unique())
-            selected_job = st.selectbox("💼 Filter Jabatan:", list_job)
-            if selected_job != "SEMUA JABATAN": df_sdm_filtered = df_sdm_filtered[df_sdm_filtered['JOB'] == selected_job]
+        list_job = ["SEMUA JABATAN"] + list(df_sdm['JOB'].dropna().unique()) if 'JOB' in df_sdm.columns else ["SEMUA JABATAN"]
+        selected_job = st.selectbox("💼 Filter Jabatan:", list_job)
+        if selected_job != "SEMUA JABATAN": df_sdm_filtered = df_sdm_filtered[df_sdm_filtered['JOB'] == selected_job]
 
     with col_f2:
-        if 'LOKER' in df_sdm_filtered.columns:
-            list_loker = ["SEMUA LOKER"] + list(df_sdm_filtered['LOKER'].dropna().unique())
-            selected_loker = st.selectbox("📍 Filter Loker Kerja:", list_loker)
-            if selected_loker != "SEMUA LOKER": df_sdm_filtered = df_sdm_filtered[df_sdm_filtered['LOKER'] == selected_loker]
+        list_loker = ["SEMUA LOKER"] + list(df_sdm_filtered['LOKER'].dropna().unique()) if 'LOKER' in df_sdm_filtered.columns else ["SEMUA LOKER"]
+        selected_loker = st.selectbox("📍 Filter Loker Kerja:", list_loker)
+        if selected_loker != "SEMUA LOKER": df_sdm_filtered = df_sdm_filtered[df_sdm_filtered['LOKER'] == selected_loker]
 
     with col_f3:
         list_nopol = ["SEMUA NOPOL"] + list(df_asset['NOPOL (PLAT NOMOR)'].dropna().unique()) if not df_asset.empty and 'NOPOL (PLAT NOMOR)' in df_asset.columns else ["SEMUA NOPOL"]
@@ -228,14 +223,13 @@ if not df_sdm.empty:
             if nama_col_sdm: df_sdm_filtered = df_sdm_filtered[df_sdm_filtered[nama_col_sdm].astype(str).str.strip().str.lower().isin(valid_names)]
 
     with col_f4:
-        if 'NAMA' in df_sdm_filtered.columns:
-            list_nama = df_sdm_filtered['NAMA'].dropna().unique()
-            if len(list_nama) > 0:
-                selected_nama = st.selectbox("👤 Pilih Nama Karyawan:", list_nama)
-                data_karyawan_select = get_row_by_name(df_sdm_filtered, selected_nama)
-                data_asset_select = get_row_by_name(df_asset, selected_nama)
-                data_genset_select = get_row_by_name(df_genset, selected_nama)
-                data_tools_asset_select = get_row_by_name(df_tools_asset, selected_nama)
+        list_nama = df_sdm_filtered['NAMA'].dropna().unique() if 'NAMA' in df_sdm_filtered.columns else []
+        if len(list_nama) > 0:
+            selected_nama = st.selectbox("👤 Pilih Nama Karyawan:", list_nama)
+            data_karyawan_select = get_row_by_name(df_sdm_filtered, selected_nama)
+            data_asset_select = get_row_by_name(df_asset, selected_nama)
+            data_genset_select = get_row_by_name(df_genset, selected_nama)
+            data_tools_asset_select = get_row_by_name(df_tools_asset, selected_nama)
 
     st.write("---")
             
@@ -286,7 +280,7 @@ if not df_sdm.empty:
                 ada_foto_gagal = False
                 
                 if uploaded_files:
-                    with st.spinner("🚀 Sedang mengupload foto dengan kecepatan tinggi..."):
+                    with st.spinner("🚀 Sedang mengupload foto ke Cloud... (Proses super cepat)"):
                         for idx, file in enumerate(uploaded_files[:5]):
                             url_hasil = upload_image_to_server(file)
                             if url_hasil and "ERROR" not in url_hasil: img_urls[idx] = url_hasil
@@ -294,14 +288,14 @@ if not df_sdm.empty:
                                 ada_foto_gagal = True
                                 st.error(f"Peringatan Upload Foto ke-{idx+1}: {url_hasil}")
                 
-                with st.spinner("Menyimpan Laporan Teks ke Spreadsheet..."):
+                with st.spinner("Menyimpan Laporan Teks ke Google Sheets..."):
                     if save_findings_to_sheet(str(dict_karyawan.get('NIK', 'N/A')), selected_nama, info_gabungan, input_findings, *img_urls):
-                        if ada_foto_gagal: st.warning("⚠️ Laporan Teks Berhasil Masuk! Tetapi beberapa foto gagal.")
+                        if ada_foto_gagal: st.warning("⚠️ Laporan Teks Masuk, tapi beberapa foto gagal. (Cek koneksi internet)")
                         else: st.success("✅ KEREN! Laporan & Link Foto berhasil tersimpan permanen!")
                         time.sleep(2)
                         st.cache_data.clear()
                         st.rerun()
-                    else: st.error("❌ GAGAL MENYIMPAN KE GOOGLE SHEETS! Silakan cek koneksi.")
+                    else: st.error("❌ GAGAL MENYIMPAN KE GOOGLE SHEETS! Silakan cek koneksi internet.")
             else: st.warning("⚠️ Laporan perbaikan tidak boleh kosong.")
 
     st.write("---")
@@ -311,7 +305,12 @@ if not df_sdm.empty:
         "🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Riwayat Bukti Perbaikan", "📄 Fakta Integritas"
     ])
     
-    def get_clean_image_url_legacy(url):
+    def get_clean_image_url_modern(url):
+        if not url: return ""
+        # Jika dari API yang kita pakai, langsung tampilkan aslinya
+        if "telegra.ph" in url or "freeimage.host" in url or "catbox.moe" in url or "iili.io" in url:
+            return url
+        # Jika dari Google Drive (Data lama)
         match = re.search(r'([-\w]{25,})', url) 
         if match and ("drive.google" in url or "docs.google" in url):
             return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w800"
@@ -329,7 +328,7 @@ if not df_sdm.empty:
                         urls = re.findall(r'(https?://[^\s"\'\)<>]+)', cell_val)
                         if urls:
                             photos_exist = True
-                            img_url = get_clean_image_url_legacy(urls[0])
+                            img_url = get_clean_image_url_modern(urls[0])
                             html = f"""
                             <div style="background: #1e293b; padding: 12px; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: center; margin-bottom: 10px; transition: transform 0.3s;">
                                 <img src="{img_url}" style="width:100%; border-radius:8px; margin-bottom:8px;">
@@ -366,12 +365,9 @@ if not df_sdm.empty:
                         if valid_photos:
                             cols = st.columns(len(valid_photos))
                             for i, raw_url in enumerate(valid_photos):
-                                match = re.search(r'([-\w]{25,})', raw_url)
+                                clean_img = get_clean_image_url_modern(raw_url)
                                 with cols[i]:
-                                    if match and ("drive.google" in raw_url or "docs.google" in raw_url):
-                                        st.image(f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w800", use_container_width=True)
-                                    else:
-                                        if "http" in raw_url: st.image(raw_url, use_container_width=True)
+                                    st.image(clean_img, use_container_width=True)
                                     st.markdown(f'<div style="text-align:center;"><a href="{raw_url}" target="_blank" style="background: linear-gradient(135deg, #2563eb, #0ea5e9); color: white; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; display:inline-block; margin-top:5px; box-shadow: 0 4px 10px rgba(37,99,235,0.3);">🔍 Buka Foto</a></div>', unsafe_allow_html=True)
                         st.write("<br><hr style='border-color: #334155;'>", unsafe_allow_html=True)
                 else: st.info("Belum ada riwayat laporan perbaikan untuk karyawan ini.")
@@ -393,14 +389,11 @@ if not df_sdm.empty:
                     if valid_files:
                         cols = st.columns(len(valid_files))
                         for i, raw_url in enumerate(valid_files):
-                            match = re.search(r'([-\w]{25,})', raw_url)
+                            clean_img = get_clean_image_url_modern(raw_url)
                             with cols[i]:
-                                if match:
-                                    try: st.image(f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w800", use_container_width=True)
-                                    except: st.info("Dokumen PDF (Klik tombol)")
-                                    st.markdown(f'<div style="text-align:center; margin-top:10px;"><a href="{raw_url}" target="_blank" style="background: linear-gradient(135deg, #2563eb, #0ea5e9); color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; width:100%; display:inline-block; box-shadow: 0 4px 10px rgba(37,99,235,0.3);">📥 BUKA DOKUMEN</a></div>', unsafe_allow_html=True)
-                                else:
-                                    st.markdown(f'<div style="text-align:center; margin-top:10px;"><a href="{raw_url}" target="_blank" style="background: linear-gradient(135deg, #2563eb, #0ea5e9); color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; width:100%; display:inline-block; box-shadow: 0 4px 10px rgba(37,99,235,0.3);">📥 BUKA LINK FILE</a></div>', unsafe_allow_html=True)
+                                try: st.image(clean_img, use_container_width=True)
+                                except: st.info("Dokumen PDF (Klik tombol)")
+                                st.markdown(f'<div style="text-align:center; margin-top:10px;"><a href="{raw_url}" target="_blank" style="background: linear-gradient(135deg, #2563eb, #0ea5e9); color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; width:100%; display:inline-block; box-shadow: 0 4px 10px rgba(37,99,235,0.3);">📥 BUKA DOKUMEN</a></div>', unsafe_allow_html=True)
                     else: st.info("Tidak ada dokumen PDF/Foto yang terlampir.")
                     st.write("<br><hr style='border-color: #334155;'>", unsafe_allow_html=True)
             else: st.warning(f"Belum ada arsip form Fakta Integritas atas nama: {selected_nama}")
