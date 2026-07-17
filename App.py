@@ -56,7 +56,7 @@ st.markdown("""
     
     /* Input Form (Jelas dan Terbaca) */
     div[data-testid="stTextInput"] label { color: #60a5fa !important; font-weight: bold !important; letter-spacing: 1px; }
-    div[data-testid="stTextInput"] input, div[data-testid="stSelectbox"] select {
+    div[data-testid="stTextInput"] input, div[data-testid="stSelectbox"] select, div[data-testid="stTextArea"] textarea {
         border-radius: 10px !important; 
         border: 1px solid #334155 !important;
         background-color: #1e293b !important; 
@@ -64,7 +64,7 @@ st.markdown("""
         font-size: 15px !important;
         transition: all 0.3s ease;
     }
-    div[data-testid="stTextInput"] input:focus, div[data-testid="stSelectbox"] select:focus { 
+    div[data-testid="stTextInput"] input:focus, div[data-testid="stSelectbox"] select:focus, div[data-testid="stTextArea"] textarea:focus { 
         border-color: #3b82f6 !important; 
         box-shadow: 0 0 12px rgba(59, 130, 246, 0.4) !important; 
     }
@@ -165,13 +165,13 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. FUNGSI UPLOAD MENGGUNAKAN GOOGLE APPS SCRIPT (URL BARU ANDA) ---
+# --- 5. FUNGSI UPLOAD GOOGLE DRIVE (GAS WEB APP) ---
 def upload_image_to_gdrive(uploaded_file):
-    # INI ADALAH URL TERBARU YANG ANDA BERIKAN
-    GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby5I3Yz8xFqc9ZmhS8EPj6UCB9iBeEqeuil_TgAf4KkQCsFVl4HcGUVzlGwIKcEzdQB/exec"
+    # INI ADALAH URL TERBARU ANDA
+    GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby2uc0fP3dJ0-vwesuFVG-_DImf0-qaisAedFPG4H5Z5GyPnESdFSUp9N9QexgGyleP/exec"
     
     try:
-        # Kompres gambar agar lebih cepat diupload dan tidak ditolak server
+        # Kompres gambar agar lebih cepat diupload
         img = Image.open(uploaded_file).convert('RGB')
         img.thumbnail((600, 600)) 
         buf = io.BytesIO()
@@ -187,15 +187,19 @@ def upload_image_to_gdrive(uploaded_file):
         response = requests.post(GAS_WEB_APP_URL, json=payload, timeout=60)
         
         if response.status_code == 200:
-            result = response.json()
-            if result.get("status") == "success":
-                return result.get("url") # Berhasil mengembalikan URL Foto
-            else:
-                return f"ERROR: {result.get('message')}"
+            try:
+                result = response.json()
+                if result.get("status") == "success":
+                    return result.get("url")
+                else:
+                    return f"ERROR_SCRIPT: {result.get('message')}"
+            except Exception:
+                # Menangkap error jika Google mereturn HTML bukan JSON
+                return f"ERROR_JSON: Pastikan Web App Anda di-deploy dengan 'Execute as: Me' dan 'Who has access: Anyone'."
         else:
-            return f"ERROR_HTTP: {response.status_code}"
+            return f"ERROR_HTTP: {response.status_code} - Server menolak koneksi."
     except Exception as e:
-        return f"ERROR_NETWORK: {e}"
+        return f"ERROR_NETWORK: {str(e)} - Koneksi terputus."
 
 # --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
 def get_gspread_client():
