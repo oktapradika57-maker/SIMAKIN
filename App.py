@@ -116,7 +116,7 @@ with st.sidebar:
 # --- 5. FUNGSI UPLOAD FOTO KE GOOGLE DRIVE VIA APPS SCRIPT ---
 def upload_image_to_gdrive(uploaded_file):
     # INI ADALAH URL APPS SCRIPT ANDA YANG TERAKHIR
-    GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzkNRhVe-T2L-ol4bBnPK-CiJp189GH9F4PutYnUszIZ1lLV_RxWcX124UmU16Aa9M4/exec"
+    GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby4vAoYjheWqxzFeBK9qGaYPjy0fwFKqU330adHyCeH_85Im2OAQzsNRTr5stZzirCQ/exec"
     
     try:
         # Kompres agar ringan tapi tetap tajam (1200px)
