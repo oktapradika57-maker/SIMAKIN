@@ -15,7 +15,7 @@ import json
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
 
-# --- 2. CUSTOM CSS (Desain 3D Login & Premium UI Asli) ---
+# --- 2. CUSTOM CSS ---
 st.markdown("""
 <style>
     .stApp { background-color: #0e1117; }
@@ -112,24 +112,22 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. FUNGSI UPLOAD GOOGLE DRIVE NATIVE PYTHON (BYPASS APPS SCRIPT) ---
+# --- 5. FUNGSI UPLOAD GOOGLE DRIVE NATIVE PYTHON ---
 def upload_image_to_gdrive(uploaded_file):
     try:
-        # Panggil Secret dan buka hak akses penuh ke Drive
         creds_dict = st.secrets["gcp_service_account"]
         scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scopes)
         access_token = creds.get_access_token().access_token
         
+        # JIKA ANDA SUDAH MEMBUAT DRIVE BERSAMA (SHARED DRIVE), GANTI FOLDER ID INI:
         folder_id = "165qUkoKMTUzcVUP4HSTwWpVuoY5mkE9d"
         
-        # Kompres Gambar
         img = Image.open(uploaded_file).convert('RGB')
         img.thumbnail((800, 800))
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=75)
         
-        # Payload API Google Drive Langsung
         metadata = {"name": f"Bukti_{int(time.time())}.jpg", "parents": [folder_id]}
         files = {
             'metadata': ('metadata', json.dumps(metadata), 'application/json; charset=UTF-8'),
@@ -137,26 +135,24 @@ def upload_image_to_gdrive(uploaded_file):
         }
         headers = {"Authorization": f"Bearer {access_token}"}
         
-        # Eksekusi Upload
+        # Parameter supportsAllDrives=true DITAMBAHKAN AGAR BISA UPLOAD KE DRIVE BERSAMA
         res = requests.post(
-            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true",
             headers=headers, files=files, timeout=60
         )
         
         if res.status_code == 200:
             file_id = res.json().get('id')
-            # Buka izin gambar agar publik bisa lihat
             perm_headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
-            requests.post(f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions", 
+            requests.post(f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions?supportsAllDrives=true", 
                           headers=perm_headers, json={"role": "reader", "type": "anyone"})
             
             return f"https://drive.google.com/file/d/{file_id}/view"
         else:
-            st.error(f"❌ Tolong pastikan Email Service Account sudah jadi EDITOR di Folder Drive Anda. Detail: {res.text}")
-            return None
+            # Jika masih quota error, tampilkan detail, tapi proses tetep lanjut ke teks.
+            return f"ERROR_QUOTA: {res.text}"
     except Exception as e:
-        st.error(f"❌ Gagal Terhubung: {e}")
-        return None
+        return f"ERROR_NETWORK: {e}"
 
 # --- 6. FUNGSI MENYIMPAN DATA KE GOOGLE SHEETS ---
 def get_gspread_client():
@@ -182,7 +178,7 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
         return True
     except: return False
 
-# --- 7. FUNGSI LOAD DATA UTAMA (CEPAT/NGEBUT) ---
+# --- 7. FUNGSI LOAD DATA UTAMA ---
 @st.cache_data(ttl=600) 
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
@@ -218,7 +214,7 @@ if not df_sdm.empty:
     selected_nama = "-"
     
     st.markdown("### 🔍 Filter Pencarian Karyawan")
-    col_f1, col_f2, col_f3 = st.columns(3)
+    col_f1, col_f2, col_f3, col_f4 = st.columns(4) # Menjadi 4 Kolom untuk Filter NOPOL
     
     with col_f1:
         if 'JOB' in df_sdm.columns:
@@ -233,6 +229,23 @@ if not df_sdm.empty:
             if selected_loker != "SEMUA LOKER": df_sdm_filtered = df_sdm_filtered[df_sdm_filtered['LOKER'] == selected_loker]
 
     with col_f3:
+        if not df_asset.empty and 'NOPOL (PLAT NOMOR)' in df_asset.columns:
+            list_nopol = ["SEMUA NOPOL"] + list(df_asset['NOPOL (PLAT NOMOR)'].dropna().unique())
+            selected_nopol = st.selectbox("🚗 Filter Plat (NOPOL):", list_nopol)
+        else:
+            selected_nopol = "SEMUA NOPOL"
+            
+    # Menerapkan Filter NOPOL untuk mempersempit Pilihan NAMA
+    if selected_nopol != "SEMUA NOPOL":
+        asset_filtered = df_asset[df_asset['NOPOL (PLAT NOMOR)'] == selected_nopol]
+        nama_col_asset = next((col for col in asset_filtered.columns if "NAMA" in str(col).upper()), None)
+        if nama_col_asset:
+            valid_names = asset_filtered[nama_col_asset].astype(str).str.strip().str.lower().unique()
+            nama_col_sdm = next((col for col in df_sdm_filtered.columns if "NAMA" in str(col).upper()), None)
+            if nama_col_sdm:
+                df_sdm_filtered = df_sdm_filtered[df_sdm_filtered[nama_col_sdm].astype(str).str.strip().str.lower().isin(valid_names)]
+
+    with col_f4:
         if 'NAMA' in df_sdm_filtered.columns:
             list_nama = df_sdm_filtered['NAMA'].dropna().unique()
             if len(list_nama) > 0:
@@ -303,29 +316,38 @@ if not df_sdm.empty:
         if st.button("🚀 Push Update Data ke Server", use_container_width=True):
             if input_findings:
                 img_urls = ["", "", "", "", ""]
-                upload_berhasil = True
+                ada_foto_gagal = False
+                pesan_gagal = ""
                 
+                # Coba Upload Foto (Jika Ada)
                 if uploaded_files:
-                    with st.spinner("🚀 Mengupload foto ke Google Drive melalui sistem Python..."):
+                    with st.spinner("🚀 Mengupload foto..."):
                         for idx, file in enumerate(uploaded_files[:5]):
                             url_hasil = upload_image_to_gdrive(file)
-                            if url_hasil: 
+                            if url_hasil and not url_hasil.startswith("ERROR"): 
                                 img_urls[idx] = url_hasil
                             else: 
-                                upload_berhasil = False
-                                break 
+                                ada_foto_gagal = True
+                                pesan_gagal = url_hasil if url_hasil else "Gagal tidak diketahui"
                 
-                if upload_berhasil:
-                    with st.spinner("Menyimpan Laporan ke Spreadsheet..."):
-                        sukses_simpan = save_findings_to_sheet(
-                            str(dict_karyawan.get('NIK', 'N/A')), str(dict_karyawan.get('NAMA', 'N/A')),
-                            info_gabungan, input_findings, img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
-                        )
-                        if sukses_simpan:
-                            st.success("✅ Laporan & Foto berhasil tersimpan permanen!")
-                            time.sleep(1.5)
-                            st.cache_data.clear()
-                            st.rerun()
+                # BAGIAN TERPENTING: PASTIKAN DATA TEKS TETAP DISIMPAN WALAUPUN FOTO GAGAL!
+                with st.spinner("Menyimpan Laporan Teks ke Spreadsheet..."):
+                    sukses_simpan = save_findings_to_sheet(
+                        str(dict_karyawan.get('NIK', 'N/A')), str(dict_karyawan.get('NAMA', 'N/A')),
+                        info_gabungan, input_findings, img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
+                    )
+                    
+                    if sukses_simpan:
+                        if ada_foto_gagal:
+                            st.warning("⚠️ LAPORAN TEKS BERHASIL DISIMPAN KE SHEET! Tetapi Foto gagal masuk ke Drive (Penyebab: Quota Service Account Google Workspace).")
+                        else:
+                            st.success("✅ KEREN! Laporan & Foto berhasil tersimpan permanen!")
+                        
+                        time.sleep(2)
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error("❌ GAGAL MENYIMPAN KE GOOGLE SHEETS! Silakan cek koneksi atau izin Sheet Anda.")
             else:
                 st.warning("⚠️ Ketik dulu Laporan Perbaikannya ya.")
 
