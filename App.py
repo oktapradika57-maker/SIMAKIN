@@ -112,16 +112,20 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. FUNGSI UPLOAD GOOGLE DRIVE NATIVE PYTHON ---
+# --- 5. FUNGSI UPLOAD GOOGLE DRIVE ---
 def upload_image_to_gdrive(uploaded_file):
+    
+    # ⚠️⚠️⚠️ GANTI KODE DI BAWAH INI DENGAN ID FOLDER YANG BARU ⚠️⚠️⚠️
+    folder_id = "165qUkoKMTUzcVUP4HSTwWpVuoY5mkE9d"
+    
+    if folder_id == "165qUkoKMTUzcVUP4HSTwWpVuoY5mkE9d":
+        return "ERROR: Tolong masukkan ID Folder Anda ke baris 111 di kodingan!"
+
     try:
         creds_dict = st.secrets["gcp_service_account"]
         scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scopes)
         access_token = creds.get_access_token().access_token
-        
-        # JIKA ANDA SUDAH MEMBUAT DRIVE BERSAMA (SHARED DRIVE), GANTI FOLDER ID INI:
-        folder_id = "165qUkoKMTUzcVUP4HSTwWpVuoY5mkE9d"
         
         img = Image.open(uploaded_file).convert('RGB')
         img.thumbnail((800, 800))
@@ -135,7 +139,7 @@ def upload_image_to_gdrive(uploaded_file):
         }
         headers = {"Authorization": f"Bearer {access_token}"}
         
-        # Parameter supportsAllDrives=true DITAMBAHKAN AGAR BISA UPLOAD KE DRIVE BERSAMA
+        # Eksekusi Upload ke Drive Bersama (Shared Drive)
         res = requests.post(
             "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true",
             headers=headers, files=files, timeout=60
@@ -144,12 +148,16 @@ def upload_image_to_gdrive(uploaded_file):
         if res.status_code == 200:
             file_id = res.json().get('id')
             perm_headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
-            requests.post(f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions?supportsAllDrives=true", 
+            
+            # Membuka gembok agar bisa dilihat publik
+            perm_res = requests.post(f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions?supportsAllDrives=true", 
                           headers=perm_headers, json={"role": "reader", "type": "anyone"})
+            
+            if perm_res.status_code != 200:
+                st.warning(f"Foto masuk ke Drive, tapi sistem Perusahaan Anda melarang akses publik. Foto mungkin blank di galeri.")
             
             return f"https://drive.google.com/file/d/{file_id}/view"
         else:
-            # Jika masih quota error, tampilkan detail, tapi proses tetep lanjut ke teks.
             return f"ERROR_QUOTA: {res.text}"
     except Exception as e:
         return f"ERROR_NETWORK: {e}"
@@ -214,7 +222,7 @@ if not df_sdm.empty:
     selected_nama = "-"
     
     st.markdown("### 🔍 Filter Pencarian Karyawan")
-    col_f1, col_f2, col_f3, col_f4 = st.columns(4) # Menjadi 4 Kolom untuk Filter NOPOL
+    col_f1, col_f2, col_f3, col_f4 = st.columns(4) 
     
     with col_f1:
         if 'JOB' in df_sdm.columns:
@@ -235,7 +243,6 @@ if not df_sdm.empty:
         else:
             selected_nopol = "SEMUA NOPOL"
             
-    # Menerapkan Filter NOPOL untuk mempersempit Pilihan NAMA
     if selected_nopol != "SEMUA NOPOL":
         asset_filtered = df_asset[df_asset['NOPOL (PLAT NOMOR)'] == selected_nopol]
         nama_col_asset = next((col for col in asset_filtered.columns if "NAMA" in str(col).upper()), None)
@@ -319,9 +326,8 @@ if not df_sdm.empty:
                 ada_foto_gagal = False
                 pesan_gagal = ""
                 
-                # Coba Upload Foto (Jika Ada)
                 if uploaded_files:
-                    with st.spinner("🚀 Mengupload foto..."):
+                    with st.spinner("🚀 Mengupload foto... (Mohon tunggu)"):
                         for idx, file in enumerate(uploaded_files[:5]):
                             url_hasil = upload_image_to_gdrive(file)
                             if url_hasil and not url_hasil.startswith("ERROR"): 
@@ -329,9 +335,9 @@ if not df_sdm.empty:
                             else: 
                                 ada_foto_gagal = True
                                 pesan_gagal = url_hasil if url_hasil else "Gagal tidak diketahui"
+                                st.error(f"Upload foto ke-{idx+1} gagal: {pesan_gagal}")
                 
-                # BAGIAN TERPENTING: PASTIKAN DATA TEKS TETAP DISIMPAN WALAUPUN FOTO GAGAL!
-                with st.spinner("Menyimpan Laporan Teks ke Spreadsheet..."):
+                with st.spinner("Menyimpan Laporan ke Spreadsheet..."):
                     sukses_simpan = save_findings_to_sheet(
                         str(dict_karyawan.get('NIK', 'N/A')), str(dict_karyawan.get('NAMA', 'N/A')),
                         info_gabungan, input_findings, img_urls[0], img_urls[1], img_urls[2], img_urls[3], img_urls[4]
@@ -339,15 +345,15 @@ if not df_sdm.empty:
                     
                     if sukses_simpan:
                         if ada_foto_gagal:
-                            st.warning("⚠️ LAPORAN TEKS BERHASIL DISIMPAN KE SHEET! Tetapi Foto gagal masuk ke Drive (Penyebab: Quota Service Account Google Workspace).")
+                            st.warning("⚠️ Laporan teks tersimpan, tapi foto tidak masuk ke Sheet.")
                         else:
-                            st.success("✅ KEREN! Laporan & Foto berhasil tersimpan permanen!")
+                            st.success("✅ Laporan & Link Foto berhasil tersimpan permanen!")
                         
                         time.sleep(2)
                         st.cache_data.clear()
                         st.rerun()
                     else:
-                        st.error("❌ GAGAL MENYIMPAN KE GOOGLE SHEETS! Silakan cek koneksi atau izin Sheet Anda.")
+                        st.error("❌ GAGAL MENYIMPAN KE GOOGLE SHEETS! Silakan cek koneksi.")
             else:
                 st.warning("⚠️ Ketik dulu Laporan Perbaikannya ya.")
 
@@ -442,10 +448,9 @@ if not df_sdm.empty:
             else: st.error("Kolom 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
         else: st.info("Belum ada data riwayat perbaikan yang sesuai.")
 
-    # --- TAB 5: FAKTA INTEGRITAS DARI GOOGLE FORM (SISTEM PENCARIAN SAPU JAGAT) ---
+    # --- TAB 5: FAKTA INTEGRITAS DARI GOOGLE FORM ---
     with tab_fakta:
         if not df_fakta.empty and selected_nama != "-":
-            # Sistem Pencarian Super Agresif: Cari nama karyawan di seluruh kolom baris Excel!
             matched_fakta = df_fakta[df_fakta.apply(lambda row: row.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)]
             
             if not matched_fakta.empty:
@@ -456,7 +461,6 @@ if not df_sdm.empty:
                     st.markdown(f"**📅 Diupload pada: {tanggal}**")
                     
                     valid_files = []
-                    # Scan seluruh data dalam baris tersebut untuk mencari link Drive Google Form
                     for col_name in matched_fakta.columns:
                         val = str(row[col_name]).strip()
                         if "drive.google.com" in val:
@@ -473,7 +477,6 @@ if not df_sdm.empty:
                                 if match:
                                     file_id = match.group(1)
                                     safe_image_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
-                                    # Coba render thumbnail dokumen
                                     try:
                                         st.image(safe_image_url, use_container_width=True)
                                     except:
