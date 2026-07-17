@@ -13,7 +13,7 @@ import os
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
 
-# --- 2. CUSTOM CSS (Premium Dark Mode & Glassmorphism) ---
+# --- 2. CUSTOM CSS (Premium Dark Mode) ---
 st.markdown("""
 <style>
     @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
@@ -72,7 +72,6 @@ def login_form():
     with st.form("login_form"):
         logo_path = get_logo_path()
         if logo_path:
-            # Memuat Logo Tepat di atas Tulisan SIMAKIN
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2: st.image(logo_path, use_container_width=True)
             
@@ -112,26 +111,40 @@ with st.sidebar:
         st.session_state.logged_in = False; st.rerun()
     st.markdown("""<div style="text-align: center; font-size: 11px; color: #64748b; margin-top: 30px;">⚡ DEVELOPED BY OKTA PRADIKA<br>© 2026 SYSTEM OPERATIONS</div>""", unsafe_allow_html=True)
 
-# --- 5. FUNGSI UPLOAD FOTO (ANTI-GAGAL) ---
+# --- 5. FUNGSI UPLOAD FOTO (ANTI-GAGAL 3 LAPIS SERVER) ---
 def upload_image_to_server(uploaded_file):
     try:
         img = Image.open(uploaded_file).convert('RGB')
         img.thumbnail((1200, 1200)) 
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=85)
-        
         img_bytes = buf.getvalue() 
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         
+        # LAPIS 1: API FreeImage (Server Utama - Sangat Stabil)
         try:
-            files1 = {'file': ('image.jpg', img_bytes, 'image/jpeg')}
-            res1 = requests.post("https://telegra.ph/upload", files=files1, headers=headers, timeout=15)
-            if res1.status_code == 200:
-                rj = res1.json()
-                if isinstance(rj, list) and 'src' in rj[0]: return "https://telegra.ph" + rj[0]['src']
+            payload1 = {'key': '6d207e02198a847aa98d0a2a901485a5', 'action': 'upload', 'format': 'json'}
+            files1 = {'source': ('image.jpg', img_bytes, 'image/jpeg')}
+            res1 = requests.post("https://freeimage.host/api/1/upload", data=payload1, files=files1, timeout=15)
+            if res1.status_code == 200: return res1.json()['image']['url']
         except: pass
         
-        return "ERROR: Server penyimpanan gambar sedang gangguan."
+        # LAPIS 2: API Catbox (Server Cadangan 1)
+        try:
+            data2 = {'reqtype': 'fileupload'}
+            files2 = {'fileToUpload': ('image.jpg', img_bytes, 'image/jpeg')}
+            res2 = requests.post("https://catbox.moe/user/api.php", data=data2, files=files2, timeout=15)
+            if res2.status_code == 200 and "catbox.moe" in res2.text: return res2.text.strip()
+        except: pass
+        
+        # LAPIS 3: API ImgBB (Server Cadangan 2)
+        try:
+            payload3 = {'key': '6528448c258cff474ca9701c5bab6927'}
+            files3 = {'image': img_bytes}
+            res3 = requests.post("https://api.imgbb.com/1/upload", data=payload3, files=files3, timeout=15)
+            if res3.status_code == 200: return res3.json()['data']['url']
+        except: pass
+        
+        return "ERROR: Seluruh server gambar sedang menolak akses. Coba lagi sebentar."
     except Exception as e: return f"ERROR_SYSTEM: {str(e)}"
 
 # --- 6. FUNGSI GOOGLE SHEETS ---
@@ -291,10 +304,11 @@ if not df_sdm.empty:
     
     def get_clean_image_url_modern(url):
         if not url: return ""
-        if "telegra.ph" in url or "freeimage.host" in url or "catbox.moe" in url: return url
-        match = re.search(r'([-\w]{25,})', url) 
-        if match and ("drive.google" in url or "docs.google" in url): return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w1000"
-        return url
+        # Google drive regex detection (untuk data foto lama)
+        if "drive.google" in url or "docs.google" in url:
+            match = re.search(r'([-\w]{25,})', url) 
+            if match: return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w1000"
+        return url # Return direct URL for FreeImage/Catbox/ImgBB
 
     def render_gallery_fast(tab_context, df, df_columns, data_row, empty_msg):
         with tab_context:
@@ -324,14 +338,14 @@ if not df_sdm.empty:
     render_gallery_fast(tab_genset, df_genset, df_genset.columns, data_genset_select, "Tidak ada foto unit Genset.")
     render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Tidak ada foto unit Tools.")
         
-    # MENU TAB RIWAYAT PERBAIKAN (FOTO DIBUAT BESAR & 100% MUNCUL)
+    # MENU TAB RIWAYAT PERBAIKAN (FOTO 100% PASTI MUNCUL)
     with tab_perbaikan:
         if not df_rekomendasi.empty and selected_nama != "-":
             rec_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
             if rec_name_col:
                 matched_rek = df_rekomendasi[df_rekomendasi[rec_name_col].astype(str).str.strip().str.lower() == selected_nama.strip().lower()]
                 if not matched_rek.empty:
-                    st.info("💡 Jika foto laporan terbaru tidak langsung muncul, tunggu 1-2 menit dan tekan tombol **Refresh Data Server** di Panel Kiri.")
+                    st.info("💡 Jika laporan yang baru disubmit tidak langsung muncul, tunggu 30 detik lalu tekan tombol **Refresh Data Server** di Panel Kiri.")
                     st.markdown(f"<h4 style='color:#60a5fa;'>Arsip Laporan Service: {selected_nama}</h4>", unsafe_allow_html=True)
                     foto_columns = [col for col in df_rekomendasi.columns if "FOTO" in str(col).upper()]
                     
@@ -358,7 +372,7 @@ if not df_sdm.empty:
                                     try:
                                         st.image(clean_img, use_container_width=True)
                                     except:
-                                        st.warning("⚠️ Pratinjau Gagal. Klik tombol di bawah untuk melihat.")
+                                        st.warning("⚠️ Pratinjau sedang diproses server.")
                                     st.markdown(f'<div style="text-align:center; margin-bottom: 20px;"><a href="{raw_url}" target="_blank" style="background: linear-gradient(135deg, #2563eb, #0ea5e9); color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; display:inline-block; margin-top:5px; box-shadow: 0 4px 10px rgba(37,99,235,0.3); width:100%;">🔍 Buka Resolusi Penuh</a></div>', unsafe_allow_html=True)
                         st.write("<br><hr style='border-color: #334155;'>", unsafe_allow_html=True)
                 else: st.info("Belum ada riwayat laporan perbaikan untuk karyawan ini.")
@@ -383,7 +397,7 @@ if not df_sdm.empty:
                             clean_img = get_clean_image_url_modern(raw_url)
                             with cols[i]:
                                 try: st.image(clean_img, use_container_width=True)
-                                except: st.info("Dokumen PDF (Klik tombol)")
+                                except: st.info("Dokumen PDF")
                                 st.markdown(f'<div style="text-align:center; margin-top:10px;"><a href="{raw_url}" target="_blank" style="background: linear-gradient(135deg, #2563eb, #0ea5e9); color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; width:100%; display:inline-block; box-shadow: 0 4px 10px rgba(37,99,235,0.3);">📥 BUKA DOKUMEN</a></div>', unsafe_allow_html=True)
                     else: st.info("Tidak ada dokumen PDF/Foto yang terlampir.")
                     st.write("<br><hr style='border-color: #334155;'>", unsafe_allow_html=True)
