@@ -11,7 +11,7 @@ import io
 import os
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="expanded")
 
 # --- 2. CUSTOM CSS (Premium Dark Mode & Glassmorphism) ---
 st.markdown("""
@@ -59,11 +59,11 @@ if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 def login_form():
     st.markdown("<br><br>", unsafe_allow_html=True)
     with st.form("login_form"):
-        st.markdown('<h1 style="color:#60a5fa; text-align:center; font-weight:900; margin-bottom:0px;">⚡ SYSTEM PORTAL</h1>', unsafe_allow_html=True)
-        st.markdown('<p style="text-align:center; font-size:13px; margin-bottom:30px;">Operational, Asset & Genset | Reg Kalimantan</p>', unsafe_allow_html=True)
+        st.markdown('<h1 style="color:#60a5fa; text-align:center; font-weight:900; margin-bottom:0px;">⚡SIMAKIN</h1>', unsafe_allow_html=True)
+        st.markdown('<p style="text-align:center; font-size:13px; margin-bottom:30px;">System Monitoring Asset Kinarya | Reg Kalimantan</p>', unsafe_allow_html=True)
         user = st.text_input("👤 USERNAME", placeholder="Ketik username...")
         pwd = st.text_input("🔑 PASSWORD", type="password", placeholder="Ketik password...")
-        submit = st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True)
+        submit = st.form_submit_button("🚀 MASUK SIMAKIN DIJAMIN MAKIN YAKIN", use_container_width=True)
     if submit:
         if user == "SIMAKINKUT" and pwd == "2026KUTPOSITIF":
             st.session_state.logged_in = True; st.rerun()
@@ -86,7 +86,7 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("<h2 style='text-align: center; color: #60a5fa;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #60a5fa;'>⚙️ SIMAKIN PANEL</h2>", unsafe_allow_html=True)
     
     # TOMBOL MENU BARU (Jelajah lebih jauh)
     st.markdown("""
@@ -99,10 +99,10 @@ with st.sidebar:
     
     st.info("👤 **Aktif:** SIMAKINKUT")
     st.markdown("---")
-    if st.button("🔄 Refresh Data Server", use_container_width=True):
+    if st.button("🔄 Refresh Biar Makin Seger", use_container_width=True):
         st.cache_data.clear(); st.rerun()
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🚪 Keluar Sistem", use_container_width=True):
+    if st.button("🚪 Yakin Keluar SIMAKIN", use_container_width=True):
         st.session_state.logged_in = False; st.rerun()
     st.markdown("""<div style="text-align: center; font-size: 11px; color: #64748b; margin-top: 30px;">⚡ DEVELOPED BY OKTA PRADIKA<br>© 2026 SYSTEM OPERATIONS</div>""", unsafe_allow_html=True)
 
@@ -186,7 +186,7 @@ def get_row_by_name(df, target_name):
     return matched.iloc[0] if not matched.empty else None
 
 # --- 8. DASHBOARD UTAMA ---
-st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET | REG KALIMANTAN</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">🚀 SYSTEM MONITORING ASSET KINARYA | SIMAKIN REG KALIMANTAN</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
     df_sdm_filtered = df_sdm.copy()
