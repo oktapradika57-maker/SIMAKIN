@@ -168,7 +168,7 @@ with st.sidebar:
 # --- 5. FUNGSI UPLOAD GOOGLE DRIVE (GAS WEB APP) ---
 def upload_image_to_gdrive(uploaded_file):
     # INI ADALAH URL TERBARU ANDA
-    GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby2uc0fP3dJ0-vwesuFVG-_DImf0-qaisAedFPG4H5Z5GyPnESdFSUp9N9QexgGyleP/exec"
+    GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxLBMNiTNqPaWqFkPi-vif_JLRQQcjzZX_emG_96UZQBKdF6vYtR5uutaUUrVEqvC9YHQ/exec"
     
     try:
         # Kompres gambar agar lebih cepat diupload
