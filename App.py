@@ -15,18 +15,19 @@ import json
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
 
-# --- 2. CUSTOM CSS ---
+# --- 2. CUSTOM CSS (Desain Happy, Cerah, & Profesional - Light Blue Theme) ---
 st.markdown("""
 <style>
-    .stApp { background-color: #0e1117; }
+    /* Background Utama */
+    .stApp { background-color: #f4f7f6; color: #2b2b2b; }
     
+    /* Box Login */
     div[data-testid="stForm"] {
-        background: linear-gradient(145deg, rgba(30, 32, 40, 0.8), rgba(15, 15, 20, 0.9)) !important;
-        backdrop-filter: blur(20px) !important;
-        border: 1px solid rgba(255, 82, 82, 0.4) !important;
+        background: #ffffff !important;
+        border: 1px solid #e3f2fd !important;
         padding: 40px !important;
         border-radius: 20px !important;
-        box-shadow: 0px 20px 40px rgba(0,0,0,0.8), inset 0px 0px 15px rgba(255, 82, 82, 0.1) !important;
+        box-shadow: 0px 15px 35px rgba(21, 101, 192, 0.1) !important;
         max-width: 450px !important;
         margin: 50px auto !important;
         transform: perspective(1000px) rotateX(2deg) translateY(0);
@@ -35,34 +36,44 @@ st.markdown("""
     }
     div[data-testid="stForm"]:hover {
         transform: perspective(1000px) rotateX(0deg) translateY(-5px);
-        box-shadow: 0px 30px 50px rgba(255, 82, 82, 0.3), inset 0px 0px 20px rgba(255, 82, 82, 0.2) !important;
+        box-shadow: 0px 25px 45px rgba(21, 101, 192, 0.15) !important;
     }
     @keyframes float3D {
-        0% { transform: perspective(1000px) rotateX(2deg) translateY(0px); }
-        50% { transform: perspective(1000px) rotateX(4deg) translateY(-8px); }
-        100% { transform: perspective(1000px) rotateX(2deg) translateY(0px); }
+        0% { transform: perspective(1000px) rotateX(1deg) translateY(0px); }
+        50% { transform: perspective(1000px) rotateX(2deg) translateY(-5px); }
+        100% { transform: perspective(1000px) rotateX(1deg) translateY(0px); }
     }
-    div[data-testid="stTextInput"] label { color: #ff5252 !important; font-weight: bold !important; letter-spacing: 1px; }
+    
+    /* Input Form */
+    div[data-testid="stTextInput"] label { color: #1565c0 !important; font-weight: bold !important; letter-spacing: 1px; }
     div[data-testid="stTextInput"] input {
-        border-radius: 10px !important; border: 1px solid rgba(255, 82, 82, 0.3) !important;
-        background-color: rgba(0,0,0,0.4) !important; color: white !important; font-size: 16px !important;
+        border-radius: 10px !important; border: 1px solid #90caf9 !important;
+        background-color: #ffffff !important; color: #333333 !important; font-size: 16px !important;
         transition: all 0.3s ease;
     }
-    div[data-testid="stTextInput"] input:focus { border-color: #ff5252 !important; box-shadow: 0 0 15px rgba(255, 82, 82, 0.5) !important; }
+    div[data-testid="stTextInput"] input:focus { border-color: #1e88e5 !important; box-shadow: 0 0 10px rgba(30, 136, 229, 0.2) !important; }
+    
+    /* Tombol Utama */
     button[kind="primaryFormSubmit"], .stButton>button { 
-        background: linear-gradient(45deg, #ff5252, #9a0007) !important; border: none !important; border-radius: 10px !important; 
+        background: linear-gradient(45deg, #42a5f5, #1565c0) !important; border: none !important; border-radius: 10px !important; 
         color: white !important; font-size: 16px !important; font-weight: bold !important; padding: 10px 0 !important; 
         transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; 
-        box-shadow: 0 8px 20px rgba(229, 57, 53, 0.4) !important; text-transform: uppercase; letter-spacing: 1.5px;
+        box-shadow: 0 8px 15px rgba(30, 136, 229, 0.3) !important; text-transform: uppercase; letter-spacing: 1.5px;
     }
     button[kind="primaryFormSubmit"]:hover, .stButton>button:hover { 
-        transform: translateY(-4px) scale(1.03) !important; box-shadow: 0 15px 30px rgba(229, 57, 53, 0.7) !important;
+        transform: translateY(-3px) scale(1.02) !important; box-shadow: 0 12px 25px rgba(30, 136, 229, 0.4) !important;
     }
+    
+    /* Header Besar */
     .header-style {
-        background: linear-gradient(135deg, #d32f2f 0%, #9a0007 100%); padding: 15px; border-radius: 12px; 
+        background: linear-gradient(135deg, #1e88e5 0%, #0d47a1 100%); padding: 15px; border-radius: 12px; 
         color: white; font-weight: 800; font-size: 24px; text-align: center; 
-        box-shadow: 0 10px 20px rgba(211, 47, 47, 0.3); margin-bottom: 25px; border: 1px solid #ff6659;
+        box-shadow: 0 10px 20px rgba(13, 71, 161, 0.2); margin-bottom: 25px; border: 1px solid #42a5f5;
     }
+    
+    /* Ubah warna teks Markdown umum agar cocok dengan tema terang */
+    h3, h4 { color: #1565c0 !important; }
+    .stMarkdown p { color: #455a64; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -73,8 +84,8 @@ if 'logged_in' not in st.session_state:
 def login_form():
     st.markdown("<br><br>", unsafe_allow_html=True)
     with st.form("login_form"):
-        st.markdown('<h1 style="color:#ff5252; text-align:center; font-weight:900; letter-spacing:2px; margin-bottom:0px;">⚡ SYSTEM PORTAL</h1>', unsafe_allow_html=True)
-        st.markdown('<p style="color:#b0bec5; text-align:center; font-size:13px; margin-bottom:30px; letter-spacing:1px; text-transform:uppercase;">Operational, Asset & Genset | Reg Kalimantan</p>', unsafe_allow_html=True)
+        st.markdown('<h1 style="color:#1565c0; text-align:center; font-weight:900; letter-spacing:2px; margin-bottom:0px;">⚡ SYSTEM PORTAL</h1>', unsafe_allow_html=True)
+        st.markdown('<p style="color:#546e7a; text-align:center; font-size:13px; margin-bottom:30px; letter-spacing:1px; text-transform:uppercase;">Operational, Asset & Genset | Reg Kalimantan</p>', unsafe_allow_html=True)
         user = st.text_input("👤 USERNAME", placeholder="Ketik username Anda...")
         pwd = st.text_input("🔑 PASSWORD", type="password", placeholder="Ketik password Anda...")
         st.markdown("<br>", unsafe_allow_html=True)
@@ -93,7 +104,7 @@ if not st.session_state.logged_in:
 
 # --- 4. SIDEBAR MENU & FOOTER ---
 with st.sidebar:
-    st.markdown("<h2 style='text-align: center; color: #ff5252;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #1565c0;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     st.info("👤 **Aktif:** SIMAKINKUT")
     st.markdown("---")
     if st.button("🔄 Refresh Data Server", use_container_width=True):
@@ -106,26 +117,28 @@ with st.sidebar:
         
     st.markdown("---")
     st.markdown("""
-    <div style="text-align: center; font-size: 11px; color: #7f8c8d; letter-spacing: 1px; margin-top: 20px;">
+    <style>
+        .footer-sidebar {
+            text-align: center; font-size: 11px; color: #90a4ae; letter-spacing: 1px; margin-top: 20px; transition: all 0.3s ease;
+        }
+        .footer-sidebar:hover { color: #1565c0; cursor: default; }
+    </style>
+    <div class="footer-sidebar">
         ⚡ DEVELOPED BY OKTA PRADIKA<br>
         © 2026 SYSTEM OPERATIONS
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. FUNGSI UPLOAD GOOGLE DRIVE ---
+# --- 5. FUNGSI UPLOAD GOOGLE DRIVE NATIVE PYTHON ---
 def upload_image_to_gdrive(uploaded_file):
-    
-    # ⚠️⚠️⚠️ GANTI KODE DI BAWAH INI DENGAN ID FOLDER YANG BARU ⚠️⚠️⚠️
-    folder_id = "165qUkoKMTUzcVUP4HSTwWpVuoY5mkE9d"
-    
-    if folder_id == "165qUkoKMTUzcVUP4HSTwWpVuoY5mkE9d":
-        return "ERROR: Tolong masukkan ID Folder Anda ke baris 111 di kodingan!"
-
     try:
         creds_dict = st.secrets["gcp_service_account"]
         scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scopes)
         access_token = creds.get_access_token().access_token
+        
+        # ID FOLDER SUDAH DIMASUKKAN SECARA PERMANEN
+        folder_id = "165qUkoKMTUzcVUP4HSTwWpVuoY5mkE9d"
         
         img = Image.open(uploaded_file).convert('RGB')
         img.thumbnail((800, 800))
@@ -150,11 +163,8 @@ def upload_image_to_gdrive(uploaded_file):
             perm_headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
             
             # Membuka gembok agar bisa dilihat publik
-            perm_res = requests.post(f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions?supportsAllDrives=true", 
+            requests.post(f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions?supportsAllDrives=true", 
                           headers=perm_headers, json={"role": "reader", "type": "anyone"})
-            
-            if perm_res.status_code != 200:
-                st.warning(f"Foto masuk ke Drive, tapi sistem Perusahaan Anda melarang akses publik. Foto mungkin blank di galeri.")
             
             return f"https://drive.google.com/file/d/{file_id}/view"
         else:
@@ -327,7 +337,7 @@ if not df_sdm.empty:
                 pesan_gagal = ""
                 
                 if uploaded_files:
-                    with st.spinner("🚀 Mengupload foto... (Mohon tunggu)"):
+                    with st.spinner("🚀 Mengupload foto... (Mohon tunggu, bisa memakan waktu hingga 1 menit)"):
                         for idx, file in enumerate(uploaded_files[:5]):
                             url_hasil = upload_image_to_gdrive(file)
                             if url_hasil and not url_hasil.startswith("ERROR"): 
@@ -345,7 +355,7 @@ if not df_sdm.empty:
                     
                     if sukses_simpan:
                         if ada_foto_gagal:
-                            st.warning("⚠️ Laporan teks tersimpan, tapi foto tidak masuk ke Sheet.")
+                            st.warning("⚠️ Laporan teks tersimpan, tapi foto gagal masuk ke Drive (Cek Drive Bersama).")
                         else:
                             st.success("✅ Laporan & Link Foto berhasil tersimpan permanen!")
                         
@@ -386,7 +396,12 @@ if not df_sdm.empty:
                         if urls:
                             photos_exist = True
                             img_url = get_clean_image_url_legacy(urls[0])
-                            html = f'<img src="{img_url}" style="width:100%; border-radius:10px; margin-bottom:5px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);"><p style="text-align:center; font-size:12px;">Kolom {col_name}</p>'
+                            html = f"""
+                            <div style="background: #ffffff; padding: 10px; border-radius: 10px; border: 1px solid #e3f2fd; box-shadow: 0 4px 8px rgba(21, 101, 192, 0.05); text-align: center;">
+                                <img src="{img_url}" style="width:100%; border-radius:8px; margin-bottom:5px;">
+                                <p style="font-size:12px; color:#546e7a; margin:0;">Kolom {col_name}</p>
+                            </div>
+                            """
                             cols[idx % 4].markdown(html, unsafe_allow_html=True)
                             idx += 1
                 if not photos_exist: st.info(empty_msg)
@@ -406,7 +421,7 @@ if not df_sdm.empty:
                 matched_rek = df_rekomendasi[df_rekomendasi[rec_name_col].astype(str).str.strip().str.lower() == clean_target]
                 
                 if not matched_rek.empty:
-                    st.markdown(f"<h4 style='color:#ff5252;'>Arsip Laporan Service: {selected_nama}</h4>", unsafe_allow_html=True)
+                    st.markdown(f"<h4 style='color:#1565c0;'>Arsip Laporan Service: {selected_nama}</h4>", unsafe_allow_html=True)
                     
                     foto_columns = [col for col in df_rekomendasi.columns if "FOTO" in str(col).upper()]
                     
@@ -415,9 +430,9 @@ if not df_sdm.empty:
                         teks_laporan = row.get('Findings & Action Plan', row.get('Findings', '-'))
                         
                         st.markdown(f"""
-                        <div style="background: #1e1e24; padding: 15px; border-radius: 10px; border-left: 5px solid #ff5252; margin-bottom: 15px; margin-top: 20px;">
-                            <h5 style="color:#00b4d8; margin-top:0;">📅 Update Service: {tanggal_laporan}</h5>
-                            <p style="color:#e0e0e0; font-size:14px; white-space: pre-wrap; margin-bottom:0;">{teks_laporan}</p>
+                        <div style="background: #ffffff; padding: 15px; border-radius: 10px; border-left: 5px solid #1e88e5; border-right: 1px solid #e3f2fd; border-top: 1px solid #e3f2fd; border-bottom: 1px solid #e3f2fd; margin-bottom: 15px; margin-top: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+                            <h5 style="color:#0d47a1; margin-top:0;">📅 Update Service: {tanggal_laporan}</h5>
+                            <p style="color:#37474f; font-size:14px; white-space: pre-wrap; margin-bottom:0;">{teks_laporan}</p>
                         </div>
                         """, unsafe_allow_html=True)
                         
@@ -437,13 +452,13 @@ if not df_sdm.empty:
                                     
                                     with cols[i]:
                                         st.image(safe_image_url, use_container_width=True)
-                                        st.markdown(f'<div style="text-align:center;"><a href="{raw_url}" target="_blank" style="background-color: #e53935; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; font-size: 12px; font-weight: bold;">🔍 Buka Foto Asli</a></div>', unsafe_allow_html=True)
+                                        st.markdown(f'<div style="text-align:center;"><a href="{raw_url}" target="_blank" style="background-color: #1e88e5; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; font-size: 12px; font-weight: bold;">🔍 Buka Foto Asli</a></div>', unsafe_allow_html=True)
                                 else:
                                     if "http" in raw_url:
                                         with cols[i]:
                                             st.image(raw_url, use_container_width=True)
                                             
-                        st.write("<br><hr style='border-color: #333;'>", unsafe_allow_html=True)
+                        st.write("<br><hr style='border-color: #e0e0e0;'>", unsafe_allow_html=True)
                 else: st.info(f"Belum ada riwayat laporan perbaikan untuk karyawan ini.")
             else: st.error("Kolom 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
         else: st.info("Belum ada data riwayat perbaikan yang sesuai.")
@@ -454,7 +469,7 @@ if not df_sdm.empty:
             matched_fakta = df_fakta[df_fakta.apply(lambda row: row.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)]
             
             if not matched_fakta.empty:
-                st.markdown(f"<h4 style='color:#00b4d8;'>Arsip Dokumen Fakta Integritas: {selected_nama}</h4>", unsafe_allow_html=True)
+                st.markdown(f"<h4 style='color:#1565c0;'>Arsip Dokumen Fakta Integritas: {selected_nama}</h4>", unsafe_allow_html=True)
                 
                 for index, row in matched_fakta.iloc[::-1].iterrows():
                     tanggal = row.get('Timestamp', row.get('TANGGAL', 'Tanggal Tidak Diketahui'))
@@ -482,12 +497,12 @@ if not df_sdm.empty:
                                     except:
                                         st.info("Dokumen PDF (Klik tombol di bawah)")
                                         
-                                    st.markdown(f'<div style="text-align:center; margin-top:10px;"><a href="{raw_url}" target="_blank" style="background-color: #00b4d8; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; width:100%; display:inline-block;">📥 BUKA DOKUMEN PDF/FOTO</a></div>', unsafe_allow_html=True)
+                                    st.markdown(f'<div style="text-align:center; margin-top:10px;"><a href="{raw_url}" target="_blank" style="background-color: #42a5f5; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; width:100%; display:inline-block;">📥 BUKA DOKUMEN PDF/FOTO</a></div>', unsafe_allow_html=True)
                                 else:
-                                    st.markdown(f'<div style="text-align:center; margin-top:10px;"><a href="{raw_url}" target="_blank" style="background-color: #00b4d8; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; width:100%; display:inline-block;">📥 BUKA LINK FILE</a></div>', unsafe_allow_html=True)
+                                    st.markdown(f'<div style="text-align:center; margin-top:10px;"><a href="{raw_url}" target="_blank" style="background-color: #42a5f5; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; width:100%; display:inline-block;">📥 BUKA LINK FILE</a></div>', unsafe_allow_html=True)
                     else:
                         st.info("Tidak ada dokumen PDF/Foto yang terlampir pada laporan ini.")
-                    st.write("<br><hr style='border-color: #333;'>", unsafe_allow_html=True)
+                    st.write("<br><hr style='border-color: #e0e0e0;'>", unsafe_allow_html=True)
             else:
                 st.warning(f"Belum ada arsip form Fakta Integritas atas nama: {selected_nama}")
         else:
