@@ -5,7 +5,6 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 import requests
-import base64
 import time
 from PIL import Image
 import io
@@ -13,7 +12,7 @@ import io
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
 
-# --- 2. CUSTOM CSS (Kembali ke Premium Dark Mode & Glassmorphism) ---
+# --- 2. CUSTOM CSS (Premium Dark Mode & Glassmorphism) ---
 st.markdown("""
 <style>
     @keyframes fadeIn {
@@ -102,22 +101,20 @@ def login_form():
 if not st.session_state.logged_in:
     login_form(); st.stop() 
 
-# --- 4. SIDEBAR MENU DENGAN LOGO & LINK BARU ---
+# --- 4. SIDEBAR MENU DENGAN LOGO ASLI & LINK JELAJAH ---
 with st.sidebar:
-    # SLOT LOGO (Mengambil placeholder gambar, jika Anda punya link .png asli dari webnya, ganti di src="")
-    st.markdown("""
-    <div style="text-align: center; background-color: #ffffff; padding: 10px; border-radius: 15px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/User_icon_2.svg/800px-User_icon_2.svg.png" alt="Logo KUT" style="width: 60%; margin: auto; display: block;">
-        <p style="color: #0b0f19; font-weight: bold; font-size: 14px; margin-top: 10px; margin-bottom: 0;">PT Kinarya Utama Teknik</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Memanggil Logo langsung dari file lokal Anda
+    try:
+        st.image("koperasi-jasa-konstruksi-tower-event-organizer-network-monitoring-telekomunikasi-kisel-group-logo-kut.webp", use_container_width=True)
+    except:
+        st.error("⚠️ Pastikan file 'koperasi-jasa-konstruksi-tower-event-organizer-network-monitoring-telekomunikasi-kisel-group-logo-kut.webp' diletakkan 1 folder dengan App.py")
 
-    st.markdown("<h2 style='text-align: center; color: #60a5fa;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #60a5fa; margin-top:20px;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     
-    # MENU LINK JELAJAH
+    # MENU LINK JELAJAH (Tombol Baru)
     st.markdown("""
     <a href="https://regkalimantan-kut.vercel.app/#sva" target="_blank" style="text-decoration: none;">
-        <div style="background: linear-gradient(135deg, #2563eb, #0ea5e9); padding: 12px; border-radius: 10px; text-align: center; color: white; font-weight: bold; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(37,99,235,0.4); font-size: 13px; transition: transform 0.3s ease;">
+        <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 12px; border-radius: 10px; text-align: center; color: white; font-weight: bold; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(16,185,129,0.4); font-size: 13px; transition: transform 0.3s ease;">
             🌍 Jelajah lebih jauh lagi biar simakin arahin
         </div>
     </a>
@@ -132,29 +129,30 @@ with st.sidebar:
         st.session_state.logged_in = False; st.rerun()
     st.markdown("""<div style="text-align: center; font-size: 11px; color: #64748b; margin-top: 30px;">⚡ DEVELOPED BY OKTA PRADIKA<br>© 2026 SYSTEM OPERATIONS</div>""", unsafe_allow_html=True)
 
-# --- 5. FUNGSI UPLOAD APPS SCRIPT (KEMBALI KE URL TERAKHIR) ---
-def upload_image_to_gdrive(uploaded_file):
-    # Menggunakan Link Apps Script Anda yang terakhir dan valid
-    GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzkNRhVe-T2L-ol4bBnPK-CiJp189GH9F4PutYnUszIZ1lLV_RxWcX124UmU16Aa9M4/exec"
-    
+# --- 5. FUNGSI UPLOAD FOTO (ANTI-GAGAL: MENGGUNAKAN TELEGRAPH API) ---
+def upload_image_to_server(uploaded_file):
     try:
+        # Kompres gambar agar ringan
         img = Image.open(uploaded_file).convert('RGB')
-        img.thumbnail((600, 600)) 
+        img.thumbnail((800, 800)) 
         buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=75)
-        b64_string = base64.b64encode(buf.getvalue()).decode("utf-8")
+        img.save(buf, format="JPEG", quality=80)
+        buf.seek(0)
         
-        payload = {"filename": f"Bukti_{int(time.time())}.jpg", "base64": b64_string}
-        response = requests.post(GAS_WEB_APP_URL, json=payload, timeout=60)
+        # Upload langsung ke Server Publik (Tidak butuh izin Google, tidak butuh kunci)
+        files = {'file': ('image.jpg', buf, 'image/jpeg')}
+        response = requests.post("https://telegra.ph/upload", files=files, timeout=30)
         
         if response.status_code == 200:
-            result = response.json()
-            if result.get("status") == "success": return result.get("url")
-            else: return f"ERROR_SCRIPT: {result.get('message')}"
+            res_json = response.json()
+            if isinstance(res_json, list) and 'src' in res_json[0]:
+                return "https://telegra.ph" + res_json[0]['src']
+            else:
+                return f"ERROR_API: {res_json}"
         else: return f"ERROR_HTTP: {response.status_code}"
     except Exception as e: return f"ERROR_NETWORK: {str(e)}"
 
-# --- 6. FUNGSI GOOGLE SHEETS ---
+# --- 6. FUNGSI GOOGLE SHEETS (Hanya untuk Teks, ini sudah terbukti aman) ---
 def get_gspread_client():
     try:
         creds_dict = st.secrets["gcp_service_account"]
@@ -175,7 +173,7 @@ def save_findings_to_sheet(nik, nama, unit_info, findings, f1, f2, f3, f4, f5):
         return True
     except: return False
 
-# --- 7. LOAD DATA ---
+# --- 7. LOAD DATA UTAMA ---
 @st.cache_data(ttl=600) 
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
@@ -286,21 +284,19 @@ if not df_sdm.empty:
             if input_findings:
                 img_urls = ["", "", "", "", ""]
                 ada_foto_gagal = False
-                pesan_gagal = ""
                 
                 if uploaded_files:
-                    with st.spinner("🚀 Sedang mengupload foto ke Apps Script Anda..."):
+                    with st.spinner("🚀 Sedang mengupload foto dengan kecepatan tinggi..."):
                         for idx, file in enumerate(uploaded_files[:5]):
-                            url_hasil = upload_image_to_gdrive(file)
+                            url_hasil = upload_image_to_server(file)
                             if url_hasil and "ERROR" not in url_hasil: img_urls[idx] = url_hasil
                             else: 
                                 ada_foto_gagal = True
-                                pesan_gagal = url_hasil
-                                st.error(f"Peringatan Upload Foto ke-{idx+1}: {pesan_gagal}")
+                                st.error(f"Peringatan Upload Foto ke-{idx+1}: {url_hasil}")
                 
                 with st.spinner("Menyimpan Laporan Teks ke Spreadsheet..."):
                     if save_findings_to_sheet(str(dict_karyawan.get('NIK', 'N/A')), selected_nama, info_gabungan, input_findings, *img_urls):
-                        if ada_foto_gagal: st.warning("⚠️ Laporan Teks Berhasil Masuk! Tetapi foto gagal masuk.")
+                        if ada_foto_gagal: st.warning("⚠️ Laporan Teks Berhasil Masuk! Tetapi beberapa foto gagal.")
                         else: st.success("✅ KEREN! Laporan & Link Foto berhasil tersimpan permanen!")
                         time.sleep(2)
                         st.cache_data.clear()
@@ -374,9 +370,9 @@ if not df_sdm.empty:
                                 with cols[i]:
                                     if match and ("drive.google" in raw_url or "docs.google" in raw_url):
                                         st.image(f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w800", use_container_width=True)
-                                        st.markdown(f'<div style="text-align:center;"><a href="{raw_url}" target="_blank" style="background: linear-gradient(135deg, #2563eb, #0ea5e9); color: white; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; display:inline-block; margin-top:5px; box-shadow: 0 4px 10px rgba(37,99,235,0.3);">🔍 Buka Foto</a></div>', unsafe_allow_html=True)
                                     else:
                                         if "http" in raw_url: st.image(raw_url, use_container_width=True)
+                                    st.markdown(f'<div style="text-align:center;"><a href="{raw_url}" target="_blank" style="background: linear-gradient(135deg, #2563eb, #0ea5e9); color: white; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; display:inline-block; margin-top:5px; box-shadow: 0 4px 10px rgba(37,99,235,0.3);">🔍 Buka Foto</a></div>', unsafe_allow_html=True)
                         st.write("<br><hr style='border-color: #334155;'>", unsafe_allow_html=True)
                 else: st.info("Belum ada riwayat laporan perbaikan untuk karyawan ini.")
             else: st.error("Kolom 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
