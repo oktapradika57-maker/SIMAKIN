@@ -165,44 +165,35 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. FUNGSI UPLOAD GOOGLE DRIVE NATIVE PYTHON ---
+# --- 5. FUNGSI UPLOAD MENGGUNAKAN GOOGLE APPS SCRIPT (URL BARU ANDA) ---
 def upload_image_to_gdrive(uploaded_file):
+    # INI ADALAH URL TERBARU YANG ANDA BERIKAN
+    GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby5I3Yz8xFqc9ZmhS8EPj6UCB9iBeEqeuil_TgAf4KkQCsFVl4HcGUVzlGwIKcEzdQB/exec"
+    
     try:
-        creds_dict = st.secrets["gcp_service_account"]
-        scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scopes)
-        access_token = creds.get_access_token().access_token
-        
-        # ID FOLDER ANDA
-        folder_id = "165qUkoKMTUzcVUP4HSTwWpVuoY5mkE9d"
-        
+        # Kompres gambar agar lebih cepat diupload dan tidak ditolak server
         img = Image.open(uploaded_file).convert('RGB')
-        img.thumbnail((800, 800))
+        img.thumbnail((600, 600)) 
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=75)
+        b64_string = base64.b64encode(buf.getvalue()).decode("utf-8")
         
-        metadata = {"name": f"Bukti_{int(time.time())}.jpg", "parents": [folder_id]}
-        files = {
-            'metadata': ('metadata', json.dumps(metadata), 'application/json; charset=UTF-8'),
-            'file': ('image', buf.getvalue(), 'image/jpeg')
+        payload = {
+            "filename": f"Bukti_{int(time.time())}.jpg", 
+            "base64": b64_string
         }
-        headers = {"Authorization": f"Bearer {access_token}"}
         
-        # Flag supportsAllDrives=true sangat penting untuk Drive Bersama (Shared Drive) Workspace
-        res = requests.post(
-            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true",
-            headers=headers, files=files, timeout=60
-        )
+        # Kirim ke Apps Script (Time out diperpanjang menjadi 60 detik)
+        response = requests.post(GAS_WEB_APP_URL, json=payload, timeout=60)
         
-        if res.status_code == 200:
-            file_id = res.json().get('id')
-            perm_headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
-            # Set public access
-            requests.post(f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions?supportsAllDrives=true", 
-                          headers=perm_headers, json={"role": "reader", "type": "anyone"})
-            return f"https://drive.google.com/file/d/{file_id}/view"
+        if response.status_code == 200:
+            result = response.json()
+            if result.get("status") == "success":
+                return result.get("url") # Berhasil mengembalikan URL Foto
+            else:
+                return f"ERROR: {result.get('message')}"
         else:
-            return f"ERROR_QUOTA: {res.text}"
+            return f"ERROR_HTTP: {response.status_code}"
     except Exception as e:
         return f"ERROR_NETWORK: {e}"
 
@@ -371,7 +362,7 @@ if not df_sdm.empty:
                 pesan_gagal = ""
                 
                 if uploaded_files:
-                    with st.spinner("🚀 Sedang mengupload foto... (Mohon tunggu beberapa saat)"):
+                    with st.spinner("🚀 Sedang mengupload foto ke Drive Anda... (Mohon tunggu beberapa saat)"):
                         for idx, file in enumerate(uploaded_files[:5]):
                             url_hasil = upload_image_to_gdrive(file)
                             if url_hasil and not url_hasil.startswith("ERROR"): 
@@ -389,7 +380,7 @@ if not df_sdm.empty:
                     
                     if sukses_simpan:
                         if ada_foto_gagal:
-                            st.warning("⚠️ Laporan Teks Berhasil Masuk! Tetapi foto gagal masuk karena folder `165qUko...` BUKAN berada di 'Drive Bersama' (Shared Drive) perusahaan Anda.")
+                            st.warning("⚠️ Laporan Teks Berhasil Masuk! Tetapi foto gagal masuk, silakan cek pengaturan Apps Script Anda.")
                         else:
                             st.success("✅ KEREN! Laporan & Link Foto berhasil tersimpan permanen!")
                         
