@@ -74,7 +74,7 @@ if not st.session_state.logged_in:
 
 # --- 4. SIDEBAR (LOGO & TOMBOL JELAJAH) ---
 with st.sidebar:
-    # SISTEM LOGO KUT (Aman dari error)
+    # SISTEM LOGO KUT
     logo_file = "koperasi-jasa-konstruksi-tower-event-organizer-network-monitoring-telekomunikasi-kisel-group-logo-kut.webp"
     if os.path.exists(logo_file):
         st.image(logo_file, use_container_width=True)
@@ -106,51 +106,47 @@ with st.sidebar:
         st.session_state.logged_in = False; st.rerun()
     st.markdown("""<div style="text-align: center; font-size: 11px; color: #64748b; margin-top: 30px;">⚡ DEVELOPED BY OKTA PRADIKA<br>© 2026 SYSTEM OPERATIONS</div>""", unsafe_allow_html=True)
 
-# --- 5. FUNGSI UPLOAD FOTO (ANTI-GAGAL 3 LAPIS) ---
+# --- 5. FUNGSI UPLOAD FOTO (Resolusi Diperbesar Jadi 1200px) ---
 def upload_image_to_server(uploaded_file):
     try:
-        # Kompresi Foto
+        # Kompresi Foto (Kini 1200px agar jauh lebih jelas dan besar)
         img = Image.open(uploaded_file).convert('RGB')
-        img.thumbnail((800, 800)) 
+        img.thumbnail((1200, 1200)) 
         buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=80)
+        img.save(buf, format="JPEG", quality=85)
         
-        # WAJIB: Ambil bytes-nya secara eksplisit agar bebas dari Error HTTP 400
         img_bytes = buf.getvalue() 
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         
-        # --- LAPIS 1: API TELEGRAPH ---
+        # LAPIS 1: API TELEGRAPH
         try:
             files1 = {'file': ('image.jpg', img_bytes, 'image/jpeg')}
             res1 = requests.post("https://telegra.ph/upload", files=files1, headers=headers, timeout=15)
             if res1.status_code == 200:
                 rj = res1.json()
-                if isinstance(rj, list) and 'src' in rj[0]:
-                    return "https://telegra.ph" + rj[0]['src']
+                if isinstance(rj, list) and 'src' in rj[0]: return "https://telegra.ph" + rj[0]['src']
         except: pass
         
-        # --- LAPIS 2: API FREEIMAGE (Jika Telegraph gagal) ---
+        # LAPIS 2: API FREEIMAGE
         try:
             payload2 = {'key': '6d207e02198a847aa98d0a2a901485a5', 'action': 'upload', 'format': 'json'}
             files2 = {'source': ('image.jpg', img_bytes, 'image/jpeg')}
             res2 = requests.post("https://freeimage.host/api/1/upload", data=payload2, files=files2, timeout=15)
-            if res2.status_code == 200:
-                return res2.json()['image']['url']
+            if res2.status_code == 200: return res2.json()['image']['url']
         except: pass
         
-        # --- LAPIS 3: API CATBOX (Jika 1 & 2 gagal) ---
+        # LAPIS 3: API CATBOX
         try:
             data3 = {'reqtype': 'fileupload'}
             files3 = {'fileToUpload': ('image.jpg', img_bytes, 'image/jpeg')}
             res3 = requests.post("https://catbox.moe/user/api.php", data=data3, files=files3, timeout=15)
-            if res3.status_code == 200 and "catbox.moe" in res3.text:
-                return res3.text.strip()
+            if res3.status_code == 200 and "catbox.moe" in res3.text: return res3.text.strip()
         except: pass
         
         return "ERROR: Server penyimpanan gambar sedang gangguan. Coba lagi nanti."
     except Exception as e: return f"ERROR_SYSTEM: {str(e)}"
 
-# --- 6. FUNGSI GOOGLE SHEETS (HANYA UNTUK TEKS & LINK) ---
+# --- 6. FUNGSI GOOGLE SHEETS (AMAN UNTUK TEKS) ---
 def get_gspread_client():
     try:
         creds_dict = st.secrets["gcp_service_account"]
@@ -268,7 +264,7 @@ if not df_sdm.empty:
     with col_plan:
         st.markdown("### 📝 Form Laporan & Action Plan")
         input_findings = st.text_area("✍️ Ketik Laporan Perbaikan Unit/Kendaraan:", height=100)
-        uploaded_files = st.file_uploader("📸 Upload Nota / Foto Perbaikan (Maks 5 Foto)", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
+        uploaded_files = st.file_uploader("📸 Upload Nota / Foto Perbaikan (Maks 5 Foto)", accept_multiple_files=True, type=['jpg', 'jpeg', 'png', 'webp'])
         
         unit_mobil = str(data_asset_select.get('NOPOL (PLAT NOMOR)', 'Tidak Ada')) if data_asset_select is not None else "Tidak Ada"
         unit_genset = str(data_genset_select.get('NOMER SERI MESIN', 'Tidak Ada')) if data_genset_select is not None else "Tidak Ada"
@@ -307,13 +303,10 @@ if not df_sdm.empty:
     
     def get_clean_image_url_modern(url):
         if not url: return ""
-        # Jika dari API yang kita pakai, langsung tampilkan aslinya
-        if "telegra.ph" in url or "freeimage.host" in url or "catbox.moe" in url or "iili.io" in url:
-            return url
-        # Jika dari Google Drive (Data lama)
+        if "telegra.ph" in url or "freeimage.host" in url or "catbox.moe" in url: return url
         match = re.search(r'([-\w]{25,})', url) 
         if match and ("drive.google" in url or "docs.google" in url):
-            return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w800"
+            return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w1000" # Dibuat High-Res
         return url
 
     def render_gallery_fast(tab_context, df, df_columns, data_row, empty_msg):
@@ -330,7 +323,7 @@ if not df_sdm.empty:
                             photos_exist = True
                             img_url = get_clean_image_url_modern(urls[0])
                             html = f"""
-                            <div style="background: #1e293b; padding: 12px; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: center; margin-bottom: 10px; transition: transform 0.3s;">
+                            <div style="background: #1e293b; padding: 12px; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: center; margin-bottom: 10px;">
                                 <img src="{img_url}" style="width:100%; border-radius:8px; margin-bottom:8px;">
                                 <p style="font-size:12px; color:#94a3b8; font-weight:bold; margin:0;">Kolom {col_name}</p>
                             </div>
@@ -344,6 +337,7 @@ if not df_sdm.empty:
     render_gallery_fast(tab_genset, df_genset, df_genset.columns, data_genset_select, "Tidak ada foto unit Genset.")
     render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Tidak ada foto unit Tools.")
         
+    # MENU TAB RIWAYAT PERBAIKAN (FOTO DIBUAT BESAR & DIGABUNG TEKS)
     with tab_perbaikan:
         if not df_rekomendasi.empty and selected_nama != "-":
             rec_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
@@ -354,21 +348,23 @@ if not df_sdm.empty:
                     foto_columns = [col for col in df_rekomendasi.columns if "FOTO" in str(col).upper()]
                     
                     for _, row in matched_rek.iloc[::-1].iterrows():
+                        # TEKS DAN TANGGAL DITAMPILKAN LEBIH BESAR
                         st.markdown(f"""
-                        <div style="background: #1e293b; padding: 15px; border-radius: 12px; border-left: 5px solid #3b82f6; border-right: 1px solid #334155; border-top: 1px solid #334155; border-bottom: 1px solid #334155; margin-bottom: 20px; margin-top: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-                            <h5 style="color:#60a5fa; margin-top:0;">📅 Update Service: {row.get('Timestamp', '-')}</h5>
-                            <p style="color:#e2e8f0; font-size:14px; white-space: pre-wrap; margin-bottom:0; line-height:1.6;">{row.get('Findings & Action Plan', row.get('Findings', '-'))}</p>
+                        <div style="background: #1e293b; padding: 20px; border-radius: 12px; border-left: 6px solid #3b82f6; border-right: 1px solid #334155; border-top: 1px solid #334155; border-bottom: 1px solid #334155; margin-bottom: 15px; margin-top: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                            <h4 style="color:#60a5fa; margin-top:0;">📅 Update Service: {row.get('Timestamp', '-')}</h4>
+                            <p style="color:#e2e8f0; font-size:16px; white-space: pre-wrap; margin-bottom:15px; line-height:1.7;">{row.get('Findings & Action Plan', row.get('Findings', '-'))}</p>
                         </div>
                         """, unsafe_allow_html=True)
                         
                         valid_photos = [str(row[c]).strip() for c in foto_columns if str(row[c]).strip() not in ["nan", "-", "None", ""]]
                         if valid_photos:
-                            cols = st.columns(len(valid_photos))
+                            # FOTO DITAMPILKAN DALAM MAKSIMAL 2 KOLOM (SEHINGGA JAUH LEBIH BESAR)
+                            cols = st.columns(2) 
                             for i, raw_url in enumerate(valid_photos):
                                 clean_img = get_clean_image_url_modern(raw_url)
-                                with cols[i]:
+                                with cols[i % 2]: # Membagi foto ke kiri dan kanan saja
                                     st.image(clean_img, use_container_width=True)
-                                    st.markdown(f'<div style="text-align:center;"><a href="{raw_url}" target="_blank" style="background: linear-gradient(135deg, #2563eb, #0ea5e9); color: white; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; display:inline-block; margin-top:5px; box-shadow: 0 4px 10px rgba(37,99,235,0.3);">🔍 Buka Foto</a></div>', unsafe_allow_html=True)
+                                    st.markdown(f'<div style="text-align:center; margin-bottom: 20px;"><a href="{raw_url}" target="_blank" style="background: linear-gradient(135deg, #2563eb, #0ea5e9); color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; display:inline-block; margin-top:5px; box-shadow: 0 4px 10px rgba(37,99,235,0.3); width:100%;">🔍 Buka Resolusi Penuh</a></div>', unsafe_allow_html=True)
                         st.write("<br><hr style='border-color: #334155;'>", unsafe_allow_html=True)
                 else: st.info("Belum ada riwayat laporan perbaikan untuk karyawan ini.")
             else: st.error("Kolom 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
