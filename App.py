@@ -7,14 +7,33 @@ from datetime import datetime
 import time
 import os
 import urllib.parse 
+import base64
+from itertools import zip_longest # Untuk menggabungkan teks dan foto secara berurutan
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
 
-# --- 2. CUSTOM CSS ---
+# --- 2. CUSTOM CSS (Animasi Elegan & Premium Dark Mode) ---
 st.markdown("""
 <style>
     @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* Animasi Logo Mengambang & Bercahaya */
+    @keyframes pulse-glow {
+        0% { filter: drop-shadow(0 0 10px rgba(96, 165, 250, 0.4)); }
+        100% { filter: drop-shadow(0 0 25px rgba(59, 130, 246, 0.9)); }
+    }
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+    }
+    .logo-elegant {
+        display: block;
+        margin: 0 auto;
+        border-radius: 10px;
+        animation: pulse-glow 2.5s infinite alternate, float 4s infinite ease-in-out;
+    }
+
     .stApp { background-color: #0b0f19; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     .main .block-container { animation: fadeIn 0.6s ease-out; }
     
@@ -30,13 +49,19 @@ st.markdown("""
     }
     div[data-testid="stTextInput"] input, div[data-testid="stSelectbox"] select, div[data-testid="stTextArea"] textarea {
         border-radius: 10px !important; border: 1px solid #334155 !important;
-        background-color: #1e293b !important; color: #ffffff !important; 
+        background-color: #1e293b !important; color: #ffffff !important; transition: 0.3s;
+    }
+    div[data-testid="stTextInput"] input:focus, div[data-testid="stSelectbox"] select:focus, div[data-testid="stTextArea"] textarea:focus { 
+        border-color: #3b82f6 !important; box-shadow: 0 0 12px rgba(59, 130, 246, 0.4) !important; 
     }
     
     button[kind="primaryFormSubmit"], .stButton>button { 
         background: linear-gradient(135deg, #2563eb, #0ea5e9) !important; border: none !important; 
         border-radius: 10px !important; color: white !important; font-weight: 700 !important; 
-        padding: 10px 0 !important; box-shadow: 0 6px 15px rgba(37, 99, 235, 0.4) !important; 
+        padding: 10px 0 !important; box-shadow: 0 6px 15px rgba(37, 99, 235, 0.4) !important; transition: 0.3s;
+    }
+    button[kind="primaryFormSubmit"]:hover, .stButton>button:hover {
+        transform: scale(1.02); box-shadow: 0 8px 20px rgba(37, 99, 235, 0.6) !important;
     }
     
     .header-style {
@@ -52,7 +77,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- FUNGSI DETEKSI LOGO OTOMATIS ---
+# --- FUNGSI DETEKSI & RENDER LOGO ---
 def get_logo_path():
     logo_1 = "koperasi-jasa-konstruksi-tower-event-organizer-network-monitoring-telekomunikasi-kisel-group-logo-kut_2.webp"
     logo_2 = "koperasi-jasa-konstruksi-tower-event-organizer-network-monitoring-telekomunikasi-kisel-group-logo-kut.webp"
@@ -60,24 +85,34 @@ def get_logo_path():
     elif os.path.exists(logo_2): return logo_2
     return None
 
+def render_logo_html(width="100%"):
+    path = get_logo_path()
+    if path:
+        with open(path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+        return f'<img src="data:image/webp;base64,{encoded_string}" class="logo-elegant" style="width:{width};">'
+    return ""
+
 # --- 3. SISTEM LOGIN ---
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 def login_form():
     st.markdown("<br><br>", unsafe_allow_html=True)
     with st.form("login_form"):
-        logo_path = get_logo_path()
-        if logo_path:
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2: st.image(logo_path, use_container_width=True)
+        # Logo Beranimasi Elegan
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown(render_logo_html(), unsafe_allow_html=True)
             
-        st.markdown('<h1 style="color:#60a5fa; text-align:center; font-weight:900; margin-bottom:0px; margin-top:10px;">⚡ SIMAKIN</h1>', unsafe_allow_html=True)
+        st.markdown('<h1 style="color:#60a5fa; text-align:center; font-weight:900; margin-bottom:0px; margin-top:15px;">⚡ SIMAKIN</h1>', unsafe_allow_html=True)
         st.markdown('<p style="text-align:center; font-size:13px; margin-bottom:30px;">System Monitoring Asset Kinarya | Reg Kalimantan</p>', unsafe_allow_html=True)
         user = st.text_input("👤 USERNAME")
         pwd = st.text_input("🔑 PASSWORD", type="password")
-        submit = st.form_submit_button("🚀 MASUK SIMAKIN", use_container_width=True)
+        submit = st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True)
+    
     if submit:
         if user == "SIMAKINKUT" and pwd == "2026KUTPOSITIF":
-            st.session_state.logged_in = True; st.rerun()
+            st.session_state.logged_in = True
+            st.rerun() # Langsung rerun tanpa jeda agar terasa cepat
         else: st.error("❌ Kredensial Salah!")
 
 if not st.session_state.logged_in:
@@ -85,8 +120,7 @@ if not st.session_state.logged_in:
 
 # --- 4. SIDEBAR MENU ---
 with st.sidebar:
-    logo_path = get_logo_path()
-    if logo_path: st.image(logo_path, use_container_width=True)
+    st.markdown(render_logo_html(width="80%"), unsafe_allow_html=True)
     st.markdown("<h2 style='text-align: center; color: #60a5fa; margin-top:20px;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
     
     st.markdown("""
@@ -122,22 +156,31 @@ def save_findings_to_sheet(nik, nama, unit_info, findings):
             worksheet = sh.add_worksheet(title="Rekomendasi Perbaikan", rows="1000", cols="10")
             worksheet.append_row(["Timestamp", "NIK", "Nama", "Unit Asset (Mobil & Genset)", "Findings & Action Plan", "Foto 1", "Foto 2", "Foto 3", "Foto 4", "Foto 5"])
         
-        # Kirim data teks ke sheet, sisa kolom foto dikosongkan (diisi via GForm)
         worksheet.append_row([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), nik, nama, unit_info, findings, "", "", "", "", ""])
         return True
     except: return False
 
-# --- 6. LOAD DATA DARI GOOGLE SHEETS ---
-@st.cache_data(ttl=60) # Auto refresh 60 detik
+# --- 6. LOAD DATA DARI GOOGLE SHEETS DENGAN SPINNER (ANTI-DELAY) ---
+@st.cache_data(ttl=60)
 def load_all_data():
     sheet_id = "1hIeT51_SVdNrz62s93zpZNyqepBMdNCa-mDRH-wVOIw"
     excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
     try:
         xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
-        return (xls.get("SDM", pd.DataFrame()), xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame()), xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), xls.get("Rekomendasi Perbaikan", pd.DataFrame()), xls.get("FAKTA INTERITAR", pd.DataFrame())) 
-    except: return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        return (
+            xls.get("SDM", pd.DataFrame()), 
+            xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame()), 
+            xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), 
+            xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), 
+            xls.get("Rekomendasi Perbaikan", pd.DataFrame()), 
+            xls.get("FAKTA INTERITAR", pd.DataFrame()),
+            xls.get("Evidance foto", pd.DataFrame()) # <--- SHEET BARU UNTUK FOTO DITAMBAHKAN
+        ) 
+    except: 
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi, df_fakta = load_all_data()
+with st.spinner("⏳ Sedang menyinkronkan data dari satelit Google..."):
+    df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi, df_fakta, df_evidence = load_all_data()
 
 def get_row_by_name(df, target_name):
     if df.empty: return None
@@ -271,7 +314,14 @@ if not df_sdm.empty:
         "🚗 Foto Asset R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Riwayat Bukti Perbaikan", "📄 Fakta Integritas"
     ])
     
-    # --- FUNGSI BYPASS KEAMANAN GOOGLE DRIVE (REFERRERPOLICY) ---
+    # --- FUNGSI BYPASS KEAMANAN GOOGLE DRIVE ---
+    def get_clean_image_url_modern(url):
+        if not url: return ""
+        match = re.search(r'[-\w]{25,}', url) 
+        if match: 
+            return f"https://drive.google.com/thumbnail?id={match.group(0)}&sz=w1000"
+        return url
+
     def render_gallery_fast(tab_context, df, df_columns, data_row, empty_msg):
         with tab_context:
             if data_row is not None:
@@ -284,7 +334,6 @@ if not df_sdm.empty:
                     if match:
                         photos_exist = True
                         file_id = match.group(0)
-                        # Menggunakan TAG HTML murni dengan penembus blokir Google (referrerpolicy="no-referrer")
                         img_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
                         html = f"""
                         <div style="background: #1e293b; padding: 12px; border-radius: 12px; border: 1px solid #334155; text-align: center; margin-bottom: 10px;">
@@ -301,51 +350,76 @@ if not df_sdm.empty:
     render_gallery_fast(tab_genset, df_genset, df_genset.columns, data_genset_select, "Tidak ada foto unit Genset.")
     render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Tidak ada foto unit Tools.")
         
-    # --- TAB RIWAYAT PERBAIKAN ---
+    # --- TAB RIWAYAT PERBAIKAN (SINKRONISASI TEKS & EVIDANCE FOTO) ---
     with tab_perbaikan:
-        if not df_rekomendasi.empty and selected_nama != "-":
-            rec_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
-            if rec_name_col:
-                matched_rek = df_rekomendasi[df_rekomendasi[rec_name_col].astype(str).str.strip().str.lower() == selected_nama.strip().lower()]
-                if not matched_rek.empty:
-                    st.info("💡 Tekan tombol **Refresh Data Server** di Panel Kiri untuk memuat foto/laporan terbaru.")
-                    st.markdown(f"<h4 style='color:#60a5fa;'>Arsip Laporan Service: {selected_nama}</h4>", unsafe_allow_html=True)
+        if selected_nama != "-":
+            # Siapkan Data Teks dari 'Rekomendasi Perbaikan'
+            matched_rek = pd.DataFrame()
+            if not df_rekomendasi.empty:
+                rek_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
+                if rek_name_col:
+                    matched_rek = df_rekomendasi[df_rekomendasi[rek_name_col].astype(str).str.strip().str.lower() == selected_nama.strip().lower()]
+            
+            # Siapkan Data Foto dari 'Evidance foto'
+            matched_evid = pd.DataFrame()
+            if not df_evidence.empty:
+                # Cari baris yang mengandung nama karyawan di kolom mana pun
+                matched_evid = df_evidence[df_evidence.apply(lambda row: row.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)]
+
+            if not matched_rek.empty or not matched_evid.empty:
+                st.info("💡 Tekan tombol **Refresh Data Server** di Panel Kiri untuk memuat foto/laporan terbaru.")
+                st.markdown(f"<h4 style='color:#60a5fa;'>Arsip Laporan Service & Evidance: {selected_nama}</h4>", unsafe_allow_html=True)
+                
+                # Menggabungkan Data Teks (matched_rek) dan Data Foto (matched_evid) secara kronologis/berpasangan
+                # Karena diambil dari 2 sheet berbeda, kita iterasi secara berpasangan dari yang terbaru
+                rek_iter = list(matched_rek.iloc[::-1].iterrows()) if not matched_rek.empty else []
+                evid_iter = list(matched_evid.iloc[::-1].iterrows()) if not matched_evid.empty else []
+                
+                # Iterasi menggunakan zip_longest agar yang satu tidak menghilangkan yang lain
+                for (rek_idx, row_rek), (evid_idx, row_evid) in zip_longest(rek_iter, evid_iter, fillvalue=(None, None)):
                     
-                    for _, row in matched_rek.iloc[::-1].iterrows():
-                        teks_laporan = row.get('Findings & Action Plan', '')
+                    # 1. RENDER TEKS (Dari Sheet Rekomendasi Perbaikan)
+                    if row_rek is not None:
+                        teks_laporan = row_rek.get('Findings & Action Plan', '')
+                        waktu_teks = row_rek.get('Timestamp', '-')
                         if pd.isna(teks_laporan) or teks_laporan.strip() == "":
-                            teks_laporan = "- <i>Hanya Lampiran Foto</i> -"
+                            teks_laporan = "- <i>Tidak ada keterangan teks.</i> -"
                             
                         st.markdown(f"""
-                        <div style="background: #1e293b; padding: 20px; border-radius: 12px; border-left: 6px solid #3b82f6; border-right: 1px solid #334155; margin-bottom: 15px; margin-top: 15px;">
-                            <h4 style="color:#60a5fa; margin-top:0;">📅 Update Service: {row.get('Timestamp', '-')}</h4>
-                            <p style="color:#e2e8f0; font-size:16px; white-space: pre-wrap; margin-bottom:15px;">{teks_laporan}</p>
+                        <div style="background: #1e293b; padding: 20px; border-radius: 12px; border-left: 6px solid #3b82f6; border-right: 1px solid #334155; margin-bottom: 5px; margin-top: 15px;">
+                            <h4 style="color:#60a5fa; margin-top:0;">📅 Update Laporan: {waktu_teks}</h4>
+                            <p style="color:#e2e8f0; font-size:16px; white-space: pre-wrap; margin-bottom:0;">{teks_laporan}</p>
                         </div>
                         """, unsafe_allow_html=True)
-                        
+                    
+                    # 2. RENDER FOTO (Dari Sheet Evidance foto - Kolom B s.d F)
+                    if row_evid is not None:
+                        waktu_foto = row_evid.iloc[0] if len(row_evid) > 0 else "-" # Ambil kolom pertama sebagai waktu
                         valid_photos = []
-                        for col_name in df_rekomendasi.columns:
-                            val = str(row[col_name]).strip()
-                            if "drive.google.com" in val:
-                                urls = val.split(',')
+                        
+                        # Ekstrak seluruh link Google Drive yang ada di baris tersebut
+                        for col_val in row_evid.values:
+                            val_str = str(col_val).strip()
+                            if "drive.google.com" in val_str:
+                                urls = val_str.split(',')
                                 for u in urls:
                                     match = re.search(r'[-\w]{25,}', u)
                                     if match: valid_photos.append(match.group(0))
 
                         if valid_photos:
-                            cols = st.columns(min(len(valid_photos), 2)) # Menampilkan besar-besar 
+                            st.markdown(f"*(📸 Bukti Foto Evidance - Diupload pada: {waktu_foto})*")
+                            cols = st.columns(min(len(valid_photos), 2)) # Tampilan Besar (Maks 2 per baris)
                             for i, file_id in enumerate(valid_photos):
                                 thumb_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
                                 original_url = f"https://drive.google.com/file/d/{file_id}/view"
                                 with cols[i % 2]: 
-                                    # Menggunakan HTML Bypass referrerpolicy="no-referrer" agar tidak diblokir Google Chrome
-                                    html_img = f'<img src="{thumb_url}" referrerpolicy="no-referrer" style="width:100%; border-radius:10px;">'
+                                    html_img = f'<img src="{thumb_url}" referrerpolicy="no-referrer" style="width:100%; border-radius:10px; border: 1px solid #334155;">'
                                     st.markdown(html_img, unsafe_allow_html=True)
                                     st.markdown(f'<div style="text-align:center; margin-bottom: 20px;"><a href="{original_url}" target="_blank" style="background: linear-gradient(135deg, #2563eb, #0ea5e9); color: white; padding: 10px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold; display:block; margin-top:5px;">🔍 Buka Resolusi Penuh</a></div>', unsafe_allow_html=True)
-                        st.write("<br><hr style='border-color: #334155;'>", unsafe_allow_html=True)
-                else: st.info("Belum ada riwayat laporan perbaikan untuk karyawan ini.")
-            else: st.error("Kolom 'Nama' tidak ditemukan di tabel rekomendasi perbaikan.")
-        else: st.info("Belum ada data riwayat perbaikan yang sesuai.")
+                    
+                    st.write("<br><hr style='border-color: #334155;'>", unsafe_allow_html=True)
+            else: st.info("Belum ada riwayat laporan perbaikan untuk karyawan ini.")
+        else: st.info("Silakan pilih karyawan terlebih dahulu.")
 
     with tab_fakta:
         if not df_fakta.empty and selected_nama != "-":
