@@ -11,7 +11,7 @@ import base64
 from itertools import zip_longest # Untuk menggabungkan teks dan foto secara berurutan
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="expanded")
 
 # --- 2. CUSTOM CSS (Animasi Elegan & Premium Dark Mode) ---
 st.markdown("""
@@ -103,11 +103,11 @@ def login_form():
         with col2:
             st.markdown(render_logo_html(), unsafe_allow_html=True)
             
-        st.markdown('<h1 style="color:#60a5fa; text-align:center; font-weight:900; margin-bottom:0px; margin-top:15px;">⚡ SIMAKIN</h1>', unsafe_allow_html=True)
+        st.markdown('<h1 style="color:#60a5fa; text-align:center; font-weight:900; margin-bottom:0px; margin-top:15px;">SIMAKIN</h1>', unsafe_allow_html=True)
         st.markdown('<p style="text-align:center; font-size:13px; margin-bottom:30px;">System Monitoring Asset Kinarya | Reg Kalimantan</p>', unsafe_allow_html=True)
         user = st.text_input("👤 USERNAME")
         pwd = st.text_input("🔑 PASSWORD", type="password")
-        submit = st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True)
+        submit = st.form_submit_button("🚀 MASUK SIMAKIN BIAR YAKIN", use_container_width=True)
     
     if submit:
         if user == "SIMAKINKUT" and pwd == "2026KUTPOSITIF":
@@ -121,22 +121,22 @@ if not st.session_state.logged_in:
 # --- 4. SIDEBAR MENU ---
 with st.sidebar:
     st.markdown(render_logo_html(width="80%"), unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align: center; color: #60a5fa; margin-top:20px;'>⚙️ Control Panel</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #60a5fa; margin-top:20px;'>⚙️ Control SIMAKIN</h2>", unsafe_allow_html=True)
     
     st.markdown("""
     <a href="https://regkalimantan-kut.vercel.app/#sva" target="_blank" style="text-decoration: none;">
         <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 12px; border-radius: 10px; text-align: center; color: white; font-weight: bold; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(16,185,129,0.4); font-size: 13px;">
-            🌍 Jelajah lebih jauh lagi
+            🌍 Jelajah Ekosistem KUT
         </div>
     </a>
     """, unsafe_allow_html=True)
     
     st.info("👤 **Aktif:** SIMAKINKUT")
     st.markdown("---")
-    if st.button("🔄 Refresh Data Server", use_container_width=True):
+    if st.button("🔄 Refresh Simakin", use_container_width=True):
         st.cache_data.clear(); st.rerun()
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🚪 Keluar Sistem", use_container_width=True):
+    if st.button("🚪 Keluar Simakin", use_container_width=True):
         st.session_state.logged_in = False; st.rerun()
 
 # --- 5. FUNGSI MENYIMPAN TEKS KE GOOGLE SHEETS ---
@@ -190,7 +190,7 @@ def get_row_by_name(df, target_name):
     return matched.iloc[0] if not matched.empty else None
 
 # --- 7. DASHBOARD UTAMA ---
-st.markdown('<div class="header-style">🚀 DASHBOARD OPERASIONAL, ASSET & GENSET</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">SYSTEM MONITORING ASSET KINARYA</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
     df_sdm_filtered = df_sdm.copy()
