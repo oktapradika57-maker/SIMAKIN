@@ -28,7 +28,9 @@ themes = [
     {"primary": "#ec4899", "glow": "rgba(236, 72, 153, 0.6)", "gradient": "linear-gradient(135deg, #831843 0%, #ec4899 100%)"}, # Premium Rose
     {"primary": "#06b6d4", "glow": "rgba(6, 182, 212, 0.6)", "gradient": "linear-gradient(135deg, #164e63 0%, #06b6d4 100%)"}  # Cyber Cyan
 ]
-theme_idx = sum(ord(char) for c in selected_nama_raw) % len(themes) if selected_nama_raw != "-" else 0
+
+# PERBAIKAN TYPO ADA DI BARIS INI (char -> c)
+theme_idx = sum(ord(c) for c in selected_nama_raw) % len(themes) if selected_nama_raw != "-" else 0
 active_theme = themes[theme_idx]
 
 # --- 3. CUSTOM ADVANCED CSS DESIGN (3D Luxury & Smooth Animation) ---
@@ -245,7 +247,7 @@ def load_all_data():
         xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
         return (
             xls.get("SDM", pd.DataFrame()), 
-            xls.get("ALL ASSET MBP MBP CME TE REG KALIMA", xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame())), 
+            xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame()), 
             xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), 
             xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), 
             xls.get("Rekomendasi Perbaikan", pd.DataFrame()), 
