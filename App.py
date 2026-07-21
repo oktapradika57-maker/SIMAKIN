@@ -118,7 +118,7 @@ st.markdown(f"""
     }}
     
     /* =========================================================
-       FIX GALERI: UKURAN SERAGAM, PRESISI & TIDAK MENUHI LAYAR
+       FIX GALERI: FOTO TAMPIL UTUH TAPI KOTAK TETAP SERAGAM
        ========================================================= */
     .gallery-grid-container {{
         display: grid;
@@ -145,17 +145,19 @@ st.markdown(f"""
         border-color: var(--accent-color);
         box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 25px var(--glow-color);
     }}
-    /* Kunci Gambar Presisi (Tidak Penuh Layar) */
+    /* REVISI GAMBAR: Menggunakan 'contain' agar foto terlihat FULL/Utuh */
     .gallery-card-3d img {{
         width: 100%;
-        height: 180px; /* TINGGI TETAP SERAGAM */
-        object-fit: cover; /* CROP PRESISI TANPA DISTORSI */
+        height: 220px; /* Tinggi kotak distandarkan */
+        object-fit: contain; /* << INI KUNCINYA: Foto tidak terpotong */
+        background: rgba(0, 0, 0, 0.4); /* Efek bingkai studio/figura agar elegan */
+        padding: 5px;
         border-radius: 12px;
         transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
     }}
     .gallery-card-3d:hover img {{
-        transform: scale(1.05);
+        transform: scale(1.03); /* Sedikit zoom yang rapi saat hover */
     }}
     .btn-buka-foto {{
         background: var(--gradient-bg); color: white !important; padding: 10px; 
@@ -383,7 +385,7 @@ if not df_sdm.empty:
     st.write("---")
     
     # --- 9. FORM INPUT HYBRID (Teks di Streamlit, Auto-Fill di GForm) ---
-    col_chart, col_plan = st.columns([1.2, 2.3]) # Dibuat lebih proporsional
+    col_chart, col_plan = st.columns([1.2, 2.3]) 
     
     with col_chart:
         st.markdown(f"<h3 style='color:var(--accent-color);'>📊 Analitik Visual</h3>", unsafe_allow_html=True)
@@ -435,7 +437,7 @@ if not df_sdm.empty:
         "🚗 Matrix R2/R4", "⚡ Matrix Genset", "🔧 Matrix Tools", "🛠️ Riwayat Evidance Service", "📄 Fakta Integritas"
     ])
     
-    # --- FUNGSI GRID GALERI KHUSUS PRESISI ---
+    # --- FUNGSI GRID GALERI KHUSUS PRESISI (TIDAK MENUHI LAYAR & TIDAK TERCROP) ---
     def render_gallery_fast(tab_context, df, df_columns, data_row, empty_msg):
         with tab_context:
             if data_row is not None:
@@ -449,11 +451,10 @@ if not df_sdm.empty:
                 
                 if valid_photos:
                     photos_exist = True
-                    # Menggunakan CSS Grid untuk keseragaman mutlak
                     st.markdown('<div class="gallery-grid-container">', unsafe_allow_html=True)
                     html_grid = ""
                     for col_name, file_id in valid_photos:
-                        img_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
+                        img_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
                         original_url = f"https://drive.google.com/file/d/{file_id}/view"
                         html_grid += f"""
                         <div class="gallery-card-3d">
@@ -522,7 +523,6 @@ if not df_sdm.empty:
                         if valid_photos:
                             st.markdown(f"<p style='font-size:12px; color:var(--accent-color); margin-left:15px; font-weight:bold; letter-spacing:0.5px;'>[ 📸 DATA VISUAL EVIDANCE - {waktu_foto} ]</p>", unsafe_allow_html=True)
                             
-                            # Menggunakan Grid agar foto 1, 3, atau 5 tetap rapi dan ukurannya tidak acak-acakan
                             st.markdown('<div class="gallery-grid-container">', unsafe_allow_html=True)
                             html_grid = ""
                             for file_id in valid_photos:
