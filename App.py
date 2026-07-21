@@ -118,14 +118,8 @@ st.markdown(f"""
     }}
     
     /* =========================================================
-       FIX GALERI: FOTO TAMPIL UTUH TAPI KOTAK TETAP SERAGAM
+       FIX GALERI HORIZONTAL: Menggunakan Kolom Streamlit + Card CSS
        ========================================================= */
-    .gallery-grid-container {{
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 20px;
-        margin-top: 15px;
-    }}
     .gallery-card-3d {{
         background: rgba(15, 23, 42, 0.6);
         backdrop-filter: blur(10px);
@@ -139,25 +133,26 @@ st.markdown(f"""
         display: flex;
         flex-direction: column;
         justify-content: space-between;
+        margin-bottom: 15px; /* Jarak antar baris ke bawah */
     }}
     .gallery-card-3d:hover {{
         transform: translateY(-8px);
         border-color: var(--accent-color);
         box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 25px var(--glow-color);
     }}
-    /* REVISI GAMBAR: Menggunakan 'contain' agar foto terlihat FULL/Utuh */
+    /* Gambar Presisi (Tidak Penuh Layar) & UTUH */
     .gallery-card-3d img {{
         width: 100%;
-        height: 220px; /* Tinggi kotak distandarkan */
-        object-fit: contain; /* << INI KUNCINYA: Foto tidak terpotong */
-        background: rgba(0, 0, 0, 0.4); /* Efek bingkai studio/figura agar elegan */
+        height: 220px; /* Tinggi seragam agar sejajar rapi */
+        object-fit: contain; /* FOTO TAMPIL UTUH/FULL, TIDAK TERPOTONG */
+        background: rgba(0, 0, 0, 0.4); 
         padding: 5px;
         border-radius: 12px;
         transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
     }}
     .gallery-card-3d:hover img {{
-        transform: scale(1.03); /* Sedikit zoom yang rapi saat hover */
+        transform: scale(1.03); 
     }}
     .btn-buka-foto {{
         background: var(--gradient-bg); color: white !important; padding: 10px; 
@@ -437,7 +432,7 @@ if not df_sdm.empty:
         "🚗 Matrix R2/R4", "⚡ Matrix Genset", "🔧 Matrix Tools", "🛠️ Riwayat Evidance Service", "📄 Fakta Integritas"
     ])
     
-    # --- FUNGSI GRID GALERI KHUSUS PRESISI (TIDAK MENUHI LAYAR & TIDAK TERCROP) ---
+    # --- FUNGSI GALERI HORIZONTAL PAKAI KOLOM STREAMLIT (TIDAK TUMPUK KE BAWAH) ---
     def render_gallery_fast(tab_context, df, df_columns, data_row, empty_msg):
         with tab_context:
             if data_row is not None:
@@ -451,12 +446,12 @@ if not df_sdm.empty:
                 
                 if valid_photos:
                     photos_exist = True
-                    st.markdown('<div class="gallery-grid-container">', unsafe_allow_html=True)
-                    html_grid = ""
-                    for col_name, file_id in valid_photos:
-                        img_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
+                    # MEMAKSA LAYOUT 4 KOLOM MENYAMPING SECARA HORIZONTAL (TIDAK TUMPUK)
+                    cols = st.columns(4) 
+                    for idx, (col_name, file_id) in enumerate(valid_photos):
+                        img_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
                         original_url = f"https://drive.google.com/file/d/{file_id}/view"
-                        html_grid += f"""
+                        html_card = f"""
                         <div class="gallery-card-3d">
                             <img src="{img_url}" referrerpolicy="no-referrer">
                             <div style="margin-top:10px;">
@@ -465,7 +460,8 @@ if not df_sdm.empty:
                             </div>
                         </div>
                         """
-                    st.markdown(html_grid + '</div>', unsafe_allow_html=True)
+                        # Memasukkan ke kolom secara bergantian (menyamping)
+                        cols[idx % 4].markdown(html_card, unsafe_allow_html=True)
                 
                 if not photos_exist: st.info(empty_msg)
             else: st.info(empty_msg)
@@ -474,7 +470,7 @@ if not df_sdm.empty:
     render_gallery_fast(tab_genset, df_genset, df_genset.columns, data_genset_select, "Data visual genset belum terarsip di server.")
     render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Data visual tools belum terarsip di server.")
         
-    # --- TAB RIWAYAT PERBAIKAN: SINKRONISASI MEWAH & PRESISI ---
+    # --- TAB RIWAYAT PERBAIKAN: HORIZONTAL PRESISI ---
     with tab_perbaikan:
         if selected_nama != "-":
             matched_rek = pd.DataFrame()
@@ -523,24 +519,24 @@ if not df_sdm.empty:
                         if valid_photos:
                             st.markdown(f"<p style='font-size:12px; color:var(--accent-color); margin-left:15px; font-weight:bold; letter-spacing:0.5px;'>[ 📸 DATA VISUAL EVIDANCE - {waktu_foto} ]</p>", unsafe_allow_html=True)
                             
-                            st.markdown('<div class="gallery-grid-container">', unsafe_allow_html=True)
-                            html_grid = ""
-                            for file_id in valid_photos:
-                                thumb_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
+                            # MEMAKSA LAYOUT 4 KOLOM MENYAMPING SECARA HORIZONTAL (TIDAK TUMPUK)
+                            cols = st.columns(4) 
+                            for idx, file_id in enumerate(valid_photos):
+                                thumb_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
                                 original_url = f"https://drive.google.com/file/d/{file_id}/view"
-                                html_grid += f"""
+                                html_card = f"""
                                 <div class="gallery-card-3d" style="background: rgba(9,14,23,0.8); border: 1px solid rgba(255,255,255,0.02);">
                                     <img src="{thumb_url}" referrerpolicy="no-referrer">
                                     <a href="{original_url}" target="_blank" class="btn-buka-foto">🔍 Expand Resolusi</a>
                                 </div>
                                 """
-                            st.markdown(html_grid + '</div>', unsafe_allow_html=True)
+                                cols[idx % 4].markdown(html_card, unsafe_allow_html=True)
                             
                     st.write("<br><div style='height:2px; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); margin: 20px 0;'></div>", unsafe_allow_html=True)
             else: st.info("Sistem belum mendeteksi rekam jejak untuk personel ini.")
         else: st.info("Otorisasi Identitas: Pilih personel di panel atas.")
 
-    # --- TAB FAKTA INTEGRITAS (GRID PRESISI) ---
+    # --- TAB FAKTA INTEGRITAS HORIZONTAL PRESISI ---
     with tab_fakta:
         if not df_fakta.empty and selected_nama != "-":
             matched_fakta = df_fakta[df_fakta.apply(lambda row: row.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)]
@@ -557,18 +553,18 @@ if not df_sdm.empty:
                                 if match: valid_files.append(match.group(0))
                     
                     if valid_files:
-                        st.markdown('<div class="gallery-grid-container">', unsafe_allow_html=True)
-                        html_grid = ""
-                        for file_id in valid_files:
+                        # MEMAKSA LAYOUT 4 KOLOM MENYAMPING SECARA HORIZONTAL (TIDAK TUMPUK)
+                        cols = st.columns(4)
+                        for idx, file_id in enumerate(valid_files):
                             thumb_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
                             original_url = f"https://drive.google.com/file/d/{file_id}/view"
-                            html_grid += f"""
+                            html_card = f"""
                             <div class="gallery-card-3d">
                                 <img src="{thumb_url}" referrerpolicy="no-referrer">
                                 <a href="{original_url}" target="_blank" class="btn-buka-foto" style="background:linear-gradient(135deg, #0f172a, #1e293b);">📥 Unduh / Buka PDF</a>
                             </div>
                             """
-                        st.markdown(html_grid + '</div>', unsafe_allow_html=True)
+                            cols[idx % 4].markdown(html_card, unsafe_allow_html=True)
                     else: st.info("Tidak ada dokumen yang dilampirkan.")
                     st.write("<br><hr style='border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
             else: st.warning(f"Dokumen Fakta Integritas tidak ditemukan untuk: {selected_nama}")
