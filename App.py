@@ -87,10 +87,29 @@ st.markdown(f"""
     
     [data-testid="stDataFrame"] {{ background: rgba(15, 23, 42, 0.5); border-radius: 16px; padding: 8px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }}
     
-    /* Box Khusus AI KUT REPORT - TAMPILAN LLM (GEMINI STYLE) */
+    /* Box Khusus AI KUT REPORT - TAMPILAN KOTAK CARD PREMIUM */
     .ai-kut-box {{ background: linear-gradient(135deg, rgba(15,23,42,0.95), rgba(6,11,20,0.95)); border: 1px solid var(--accent-color); border-radius: 20px; padding: 30px; box-shadow: 0 0 40px var(--glow-color); margin-bottom: 30px; }}
-    .ai-gemini-text {{ font-size: 15px; line-height: 1.8; color: #e2e8f0; font-family: 'Inter', sans-serif; }}
-    .ai-gemini-text h4 {{ color: var(--accent-color); margin-top: 20px; font-weight: 800; }}
+    
+    .ai-llm-card {{
+        background: linear-gradient(145deg, rgba(15,23,42,0.8) 0%, rgba(9,14,23,0.9) 100%);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-top: 3px solid var(--accent-color);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.5), inset 0 2px 10px rgba(255,255,255,0.05);
+        transition: all 0.4s ease;
+    }}
+    .ai-llm-card:hover {{
+        box-shadow: 0 20px 40px rgba(0,0,0,0.7), 0 0 25px var(--glow-color);
+        border-color: var(--primary-color);
+    }}
+    .ai-llm-card h4 {{
+        color: var(--accent-color); margin-top: 25px; margin-bottom: 10px; font-weight: 800;
+        border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px; font-size: 16px;
+    }}
+    .ai-llm-card p {{
+        font-size: 14px; line-height: 1.8; color: #cbd5e1; margin-bottom: 10px;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -154,7 +173,6 @@ with st.sidebar:
     st.info("👤 **Otoritas Aktif:** SIMAKINKUT")
     st.markdown("---")
     
-    # 🔥 TOMBOL AI KUT BARU 🔥
     if 'show_ai_kut' not in st.session_state: st.session_state.show_ai_kut = False
     if st.button("🤖 GENERATE REPORT AI KUT", use_container_width=True):
         st.session_state.show_ai_kut = not st.session_state.show_ai_kut
@@ -243,7 +261,7 @@ if not df_sdm.empty:
     st.write("---")
 
     # 🔥 ========================================================= 🔥
-    # 🔥 FITUR AI KUT (LLM GEMINI STYLE - MENGUBAH FOTO JADI TEKS) 🔥
+    # 🔥 FITUR AI KUT (LLM GEMINI STYLE DI DALAM KOTAK CARD) 🔥
     # 🔥 ========================================================= 🔥
     if st.session_state.show_ai_kut and selected_nama != "-":
         st.markdown("<div class='ai-kut-box'>", unsafe_allow_html=True)
@@ -315,41 +333,47 @@ if not df_sdm.empty:
                             narasi_foto_evid.append(diag)
                             data_ekspor.append({"Kategori": "Evidance History", "Aset": "Evidance Operasional", "Analisa AI KUT": diag})
 
-        # --- MEMBUAT TEKS NARASI LAYAKNYA GEMINI ---
+        # --- MEMBUAT TEKS NARASI DENGAN DESAIN KOTAK CARD (LLM STYLE) ---
         narasi_tools_gabung = " ".join(narasi_foto_tools) if narasi_foto_tools else "Tidak ada bukti foto tools yang diunggah untuk dianalisa visual."
         narasi_r2_gabung = " ".join(narasi_foto_r2) if narasi_foto_r2 else "Tidak ada bukti foto kendaraan yang dapat dipindai oleh AI."
         narasi_genset_gabung = " ".join(narasi_foto_genset) if narasi_foto_genset else "Tidak ada visual genset yang terarsip di sistem."
         narasi_evid_gabung = " ".join(narasi_foto_evid) if narasi_foto_evid else "Belum ada laporan riwayat foto kegiatan operasional terkini."
         
-        status_servis_teks = f"tercatat melakukan servis pada {tgl_servis}, yang menandakan kepatuhan terhadap jadwal pemeliharaan." if ai_score_kendaraan == 95 else "mengindikasikan bahwa jadwal servis terakhir belum terdata, sehingga saya merekomendasikan perlunya pengecekan bengkel dalam waktu dekat."
+        status_servis_teks = f"tercatat melakukan servis pada <b>{tgl_servis}</b>, yang menandakan kepatuhan terhadap jadwal pemeliharaan." if ai_score_kendaraan == 95 else "mengindikasikan bahwa jadwal servis terakhir <b>belum terdata</b>, sehingga saya merekomendasikan perlunya pengecekan bengkel dalam waktu dekat."
         
-        gemini_text = f"""
-        <div class="ai-gemini-text">
-            Berdasarkan pemindaian kognitif mendalam yang saya (AI KUT) lakukan terhadap data dan dokumentasi visual milik <b>{selected_nama}</b>, berikut adalah analisis komprehensif saya:
+        gemini_html_card = f"""
+        <div class="ai-llm-card">
+            <div style="display:flex; align-items:center; margin-bottom:15px;">
+                <span style="font-size:26px; margin-right:12px;">✨</span>
+                <h3 style="margin:0; color:#ffffff; font-weight:900; letter-spacing:1px;">Analisis Kognitif AI KUT</h3>
+            </div>
+            <p>Berdasarkan pemindaian kognitif mendalam yang saya lakukan terhadap keseluruhan profil data dan dokumentasi visual milik <b>{selected_nama}</b>, berikut adalah ringkasan hasil diagnosa:</p>
             
             <h4>🔧 1. Analisa Matrik Inventaris Tools</h4>
-            Dari database, tingkat kelengkapan tools esensial berada pada angka <b>{ai_score_tools}%</b>. Rincian kelengkapan: {', '.join(tools_list_str)}. 
-            <br><i>Sintesis Visual AI:</i> {narasi_tools_gabung}
+            <p>Tingkat kelengkapan tools esensial mencapai <b>{ai_score_tools}%</b>. Status inventaris saat ini: <i>{', '.join(tools_list_str)}</i>. 
+            <br><span style="color:var(--primary-color);"><b>Sintesis Visual:</b></span> {narasi_tools_gabung}</p>
             
             <h4>🚗 2. Analisa Spesifikasi Kendaraan (R2/R4)</h4>
-            Sistem mencatat penggunaan unit <b>{merk_kendaraan}</b> (Nopol: {nopol}). Berdasarkan rekam jejak, kendaraan ini {status_servis_teks}
-            <br><i>Sintesis Visual AI:</i> {narasi_r2_gabung}
+            <p>Aset tercatat berupa unit <b>{merk_kendaraan}</b> (Plat: {nopol}). Berdasarkan rekam jejak, kendaraan ini {status_servis_teks}
+            <br><span style="color:var(--primary-color);"><b>Sintesis Visual:</b></span> {narasi_r2_gabung}</p>
             
             <h4>⚡ 3. Analisa Parameter Genset</h4>
-            Unit genset <b>{merk_genset}</b> memiliki status administratif: {stat_genset if stat_genset else "Belum Ditetapkan"}. 
-            <br><i>Sintesis Visual AI:</i> {narasi_genset_gabung}
+            <p>Unit genset berjenis <b>{merk_genset}</b> dengan status operasional <b>{stat_genset if stat_genset else "Belum Ditetapkan"}</b>. 
+            <br><span style="color:var(--primary-color);"><b>Sintesis Visual:</b></span> {narasi_genset_gabung}</p>
             
-            <h4>📸 4. Analisa Riwayat Evidance Service Terakhir</h4>
-            Membaca data historis lapangan yang dikirimkan oleh personel.
-            <br><i>Sintesis Visual AI:</i> {narasi_evid_gabung}
+            <h4>📸 4. Analisa Riwayat Evidance Lapangan</h4>
+            <p>Memeriksa dokumen visual aktivitas operasional terakhir yang diunggah ke dalam sistem.
+            <br><span style="color:var(--primary-color);"><b>Sintesis Visual:</b></span> {narasi_evid_gabung}</p>
             
-            <h4>💡 Kesimpulan & Rekomendasi AI KUT</h4>
-            Secara keseluruhan, kesiapan aset dan operasional berada di level <b>{int((ai_score_tools + ai_score_kendaraan + ai_score_genset)/3)}%</b>. 
-            {"Saya menyimpulkan seluruh aset dalam kondisi siap tempur untuk mendukung kegiatan operasional secara maksimal." if int((ai_score_tools + ai_score_kendaraan + ai_score_genset)/3) > 75 else "Saya menemukan beberapa anomali (seperti absennya data servis atau kondisi fisik aset dari foto). Direkomendasikan intervensi dari manajemen untuk melakukan audit fisik/maintenance segera."}
+            <div style="background:rgba(16, 185, 129, 0.1); padding:15px; border-left:4px solid #10b981; border-radius:8px; margin-top:25px;">
+                <h4 style="margin-top:0; color:#10b981; border:none; padding:0;">💡 Rekomendasi & Tindak Lanjut</h4>
+                <p style="margin-bottom:0;">Secara keseluruhan, kesiapan operasional berada di level <b>{int((ai_score_tools + ai_score_kendaraan + ai_score_genset)/3)}%</b>. 
+                {"Saya menyimpulkan seluruh aset dalam kondisi <b>siap tempur</b> untuk mendukung kegiatan operasional secara maksimal." if int((ai_score_tools + ai_score_kendaraan + ai_score_genset)/3) > 75 else "Terdeteksi adanya <b>anomali data operasional</b>. Saya merekomendasikan audit fisik dan penjadwalan service segera untuk mengamankan kelancaran tugas."}</p>
+            </div>
         </div>
         """
         
-        # Render Narasi LLM dan Grafik Secara Bersebelahan
+        # Render Narasi LLM (Sekarang di dalam Kotak) dan Grafik Secara Bersebelahan
         col_grafik, col_llm = st.columns([1, 1.8])
         with col_grafik:
             st.markdown("<p style='color:var(--accent-color); font-weight:bold; margin-bottom:5px;'>📊 AI Readiness Index:</p>", unsafe_allow_html=True)
@@ -367,7 +391,7 @@ if not df_sdm.empty:
                     use_container_width=True
                 )
         with col_llm:
-            st.markdown(gemini_text, unsafe_allow_html=True)
+            st.markdown(gemini_html_card, unsafe_allow_html=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
     # 🔥 ========================================================= 🔥
@@ -378,24 +402,25 @@ if not df_sdm.empty:
     st.dataframe(pd.DataFrame(list(dict_karyawan.items()), columns=["Parameter", "Informasi"]), hide_index=True, use_container_width=True)
     st.write("---")
 
+    # 🔥 FIX: UKURAN HEIGHT DITAMBAH JADI 600 AGAR TOOLS TAMPIL PENUH TANPA SCROLL 🔥
     col_left, col_mid, col_right = st.columns(3)
     with col_left:
         st.markdown(f"<h3 style='color:var(--accent-color);'>🔧 Inventaris Tools</h3>", unsafe_allow_html=True)
         tools_list_df = ["WAH", "FA", "FE", "EXP. CERT.", "COUNSELING", "RESUME CONSELING", "WARNING LETTER", "Safety Driving License", "Type Kendaraan", "Jenis Kendaraan", "Nopol", "Status Asset Kendaraan", "Type Genset", "KVA Genset", "Status Genset"]
         tools_data = [{"Nama Tools": t, "Kondisi / Jumlah": str(data_karyawan_select[t]) if data_karyawan_select is not None and t in df_sdm.columns and str(data_karyawan_select[t]).strip() not in ["nan", "None"] else "-"} for t in tools_list_df]
-        st.dataframe(pd.DataFrame(tools_data), height=450, hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(tools_data), height=600, hide_index=True, use_container_width=True)
 
     with col_mid:
         st.markdown(f"<h3 style='color:var(--accent-color);'>🚗 Spesifikasi R2/R4</h3>", unsafe_allow_html=True)
         asset_fields = ["JABATAN/ROLE", "LOKASI KERJA", "KATEGORI KENDARAAN", "STATUS KEPEMILIKAN ASSET", "NOPOL (PLAT NOMOR)", "MERK KENDARAAN", "TYPE KENDARAAN", "JENIS KENDARAAN", "TAHUN KENDARAAN", "OLI MESIN (TGL TERAKHIR DIGANTI)", "SERCIVE BERKALA (TGL TERAKHIR SERVICE)"]
         asset_data = [{"Parameter Asset R2/R4": f, "Keterangan": str(data_asset_select[f]) if data_asset_select is not None and f in df_asset.columns and str(data_asset_select[f]).strip() not in ["nan", "None"] else "-"} for f in asset_fields]
-        st.dataframe(pd.DataFrame(asset_data), height=450, hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(asset_data), height=600, hide_index=True, use_container_width=True)
 
     with col_right:
         st.markdown(f"<h3 style='color:var(--accent-color);'>⚡ Parameter Genset</h3>", unsafe_allow_html=True)
         genset_fields = ["TIPE GENSET", "NOMER SERI MESIN", "TAHUN PENGADAAN", "STSTUS KEPEMILIKAN", "STATUS ASSET"]
         genset_data = [{"Parameter Genset": f, "Keterangan": str(data_genset_select[f]) if data_genset_select is not None and f in df_genset.columns and str(data_genset_select[f]).strip() not in ["nan", "None"] else "-"} for f in genset_fields]
-        st.dataframe(pd.DataFrame(genset_data), height=450, hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(genset_data), height=600, hide_index=True, use_container_width=True)
 
     st.write("---")
     
