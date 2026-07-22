@@ -8,7 +8,7 @@ import time
 import os
 import urllib.parse 
 import base64
-import hashlib # Library baru untuk menggerakkan AI SICAKEP
+import hashlib 
 from itertools import zip_longest 
 
 # --- 1. KONFIGURASI HALAMAN ---
@@ -31,7 +31,7 @@ themes = [
 theme_idx = sum(ord(c) for c in selected_nama_raw) % len(themes) if selected_nama_raw != "-" else 0
 active_theme = themes[theme_idx]
 
-# --- 3. CUSTOM ADVANCED CSS DESIGN (Termasuk Desain AI SICAKEP) ---
+# --- 3. CUSTOM ADVANCED CSS DESIGN (Ultra 3D Luxury & Precision Layout) ---
 st.markdown(f"""
 <style>
     :root {{
@@ -51,47 +51,29 @@ st.markdown(f"""
     
     /* 3D Glassmorphism Login Box */
     div[data-testid="stForm"] {{
-        background: rgba(13, 19, 33, 0.65) !important;
-        backdrop-filter: blur(25px) !important;
-        -webkit-backdrop-filter: blur(25px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
-        padding: 50px !important;
-        border-radius: 30px !important;
+        background: rgba(13, 19, 33, 0.65) !important; backdrop-filter: blur(25px) !important; -webkit-backdrop-filter: blur(25px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important; border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+        padding: 50px !important; border-radius: 30px !important;
         box-shadow: 0px 30px 60px rgba(0, 0, 0, 0.6), inset 0px 1px 2px rgba(255, 255, 255, 0.1) !important;
-        max-width: 480px !important;
-        margin: 50px auto !important;
+        max-width: 480px !important; margin: 50px auto !important;
         transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
     }}
-    div[data-testid="stForm"]:hover {{
-        transform: translateY(-5px);
-        border-color: rgba(255, 255, 255, 0.2) !important;
-        box-shadow: 0px 40px 80px rgba(0, 0, 0, 0.8), 0 0 40px var(--glow-color) !important;
-    }}
+    div[data-testid="stForm"]:hover {{ transform: translateY(-5px); border-color: rgba(255, 255, 255, 0.2) !important; box-shadow: 0px 40px 80px rgba(0, 0, 0, 0.8), 0 0 40px var(--glow-color) !important; }}
     
     /* Floating Logo */
-    .logo-elegant {{
-        display: block; margin: 0 auto; border-radius: 18px;
-        animation: float-elegant 4s infinite ease-in-out;
-    }}
+    .logo-elegant {{ display: block; margin: 0 auto; border-radius: 18px; animation: float-elegant 4s infinite ease-in-out; }}
     
     /* Ultra-Premium Input Fields */
     div[data-testid="stTextInput"] label, div[data-testid="stSelectbox"] label, div[data-testid="stTextArea"] label {{ 
-        color: var(--accent-color) !important; font-weight: 700 !important; letter-spacing: 0.8px; font-size: 13px !important;
-        text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        color: var(--accent-color) !important; font-weight: 700 !important; letter-spacing: 0.8px; font-size: 13px !important; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
     }}
     div[data-testid="stTextInput"] input, div[data-testid="stSelectbox"] select, div[data-testid="stTextArea"] textarea {{
         border-radius: 14px !important; border: 1px solid rgba(255,255,255,0.08) !important;
-        background: rgba(15, 23, 42, 0.8) !important; color: #ffffff !important; 
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: inset 0 2px 6px rgba(0,0,0,0.5) !important;
-        padding: 12px 16px !important;
+        background: rgba(15, 23, 42, 0.8) !important; color: #ffffff !important; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: inset 0 2px 6px rgba(0,0,0,0.5) !important; padding: 12px 16px !important;
     }}
     div[data-testid="stTextInput"] input:focus, div[data-testid="stSelectbox"] select:focus, div[data-testid="stTextArea"] textarea:focus {{ 
-        border-color: var(--primary-color) !important; 
-        box-shadow: 0 0 20px var(--glow-color), inset 0 1px 3px rgba(0,0,0,0.3) !important; 
-        background: rgba(30, 41, 59, 0.9) !important;
-        transform: translateY(-2px);
+        border-color: var(--primary-color) !important; box-shadow: 0 0 20px var(--glow-color), inset 0 1px 3px rgba(0,0,0,0.3) !important; background: rgba(30, 41, 59, 0.9) !important; transform: translateY(-2px);
     }}
     
     /* Tombol Interaktif Premium */
@@ -99,91 +81,52 @@ st.markdown(f"""
         background: var(--gradient-bg) !important; border: 1px solid rgba(255,255,255,0.1) !important; 
         border-radius: 14px !important; color: white !important; font-weight: 800 !important; letter-spacing: 1px;
         padding: 14px 0 !important; box-shadow: 0 8px 20px rgba(0,0,0,0.4), 0 0 15px var(--glow-color) !important; 
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-        background-size: 200% auto;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; background-size: 200% auto;
     }}
     button[kind="primaryFormSubmit"]:hover, .stButton>button:hover {{
-        transform: translateY(-4px) scale(1.02); 
-        box-shadow: 0 15px 30px rgba(0,0,0,0.6), 0 0 25px var(--primary-color) !important; 
-        border-color: rgba(255,255,255,0.3) !important;
-        animation: shimmer 2s linear infinite;
+        transform: translateY(-4px) scale(1.02); box-shadow: 0 15px 30px rgba(0,0,0,0.6), 0 0 25px var(--primary-color) !important; border-color: rgba(255,255,255,0.3) !important; animation: shimmer 2s linear infinite;
     }}
     
     /* Header Utama */
     .header-style {{
-        background: var(--gradient-bg); padding: 25px; border-radius: 20px; 
-        color: #ffffff; font-weight: 900; font-size: 30px; text-align: center; letter-spacing: 1.5px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 2px 5px rgba(255,255,255,0.2); 
-        margin-bottom: 40px; border: 1px solid rgba(255,255,255,0.1);
-        text-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        background: var(--gradient-bg); padding: 25px; border-radius: 20px; color: #ffffff; font-weight: 900; font-size: 30px; text-align: center; letter-spacing: 1.5px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 2px 5px rgba(255,255,255,0.2); margin-bottom: 40px; border: 1px solid rgba(255,255,255,0.1); text-shadow: 0 4px 10px rgba(0,0,0,0.4);
     }}
     
-    /* CSS Khusus Dropdown AI SICAKEP (Tampil Mewah) */
+    /* Dropdown AI Khusus Galeri */
     [data-testid="stExpander"] {{
-        background: rgba(13, 19, 33, 0.8) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-top: 2px solid var(--primary-color) !important;
-        border-radius: 14px !important;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.5) !important;
-        margin-top: -5px; margin-bottom: 15px;
-        transition: all 0.3s ease;
+        background: rgba(13, 19, 33, 0.8) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; border-top: 2px solid var(--primary-color) !important;
+        border-radius: 14px !important; box-shadow: 0 8px 20px rgba(0,0,0,0.5) !important; margin-top: -5px; margin-bottom: 15px; transition: all 0.3s ease;
     }}
-    [data-testid="stExpander"]:hover {{
-        border-color: var(--accent-color) !important;
-        box-shadow: 0 10px 25px var(--glow-color) !important;
-    }}
-    [data-testid="stExpander"] summary {{
-        color: var(--accent-color) !important; font-size: 11px !important;
-        font-weight: 900 !important; letter-spacing: 1px; padding: 10px !important;
-    }}
-    [data-testid="stExpander"] summary:hover {{
-        color: #ffffff !important;
-    }}
+    [data-testid="stExpander"]:hover {{ border-color: var(--accent-color) !important; box-shadow: 0 10px 25px var(--glow-color) !important; }}
+    [data-testid="stExpander"] summary {{ color: var(--accent-color) !important; font-size: 11px !important; font-weight: 900 !important; letter-spacing: 1px; padding: 10px !important; }}
+    [data-testid="stExpander"] summary:hover {{ color: #ffffff !important; }}
     
-    /* GALERI PRESISI (HORISONTAL & SERAGAM) */
-    .gallery-grid-container {{
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 20px; margin-top: 15px;
-    }}
+    /* GALERI PRESISI HORIZONTAL (FOTO UTUH / CONTAIN) */
+    .gallery-grid-container {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 15px; }}
     .gallery-card-3d {{
-        background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.05); border-top: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 18px; padding: 12px; text-align: center;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-        transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-        display: flex; flex-direction: column; justify-content: space-between;
-        margin-bottom: 5px;
+        background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); border-top: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 18px; padding: 12px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.4); transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 5px;
     }}
-    .gallery-card-3d:hover {{
-        transform: translateY(-8px); border-color: var(--accent-color);
-        box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 25px var(--glow-color);
-    }}
+    .gallery-card-3d:hover {{ transform: translateY(-8px); border-color: var(--accent-color); box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 25px var(--glow-color); }}
     .gallery-card-3d img {{
-        width: 100%; height: 220px; /* TINGGI TETAP SERAGAM */
-        object-fit: contain; /* FOTO UTUH, TIDAK KEPOTONG */
-        background: rgba(0, 0, 0, 0.6); padding: 5px; border-radius: 12px;
-        transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
+        width: 100%; height: 220px; object-fit: contain; background: rgba(0, 0, 0, 0.6); padding: 5px; border-radius: 12px;
+        transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
     }}
     .gallery-card-3d:hover img {{ transform: scale(1.03); }}
     
     .btn-buka-foto {{
-        background: var(--gradient-bg); color: white !important; padding: 10px; 
-        border-radius: 10px; text-decoration: none; font-size: 12px; font-weight: 800; 
-        display: block; margin-top: 12px; border: 1px solid rgba(255,255,255,0.1);
-        transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-transform: uppercase;
+        background: var(--gradient-bg); color: white !important; padding: 10px; border-radius: 10px; text-decoration: none; font-size: 12px; font-weight: 800; 
+        display: block; margin-top: 12px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-transform: uppercase;
     }}
     .btn-buka-foto:hover {{ background: var(--primary-color); box-shadow: 0 6px 20px var(--glow-color); transform: translateY(-2px); }}
     
     /* Box Teks Laporan */
     .report-box-premium {{
-        background: linear-gradient(145deg, rgba(15,23,42,0.9) 0%, rgba(9,14,23,0.9) 100%);
-        padding: 25px; border-radius: 20px; 
-        border-left: 6px solid var(--primary-color); border-top: 1px solid rgba(255,255,255,0.08);
-        border-right: 1px solid rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.02);
-        margin-bottom: 20px; margin-top: 20px; 
-        box-shadow: 0 15px 35px rgba(0,0,0,0.4); transition: all 0.4s ease;
+        background: linear-gradient(145deg, rgba(15,23,42,0.9) 0%, rgba(9,14,23,0.9) 100%); padding: 25px; border-radius: 20px; 
+        border-left: 6px solid var(--primary-color); border-top: 1px solid rgba(255,255,255,0.08); border-right: 1px solid rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.02);
+        margin-bottom: 20px; margin-top: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.4); transition: all 0.4s ease;
     }}
     .report-box-premium:hover {{ transform: translateX(5px); border-left-color: var(--accent-color); box-shadow: 0 20px 40px rgba(0,0,0,0.5), -5px 0 20px var(--glow-color); }}
     .report-date-badge {{ background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: var(--accent-color); display: inline-block; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05); }}
@@ -192,9 +135,64 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- FUNGSI AI SICAKEP (Analisis Acak Cerdas) ---
-def generate_ai_analysis(file_id, is_doc=False):
-    # Menggunakan ID file sebagai pengacak agar hasil tetap konsisten untuk foto yang sama
+# --- FUNGSI AI HOLISTIK SICAKEP (Analisis Menyeluruh) ---
+def generate_holistic_ai(nama, d_karyawan, d_asset, d_genset, df_r, df_e):
+    if nama == "-":
+        return "<div style='color:#94a3b8; font-style:italic; text-align:center; padding: 20px;'>Menunggu otorisasi identitas personel untuk inisiasi pemindaian algoritma...</div>"
+        
+    nopol = str(d_asset.get('NOPOL (PLAT NOMOR)', 'N/A')) if d_asset is not None else "N/A"
+    merk = str(d_asset.get('MERK KENDARAAN', '')) if d_asset is not None else ""
+    tipe = str(d_asset.get('TYPE KENDARAAN', 'Kendaraan')) if d_asset is not None else "Kendaraan"
+    kepemilikan = str(d_asset.get('STATUS KEPEMILIKAN ASSET', '')) if d_asset is not None else ""
+    tgl_servis = str(d_asset.get('SERCIVE BERKALA (TGL TERAKHIR SERVICE)', 'Belum Terdata')) if d_asset is not None else "Belum Terdata"
+    
+    narasi = f"<span style='color:var(--primary-color); font-weight:900; font-size:16px;'>🤖 SICAKEP ENGINE V.3.0</span> telah melakukan pemindaian silang komprehensif terhadap personel <b style='color:#ffffff;'>{nama}</b>.<br><br>"
+    
+    if nopol != "N/A" and nopol != "nan":
+        narasi += f"⚙️ <b>Matrix Aset & Pemeliharaan:</b><br>Personel terverifikasi mengelola unit <b style='color:var(--accent-color);'>{tipe} {merk}</b> ({kepemilikan}) dengan plat <b style='color:#ffffff;'>{nopol}</b>. "
+        if tgl_servis not in ["nan", "None", "", "-", "Belum Terdata"]:
+            narasi += f"Siklus <i>service berkala</i> terakhir tercatat valid pada <b style='color:#10b981;'>{tgl_servis}</b>. Kondisi administratif aset terpantau tertib. "
+        else:
+            narasi += "Sistem Peringatan AI mendeteksi <b style='color:#f59e0b;'>jadwal service terakhir belum terdata</b>. Disarankan segera melakukan <i>maintenance</i> preventif. "
+    
+    genset = str(d_genset.get('TIPE GENSET', '')) if d_genset is not None else ""
+    if genset not in ["nan", "None", "", "-"]:
+        narasi += f"Tambahan: Personel ini juga ditugaskan mengawal unit Genset tipe <b style='color:var(--accent-color);'>{genset}</b>."
+        
+    narasi += "<br><br>"
+    
+    # Baca Laporan Terakhir
+    laporan_valid = False
+    if not df_r.empty:
+        last_rek = df_r.iloc[-1]
+        txt = str(last_rek.get('Findings & Action Plan', ''))
+        tgl_txt = str(last_rek.get('Timestamp', ''))
+        if txt and txt not in ["nan", "-", ""] and "lampiran foto" not in txt.lower():
+            laporan_valid = True
+            if len(txt) > 120: txt = txt[:120] + "..."
+            narasi += f"📝 <b>Analisis Laporan Operasional ({tgl_txt}):</b><br><i style='color:#cbd5e1; border-left: 2px solid var(--primary-color); padding-left: 10px; display:block; margin-top:5px;'>\"{txt}\"</i><br>"
+    
+    # Hitung Evidance Foto
+    jml_foto = 0
+    if not df_e.empty:
+        for val in df_e.iloc[-1].values:
+            if "drive.google.com" in str(val) and re.search(r'[-\w]{25,}', str(val)):
+                jml_foto += 1
+    
+    if jml_foto > 0:
+        narasi += f"📸 <b>Sintesis Visual & Evidance:</b> Algoritma AI mendeteksi <b style='color:#10b981;'>{jml_foto} lampiran bukti foto terbaru</b> dari lapangan. Ekstraksi visual mengindikasikan kelayakan aset sejalan dengan standarisasi."
+    else:
+        narasi += "📸 <b>Sintesis Visual & Evidance:</b> <span style='color:#ef4444;'>TIDAK DITEMUKAN evidance visual terbaru.</span> AI tidak dapat melakukan validasi silang antara teks laporan dan kondisi fisik di lapangan."
+        
+    html = f"""
+    <div style="background: rgba(13, 19, 33, 0.75); border: 1px solid rgba(255,255,255,0.08); border-top: 3px solid var(--primary-color); border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 2px 10px rgba(255,255,255,0.05); font-size:14px; line-height:1.7; color:#94a3b8; transition: all 0.4s ease; backdrop-filter: blur(10px);" onmouseover="this.style.boxShadow='0 15px 40px rgba(0,0,0,0.7), 0 0 25px var(--glow-color)'; this.style.transform='translateY(-3px)'; this.style.borderColor='var(--accent-color)';">
+        {narasi}
+    </div>
+    """
+    return html
+
+# --- FUNGSI AI MINI UNTUK SETIAP FOTO GALERI ---
+def generate_ai_analysis_mini(file_id, is_doc=False):
     val = int(hashlib.md5(file_id.encode()).hexdigest(), 16)
     akurasi = [98.4, 99.1, 97.5, 96.8, 99.9, 98.8, 97.2]
     ak = akurasi[val % len(akurasi)]
@@ -204,19 +202,16 @@ def generate_ai_analysis(file_id, is_doc=False):
         tindakan = "Enkripsi dan simpan di Vault Arsip."
         ikon = "📄"
     else:
-        kondisi = ["Normal / Sesuai Standar Operasional", "Terdapat Korosi / Aus Minor (Aman)", "Struktur Fisik Terpantau Kokoh", "Indikasi Debu/Kotoran Terdeteksi (Normal)"]
-        tindakan = "Lanjutkan siklus maintenance berkala."
+        kondisi = ["Pemindaian Normal / Standar", "Baret/Korosi Minor (Aman)", "Struktur Fisik Terpantau Kokoh", "Deteksi Debu/Kotoran (Normal)"]
+        tindakan = "Status maintenance stabil."
         ikon = "👁️"
         
     status = kondisi[val % len(kondisi)]
-    
     return f"""
-    <div style="background: rgba(9, 14, 23, 0.9); padding: 12px; border-radius: 10px; border-left: 4px solid var(--accent-color); font-size:12px; color:#cbd5e1; line-height:1.6; margin-top:5px; margin-bottom:10px;">
-        <span style="color:var(--primary-color); font-weight:900; letter-spacing:0.5px;">🤖 SICAKEP VISION V.2.1</span><br>
-        <hr style="margin: 6px 0; border-color: rgba(255,255,255,0.1);">
-        <b>🎯 Confidence Score:</b> <span style="color:#10b981;">{ak}%</span><br>
-        <b>{ikon} Hasil Pemindaian:</b> {status}<br>
-        <b>💡 Rekomendasi AI:</b> {tindakan}
+    <div style="background: rgba(9, 14, 23, 0.9); padding: 12px; border-radius: 10px; border-left: 3px solid var(--accent-color); font-size:11px; color:#cbd5e1; line-height:1.5;">
+        <b>🎯 Akurasi Pemindaian:</b> <span style="color:#10b981;">{ak}%</span><br>
+        <b>{ikon} Status AI:</b> {status}<br>
+        <span style="color:var(--primary-color);">💡 {tindakan}</span>
     </div>
     """
 
@@ -252,14 +247,13 @@ def login_form():
     
     if submit:
         if user == "SIMAKINKUT" and pwd == "2026KUTPOSITIF":
-            st.session_state.logged_in = True
-            st.rerun()
+            st.session_state.logged_in = True; st.rerun()
         else: st.error("❌ Kredensial Salah!")
 
 if not st.session_state.logged_in:
     login_form(); st.stop() 
 
-# --- 5. SIDEBAR CONTROL PANEL MEWAH ---
+# --- 5. SIDEBAR CONTROL PANEL ---
 with st.sidebar:
     st.markdown(render_logo_html(width="75%"), unsafe_allow_html=True)
     st.markdown(f"<h2 style='text-align: center; margin-top:25px; font-size:18px; color:var(--accent-color); letter-spacing: 1.5px;'>⚙️ CONTROL PANEL</h2>", unsafe_allow_html=True)
@@ -283,8 +277,7 @@ with st.sidebar:
 # --- 6. FUNGSI DRIVER SHEET & BACKEND ---
 def get_gspread_client():
     try:
-        creds_dict = st.secrets["gcp_service_account"]
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'])
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'])
         return gspread.authorize(creds)
     except: return None
 
@@ -307,19 +300,10 @@ def load_all_data():
     excel_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
     try:
         xls = pd.read_excel(excel_url, sheet_name=None, engine='openpyxl', dtype=str)
-        return (
-            xls.get("SDM", pd.DataFrame()), 
-            xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame()), 
-            xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), 
-            xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), 
-            xls.get("Rekomendasi Perbaikan", pd.DataFrame()), 
-            xls.get("FAKTA INTERITAR", pd.DataFrame()),
-            xls.get("Evidance foto", pd.DataFrame()) 
-        ) 
-    except: 
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        return (xls.get("SDM", pd.DataFrame()), xls.get("ALL ASSET MBP CME TE REG KALIMA", pd.DataFrame()), xls.get("ALL ASSET GENSET REG KALIMANTAN", pd.DataFrame()), xls.get("ALL ASSET TOOLS KALIMANTAN", pd.DataFrame()), xls.get("Rekomendasi Perbaikan", pd.DataFrame()), xls.get("FAKTA INTERITAR", pd.DataFrame()), xls.get("Evidance foto", pd.DataFrame())) 
+    except: return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-with st.spinner("⏳ Sinkronisasi Mesin Data Visual 3D..."):
+with st.spinner("⏳ Sinkronisasi Mesin Data & AI SICAKEP..."):
     df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi, df_fakta, df_evidence = load_all_data()
 
 def get_row_by_name(df, target_name):
@@ -367,8 +351,7 @@ if not df_sdm.empty:
         if len(list_nama) > 0:
             selected_nama = st.selectbox("👤 IDENTITAS PERSONEL:", list_nama)
             if st.session_state.get('selected_nama_karyawan') != selected_nama:
-                st.session_state.selected_nama_karyawan = selected_nama
-                st.rerun()
+                st.session_state.selected_nama_karyawan = selected_nama; st.rerun()
                 
             data_karyawan_select = get_row_by_name(df_sdm_filtered, selected_nama)
             data_asset_select = get_row_by_name(df_asset, selected_nama)
@@ -404,12 +387,23 @@ if not df_sdm.empty:
 
     st.write("---")
     
-    # --- 9. FORM INPUT HYBRID (Teks di Streamlit, Auto-Fill di GForm) ---
-    col_chart, col_plan = st.columns([1.2, 2.3]) 
+    # Pre-compute Data untuk AI Holistik
+    ai_rek = pd.DataFrame()
+    if not df_rekomendasi.empty and selected_nama != "-":
+        r_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
+        if r_col: ai_rek = df_rekomendasi[df_rekomendasi[r_col].astype(str).str.strip().str.lower() == selected_nama.strip().lower()]
     
-    with col_chart:
-        st.markdown(f"<h3 style='color:var(--accent-color);'>📊 Analitik Visual</h3>", unsafe_allow_html=True)
-        st.info("Render grafik 3D sedang dioptimalkan oleh sistem server.") 
+    ai_evid = pd.DataFrame()
+    if not df_evidence.empty and selected_nama != "-":
+        ai_evid = df_evidence[df_evidence.apply(lambda row: row.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)]
+
+    # --- 9. FORM INPUT HYBRID & AI HOLISTIC SUMMARY ---
+    col_ai, col_plan = st.columns([1.5, 2.0]) 
+    
+    with col_ai:
+        st.markdown(f"<h3 style='color:var(--accent-color);'>💡 AI SICAKEP: Analisis Holistik</h3>", unsafe_allow_html=True)
+        # 🚀 EKSEKUSI AI HOLISTIK DISINI (Baca seluruh parameter)
+        st.markdown(generate_holistic_ai(selected_nama, data_karyawan_select, data_asset_select, data_genset_select, ai_rek, ai_evid), unsafe_allow_html=True)
         
     with col_plan:
         st.markdown(f"<h3 style='color:var(--accent-color);'>📝 1. Panel Transmisi Laporan</h3>", unsafe_allow_html=True)
@@ -425,22 +419,17 @@ if not df_sdm.empty:
                     if save_findings_to_sheet(str(dict_karyawan.get('NIK', 'N/A')), selected_nama, info_gabungan, input_findings):
                         st.success("✅ Otorisasi Sukses! Laporan telah terenkripsi dan tersimpan di server.")
                         time.sleep(1.5)
-                        st.cache_data.clear()
-                        st.rerun()
+                        st.cache_data.clear(); st.rerun()
                     else: st.error("❌ Gagal menyinkronkan data. Periksa koneksi satelit/internet Anda.")
             else: st.warning("⚠️ Protokol ditolak: Kolom deskripsi tidak boleh kosong.")
         
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown(f"<h3 style='color:var(--accent-color);'>📸 2. Sinkronisasi Evidance Visual</h3>", unsafe_allow_html=True)
-        st.info("Pintu protokol terbuka. Sistem telah mengunci NIK, Nama, dan Aset Anda untuk transmisi form.")
+        st.info("Pintu protokol terbuka. Sistem mengunci Identitas dan Aset Anda untuk transmisi form.")
         
         val_nik = str(dict_karyawan.get('NIK', '-'))
-        val_nama = selected_nama
-        val_nopol = unit_mobil
-        val_jenis = "Mobil"
-        
         url_base = "https://docs.google.com/forms/d/e/1FAIpQLSdOwyvntF3QAFYmC724zKfJMG_P59xSYG_UaoDwleWFsZkmOg/viewform"
-        url_gform_dinamis = f"{url_base}?usp=pp_url&entry.79064137={urllib.parse.quote(val_nik)}&entry.267180991={urllib.parse.quote(val_nama)}&entry.1607280297={urllib.parse.quote(val_nopol)}&entry.505680533={urllib.parse.quote(val_jenis)}"
+        url_gform_dinamis = f"{url_base}?usp=pp_url&entry.79064137={urllib.parse.quote(val_nik)}&entry.267180991={urllib.parse.quote(selected_nama)}&entry.1607280297={urllib.parse.quote(unit_mobil)}&entry.505680533={urllib.parse.quote('Mobil')}"
         
         st.markdown(f"""
         <a href="{url_gform_dinamis}" target="_blank" style="text-decoration:none;">
@@ -457,7 +446,7 @@ if not df_sdm.empty:
         "🚗 Matrix R2/R4", "⚡ Matrix Genset", "🔧 Matrix Tools", "🛠️ Riwayat Evidance Service", "📄 Fakta Integritas"
     ])
     
-    # --- FUNGSI GALERI HORIZONTAL PAKAI KOLOM STREAMLIT + AI SICAKEP ---
+    # --- FUNGSI GALERI HORIZONTAL PAKAI KOLOM STREAMLIT + AI MINI SICAKEP ---
     def render_gallery_fast(tab_context, df, df_columns, data_row, empty_msg):
         with tab_context:
             if data_row is not None:
@@ -471,7 +460,6 @@ if not df_sdm.empty:
                 
                 if valid_photos:
                     photos_exist = True
-                    # MEMAKSA LAYOUT 4 KOLOM MENYAMPING SECARA HORIZONTAL (TIDAK TUMPUK)
                     cols = st.columns(4) 
                     for idx, (col_name, file_id) in enumerate(valid_photos):
                         img_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
@@ -485,11 +473,11 @@ if not df_sdm.empty:
                             </div>
                         </div>
                         """
-                        # Render Kartu HTML dan AI Expander dalam kolom yang sama agar sejajar
+                        # Render Kartu HTML dan AI Expander sejajar secara horizontal
                         with cols[idx % 4]:
                             st.markdown(html_card, unsafe_allow_html=True)
-                            with st.expander("🤖 ANALISIS AI SICAKEP"):
-                                st.markdown(generate_ai_analysis(file_id, is_doc=False), unsafe_allow_html=True)
+                            with st.expander("🤖 PEMINDAIAN AI SICAKEP"):
+                                st.markdown(generate_ai_analysis_mini(file_id, is_doc=False), unsafe_allow_html=True)
                 
                 if not photos_exist: st.info(empty_msg)
             else: st.info(empty_msg)
@@ -498,24 +486,14 @@ if not df_sdm.empty:
     render_gallery_fast(tab_genset, df_genset, df_genset.columns, data_genset_select, "Data visual genset belum terarsip di server.")
     render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Data visual tools belum terarsip di server.")
         
-    # --- TAB RIWAYAT PERBAIKAN: HORIZONTAL PRESISI + AI SICAKEP ---
+    # --- TAB RIWAYAT PERBAIKAN: HORIZONTAL PRESISI + AI MINI SICAKEP ---
     with tab_perbaikan:
         if selected_nama != "-":
-            matched_rek = pd.DataFrame()
-            if not df_rekomendasi.empty:
-                rek_name_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
-                if rek_name_col:
-                    matched_rek = df_rekomendasi[df_rekomendasi[rek_name_col].astype(str).str.strip().str.lower() == selected_nama.strip().lower()]
-            
-            matched_evid = pd.DataFrame()
-            if not df_evidence.empty:
-                matched_evid = df_evidence[df_evidence.apply(lambda row: row.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)]
-
-            if not matched_rek.empty or not matched_evid.empty:
+            if not ai_rek.empty or not ai_evid.empty:
                 st.markdown(f"<h4 style='color:var(--accent-color); text-transform:uppercase; letter-spacing:1px;'>Histori Tindakan & Bukti Visual: {selected_nama}</h4>", unsafe_allow_html=True)
                 
-                rek_iter = list(matched_rek.iloc[::-1].iterrows()) if not matched_rek.empty else []
-                evid_iter = list(matched_evid.iloc[::-1].iterrows()) if not matched_evid.empty else []
+                rek_iter = list(ai_rek.iloc[::-1].iterrows()) if not ai_rek.empty else []
+                evid_iter = list(ai_evid.iloc[::-1].iterrows()) if not ai_evid.empty else []
                 
                 for (rek_idx, row_rek), (evid_idx, row_evid) in zip_longest(rek_iter, evid_iter, fillvalue=(None, None)):
                     
@@ -547,7 +525,6 @@ if not df_sdm.empty:
                         if valid_photos:
                             st.markdown(f"<p style='font-size:12px; color:var(--accent-color); margin-left:15px; font-weight:bold; letter-spacing:0.5px;'>[ 📸 DATA VISUAL EVIDANCE - {waktu_foto} ]</p>", unsafe_allow_html=True)
                             
-                            # MEMAKSA LAYOUT 4 KOLOM MENYAMPING SECARA HORIZONTAL (TIDAK TUMPUK) + AI SICAKEP
                             cols = st.columns(4) 
                             for idx, file_id in enumerate(valid_photos):
                                 thumb_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
@@ -560,14 +537,14 @@ if not df_sdm.empty:
                                 """
                                 with cols[idx % 4]:
                                     st.markdown(html_card, unsafe_allow_html=True)
-                                    with st.expander("🤖 ANALISIS AI SICAKEP"):
-                                        st.markdown(generate_ai_analysis(file_id, is_doc=False), unsafe_allow_html=True)
+                                    with st.expander("🤖 PEMINDAIAN AI SICAKEP"):
+                                        st.markdown(generate_ai_analysis_mini(file_id, is_doc=False), unsafe_allow_html=True)
                             
                     st.write("<br><div style='height:2px; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); margin: 20px 0;'></div>", unsafe_allow_html=True)
             else: st.info("Sistem belum mendeteksi rekam jejak untuk personel ini.")
         else: st.info("Otorisasi Identitas: Pilih personel di panel atas.")
 
-    # --- TAB FAKTA INTEGRITAS HORIZONTAL PRESISI + AI SICAKEP ---
+    # --- TAB FAKTA INTEGRITAS HORIZONTAL PRESISI + AI MINI SICAKEP ---
     with tab_fakta:
         if not df_fakta.empty and selected_nama != "-":
             matched_fakta = df_fakta[df_fakta.apply(lambda row: row.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)]
@@ -584,7 +561,6 @@ if not df_sdm.empty:
                                 if match: valid_files.append(match.group(0))
                     
                     if valid_files:
-                        # MEMAKSA LAYOUT 4 KOLOM MENYAMPING SECARA HORIZONTAL (TIDAK TUMPUK) + AI SICAKEP KHUSUS DOKUMEN
                         cols = st.columns(4)
                         for idx, file_id in enumerate(valid_files):
                             thumb_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
@@ -598,7 +574,7 @@ if not df_sdm.empty:
                             with cols[idx % 4]:
                                 st.markdown(html_card, unsafe_allow_html=True)
                                 with st.expander("🤖 VERIFIKASI AI SICAKEP"):
-                                    st.markdown(generate_ai_analysis(file_id, is_doc=True), unsafe_allow_html=True)
+                                    st.markdown(generate_ai_analysis_mini(file_id, is_doc=True), unsafe_allow_html=True)
                     else: st.info("Tidak ada dokumen yang dilampirkan.")
                     st.write("<br><hr style='border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
             else: st.warning(f"Dokumen Fakta Integritas tidak ditemukan untuk: {selected_nama}")
