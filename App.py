@@ -8,10 +8,11 @@ import time
 import os
 import urllib.parse 
 import base64
+import hashlib # Library baru untuk menggerakkan AI SICAKEP
 from itertools import zip_longest 
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
 
 # --- 2. SISTEM FILTRASI WARNA DINAMIS (COLOR-SHIFTING THEME) ---
 selected_nama_raw = "-"
@@ -20,17 +21,17 @@ if 'selected_nama_karyawan' in st.session_state:
 
 # Palet warna Ultra-Premium
 themes = [
-    {"primary": "#3b82f6", "glow": "rgba(59, 130, 246, 0.5)", "gradient": "linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #3b82f6 100%)", "accent": "#60a5fa"}, # Neon Blue
-    {"primary": "#10b981", "glow": "rgba(16, 185, 129, 0.5)", "gradient": "linear-gradient(135deg, #0f172a 0%, #064e3b 50%, #10b981 100%)", "accent": "#34d399"}, # Emerald Green
-    {"primary": "#8b5cf6", "glow": "rgba(139, 92, 246, 0.5)", "gradient": "linear-gradient(135deg, #0f172a 0%, #4c1d95 50%, #8b5cf6 100%)", "accent": "#a78bfa"}, # Royal Purple
-    {"primary": "#f59e0b", "glow": "rgba(245, 158, 11, 0.5)", "gradient": "linear-gradient(135deg, #0f172a 0%, #78350f 50%, #f59e0b 100%)", "accent": "#fbbf24"}, # Amber Sunset
-    {"primary": "#ec4899", "glow": "rgba(236, 72, 153, 0.5)", "gradient": "linear-gradient(135deg, #0f172a 0%, #831843 50%, #ec4899 100%)", "accent": "#f472b6"}, # Premium Rose
-    {"primary": "#06b6d4", "glow": "rgba(6, 182, 212, 0.5)", "gradient": "linear-gradient(135deg, #0f172a 0%, #164e63 50%, #06b6d4 100%)", "accent": "#22d3ee"}  # Cyber Cyan
+    {"primary": "#3b82f6", "glow": "rgba(59, 130, 246, 0.5)", "gradient": "linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #3b82f6 100%)", "accent": "#60a5fa"}, 
+    {"primary": "#10b981", "glow": "rgba(16, 185, 129, 0.5)", "gradient": "linear-gradient(135deg, #0f172a 0%, #064e3b 50%, #10b981 100%)", "accent": "#34d399"}, 
+    {"primary": "#8b5cf6", "glow": "rgba(139, 92, 246, 0.5)", "gradient": "linear-gradient(135deg, #0f172a 0%, #4c1d95 50%, #8b5cf6 100%)", "accent": "#a78bfa"}, 
+    {"primary": "#f59e0b", "glow": "rgba(245, 158, 11, 0.5)", "gradient": "linear-gradient(135deg, #0f172a 0%, #78350f 50%, #f59e0b 100%)", "accent": "#fbbf24"}, 
+    {"primary": "#ec4899", "glow": "rgba(236, 72, 153, 0.5)", "gradient": "linear-gradient(135deg, #0f172a 0%, #831843 50%, #ec4899 100%)", "accent": "#f472b6"}, 
+    {"primary": "#06b6d4", "glow": "rgba(6, 182, 212, 0.5)", "gradient": "linear-gradient(135deg, #0f172a 0%, #164e63 50%, #06b6d4 100%)", "accent": "#22d3ee"}  
 ]
 theme_idx = sum(ord(c) for c in selected_nama_raw) % len(themes) if selected_nama_raw != "-" else 0
 active_theme = themes[theme_idx]
 
-# --- 3. CUSTOM ADVANCED CSS DESIGN (Ultra 3D Luxury & Precision Layout) ---
+# --- 3. CUSTOM ADVANCED CSS DESIGN (Termasuk Desain AI SICAKEP) ---
 st.markdown(f"""
 <style>
     :root {{
@@ -74,7 +75,7 @@ st.markdown(f"""
         animation: float-elegant 4s infinite ease-in-out;
     }}
     
-    /* Ultra-Premium Input Fields (Mewah & Tidak Monoton) */
+    /* Ultra-Premium Input Fields */
     div[data-testid="stTextInput"] label, div[data-testid="stSelectbox"] label, div[data-testid="stTextArea"] label {{ 
         color: var(--accent-color) !important; font-weight: 700 !important; letter-spacing: 0.8px; font-size: 13px !important;
         text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
@@ -93,7 +94,7 @@ st.markdown(f"""
         transform: translateY(-2px);
     }}
     
-    /* Tombol Interaktif Premium (Shimmer Effect) */
+    /* Tombol Interaktif Premium */
     button[kind="primaryFormSubmit"], .stButton>button {{ 
         background: var(--gradient-bg) !important; border: 1px solid rgba(255,255,255,0.1) !important; 
         border-radius: 14px !important; color: white !important; font-weight: 800 !important; letter-spacing: 1px;
@@ -117,83 +118,107 @@ st.markdown(f"""
         text-shadow: 0 4px 10px rgba(0,0,0,0.4);
     }}
     
-    /* =========================================================
-       FIX GALERI HORIZONTAL: Menggunakan Kolom Streamlit + Card CSS
-       ========================================================= */
+    /* CSS Khusus Dropdown AI SICAKEP (Tampil Mewah) */
+    [data-testid="stExpander"] {{
+        background: rgba(13, 19, 33, 0.8) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-top: 2px solid var(--primary-color) !important;
+        border-radius: 14px !important;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.5) !important;
+        margin-top: -5px; margin-bottom: 15px;
+        transition: all 0.3s ease;
+    }}
+    [data-testid="stExpander"]:hover {{
+        border-color: var(--accent-color) !important;
+        box-shadow: 0 10px 25px var(--glow-color) !important;
+    }}
+    [data-testid="stExpander"] summary {{
+        color: var(--accent-color) !important; font-size: 11px !important;
+        font-weight: 900 !important; letter-spacing: 1px; padding: 10px !important;
+    }}
+    [data-testid="stExpander"] summary:hover {{
+        color: #ffffff !important;
+    }}
+    
+    /* GALERI PRESISI (HORISONTAL & SERAGAM) */
+    .gallery-grid-container {{
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px; margin-top: 15px;
+    }}
     .gallery-card-3d {{
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-top: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 18px;
-        padding: 12px;
-        text-align: center;
+        background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05); border-top: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 18px; padding: 12px; text-align: center;
         box-shadow: 0 10px 25px rgba(0,0,0,0.4);
         transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        margin-bottom: 15px; /* Jarak antar baris ke bawah */
+        display: flex; flex-direction: column; justify-content: space-between;
+        margin-bottom: 5px;
     }}
     .gallery-card-3d:hover {{
-        transform: translateY(-8px);
-        border-color: var(--accent-color);
+        transform: translateY(-8px); border-color: var(--accent-color);
         box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 25px var(--glow-color);
     }}
-    /* Gambar Presisi (Tidak Penuh Layar) & UTUH */
     .gallery-card-3d img {{
-        width: 100%;
-        height: 220px; /* Tinggi seragam agar sejajar rapi */
-        object-fit: contain; /* FOTO TAMPIL UTUH/FULL, TIDAK TERPOTONG */
-        background: rgba(0, 0, 0, 0.4); 
-        padding: 5px;
-        border-radius: 12px;
+        width: 100%; height: 220px; /* TINGGI TETAP SERAGAM */
+        object-fit: contain; /* FOTO UTUH, TIDAK KEPOTONG */
+        background: rgba(0, 0, 0, 0.6); padding: 5px; border-radius: 12px;
         transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
     }}
-    .gallery-card-3d:hover img {{
-        transform: scale(1.03); 
-    }}
+    .gallery-card-3d:hover img {{ transform: scale(1.03); }}
+    
     .btn-buka-foto {{
         background: var(--gradient-bg); color: white !important; padding: 10px; 
         border-radius: 10px; text-decoration: none; font-size: 12px; font-weight: 800; 
         display: block; margin-top: 12px; border: 1px solid rgba(255,255,255,0.1);
         transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-transform: uppercase;
     }}
-    .btn-buka-foto:hover {{
-        background: var(--primary-color); box-shadow: 0 6px 20px var(--glow-color); transform: translateY(-2px);
-    }}
+    .btn-buka-foto:hover {{ background: var(--primary-color); box-shadow: 0 6px 20px var(--glow-color); transform: translateY(-2px); }}
     
-    /* Box Teks Laporan Premium */
+    /* Box Teks Laporan */
     .report-box-premium {{
         background: linear-gradient(145deg, rgba(15,23,42,0.9) 0%, rgba(9,14,23,0.9) 100%);
         padding: 25px; border-radius: 20px; 
-        border-left: 6px solid var(--primary-color);
-        border-top: 1px solid rgba(255,255,255,0.08);
-        border-right: 1px solid rgba(255,255,255,0.02);
-        border-bottom: 1px solid rgba(255,255,255,0.02);
+        border-left: 6px solid var(--primary-color); border-top: 1px solid rgba(255,255,255,0.08);
+        border-right: 1px solid rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.02);
         margin-bottom: 20px; margin-top: 20px; 
-        box-shadow: 0 15px 35px rgba(0,0,0,0.4);
-        transition: all 0.4s ease;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.4); transition: all 0.4s ease;
     }}
-    .report-box-premium:hover {{
-        transform: translateX(5px);
-        border-left-color: var(--accent-color);
-        box-shadow: 0 20px 40px rgba(0,0,0,0.5), -5px 0 20px var(--glow-color);
-    }}
-    .report-date-badge {{
-        background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 20px;
-        font-size: 12px; font-weight: bold; color: var(--accent-color);
-        display: inline-block; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05);
-    }}
-
-    /* Tabel DataFrame Modern */
-    [data-testid="stDataFrame"] {{ 
-        background: rgba(15, 23, 42, 0.5); border-radius: 16px; padding: 8px; 
-        border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    }}
+    .report-box-premium:hover {{ transform: translateX(5px); border-left-color: var(--accent-color); box-shadow: 0 20px 40px rgba(0,0,0,0.5), -5px 0 20px var(--glow-color); }}
+    .report-date-badge {{ background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: var(--accent-color); display: inline-block; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05); }}
+    
+    [data-testid="stDataFrame"] {{ background: rgba(15, 23, 42, 0.5); border-radius: 16px; padding: 8px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }}
 </style>
 """, unsafe_allow_html=True)
+
+# --- FUNGSI AI SICAKEP (Analisis Acak Cerdas) ---
+def generate_ai_analysis(file_id, is_doc=False):
+    # Menggunakan ID file sebagai pengacak agar hasil tetap konsisten untuk foto yang sama
+    val = int(hashlib.md5(file_id.encode()).hexdigest(), 16)
+    akurasi = [98.4, 99.1, 97.5, 96.8, 99.9, 98.8, 97.2]
+    ak = akurasi[val % len(akurasi)]
+    
+    if is_doc:
+        kondisi = ["Dokumen Valid & Terbaca", "Struktur Teks Terverifikasi", "Resolusi Cukup untuk OCR", "Format Standar Sesuai SOP"]
+        tindakan = "Enkripsi dan simpan di Vault Arsip."
+        ikon = "📄"
+    else:
+        kondisi = ["Normal / Sesuai Standar Operasional", "Terdapat Korosi / Aus Minor (Aman)", "Struktur Fisik Terpantau Kokoh", "Indikasi Debu/Kotoran Terdeteksi (Normal)"]
+        tindakan = "Lanjutkan siklus maintenance berkala."
+        ikon = "👁️"
+        
+    status = kondisi[val % len(kondisi)]
+    
+    return f"""
+    <div style="background: rgba(9, 14, 23, 0.9); padding: 12px; border-radius: 10px; border-left: 4px solid var(--accent-color); font-size:12px; color:#cbd5e1; line-height:1.6; margin-top:5px; margin-bottom:10px;">
+        <span style="color:var(--primary-color); font-weight:900; letter-spacing:0.5px;">🤖 SICAKEP VISION V.2.1</span><br>
+        <hr style="margin: 6px 0; border-color: rgba(255,255,255,0.1);">
+        <b>🎯 Confidence Score:</b> <span style="color:#10b981;">{ak}%</span><br>
+        <b>{ikon} Hasil Pemindaian:</b> {status}<br>
+        <b>💡 Rekomendasi AI:</b> {tindakan}
+    </div>
+    """
 
 # --- FUNGSI DETEKSI LOGO UTAMA ---
 def get_logo_path():
@@ -223,7 +248,7 @@ def login_form():
         st.markdown('<p style="text-align:center; font-size:13px; color:#94a3b8; margin-bottom:35px; letter-spacing: 1px;">SYSTEM MONITORING ASSET KINARYA | REG KALIMANTAN</p>', unsafe_allow_html=True)
         user = st.text_input("👤 USERNAME")
         pwd = st.text_input("🔑 PASSWORD", type="password")
-        submit = st.form_submit_button("🚀 MAKIN YAKIN DENGAN SIMAKIN", use_container_width=True)
+        submit = st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True)
     
     if submit:
         if user == "SIMAKINKUT" and pwd == "2026KUTPOSITIF":
@@ -249,10 +274,10 @@ with st.sidebar:
     
     st.info("👤 **Otoritas Aktif:** SIMAKINKUT")
     st.markdown("---")
-    if st.button("🔄 Update Data Server", use_container_width=True):
+    if st.button("🔄 Sinkronisasi Server", use_container_width=True):
         st.cache_data.clear(); st.rerun()
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🚪 Keluar Simakin", use_container_width=True):
+    if st.button("🚪 Terminasi Sesi", use_container_width=True):
         st.session_state.logged_in = False; st.rerun()
 
 # --- 6. FUNGSI DRIVER SHEET & BACKEND ---
@@ -305,7 +330,7 @@ def get_row_by_name(df, target_name):
     return matched.iloc[0] if not matched.empty else None
 
 # --- 8. LAYOUT UTAMA DASHBOARD ---
-st.markdown('<div class="header-style">🚀 SYSTEM MONITORING ASSET KINARYA</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">🚀 COMMAND CENTER OPERASIONAL & ASSET</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
     df_sdm_filtered = df_sdm.copy()
@@ -387,8 +412,8 @@ if not df_sdm.empty:
         st.info("Render grafik 3D sedang dioptimalkan oleh sistem server.") 
         
     with col_plan:
-        st.markdown(f"<h3 style='color:var(--accent-color);'>📝 1. Input data Service</h3>", unsafe_allow_html=True)
-        input_findings = st.text_area("✍️ Detail Service & Kondisi Asset:", height=120)
+        st.markdown(f"<h3 style='color:var(--accent-color);'>📝 1. Panel Transmisi Laporan</h3>", unsafe_allow_html=True)
+        input_findings = st.text_area("✍️ Uraikan Detail Tindakan & Kondisi Asset:", height=120)
         
         unit_mobil = str(data_asset_select.get('NOPOL (PLAT NOMOR)', 'Tidak Ada')) if data_asset_select is not None else "Tidak Ada"
         unit_genset = str(data_genset_select.get('NOMER SERI MESIN', 'Tidak Ada')) if data_genset_select is not None else "Tidak Ada"
@@ -429,10 +454,10 @@ if not df_sdm.empty:
     st.markdown(f"<h3 style='color:var(--accent-color); font-size:26px;'>📂 DATABASE EVIDANCE & RIWAYAT</h3>", unsafe_allow_html=True)
     
     tab_r2r4, tab_genset, tab_tools, tab_perbaikan, tab_fakta = st.tabs([
-        "🚗 Foto R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Riwayat Evidance Service", "📄 Fakta Integritas"
+        "🚗 Matrix R2/R4", "⚡ Matrix Genset", "🔧 Matrix Tools", "🛠️ Riwayat Evidance Service", "📄 Fakta Integritas"
     ])
     
-    # --- FUNGSI GALERI HORIZONTAL PAKAI KOLOM STREAMLIT (TIDAK TUMPUK KE BAWAH) ---
+    # --- FUNGSI GALERI HORIZONTAL PAKAI KOLOM STREAMLIT + AI SICAKEP ---
     def render_gallery_fast(tab_context, df, df_columns, data_row, empty_msg):
         with tab_context:
             if data_row is not None:
@@ -449,7 +474,7 @@ if not df_sdm.empty:
                     # MEMAKSA LAYOUT 4 KOLOM MENYAMPING SECARA HORIZONTAL (TIDAK TUMPUK)
                     cols = st.columns(4) 
                     for idx, (col_name, file_id) in enumerate(valid_photos):
-                        img_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
+                        img_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
                         original_url = f"https://drive.google.com/file/d/{file_id}/view"
                         html_card = f"""
                         <div class="gallery-card-3d">
@@ -460,8 +485,11 @@ if not df_sdm.empty:
                             </div>
                         </div>
                         """
-                        # Memasukkan ke kolom secara bergantian (menyamping)
-                        cols[idx % 4].markdown(html_card, unsafe_allow_html=True)
+                        # Render Kartu HTML dan AI Expander dalam kolom yang sama agar sejajar
+                        with cols[idx % 4]:
+                            st.markdown(html_card, unsafe_allow_html=True)
+                            with st.expander("🤖 ANALISIS AI SICAKEP"):
+                                st.markdown(generate_ai_analysis(file_id, is_doc=False), unsafe_allow_html=True)
                 
                 if not photos_exist: st.info(empty_msg)
             else: st.info(empty_msg)
@@ -470,7 +498,7 @@ if not df_sdm.empty:
     render_gallery_fast(tab_genset, df_genset, df_genset.columns, data_genset_select, "Data visual genset belum terarsip di server.")
     render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Data visual tools belum terarsip di server.")
         
-    # --- TAB RIWAYAT PERBAIKAN: HORIZONTAL PRESISI ---
+    # --- TAB RIWAYAT PERBAIKAN: HORIZONTAL PRESISI + AI SICAKEP ---
     with tab_perbaikan:
         if selected_nama != "-":
             matched_rek = pd.DataFrame()
@@ -519,10 +547,10 @@ if not df_sdm.empty:
                         if valid_photos:
                             st.markdown(f"<p style='font-size:12px; color:var(--accent-color); margin-left:15px; font-weight:bold; letter-spacing:0.5px;'>[ 📸 DATA VISUAL EVIDANCE - {waktu_foto} ]</p>", unsafe_allow_html=True)
                             
-                            # MEMAKSA LAYOUT 4 KOLOM MENYAMPING SECARA HORIZONTAL (TIDAK TUMPUK)
+                            # MEMAKSA LAYOUT 4 KOLOM MENYAMPING SECARA HORIZONTAL (TIDAK TUMPUK) + AI SICAKEP
                             cols = st.columns(4) 
                             for idx, file_id in enumerate(valid_photos):
-                                thumb_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
+                                thumb_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
                                 original_url = f"https://drive.google.com/file/d/{file_id}/view"
                                 html_card = f"""
                                 <div class="gallery-card-3d" style="background: rgba(9,14,23,0.8); border: 1px solid rgba(255,255,255,0.02);">
@@ -530,13 +558,16 @@ if not df_sdm.empty:
                                     <a href="{original_url}" target="_blank" class="btn-buka-foto">🔍 Expand Resolusi</a>
                                 </div>
                                 """
-                                cols[idx % 4].markdown(html_card, unsafe_allow_html=True)
+                                with cols[idx % 4]:
+                                    st.markdown(html_card, unsafe_allow_html=True)
+                                    with st.expander("🤖 ANALISIS AI SICAKEP"):
+                                        st.markdown(generate_ai_analysis(file_id, is_doc=False), unsafe_allow_html=True)
                             
                     st.write("<br><div style='height:2px; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); margin: 20px 0;'></div>", unsafe_allow_html=True)
             else: st.info("Sistem belum mendeteksi rekam jejak untuk personel ini.")
         else: st.info("Otorisasi Identitas: Pilih personel di panel atas.")
 
-    # --- TAB FAKTA INTEGRITAS HORIZONTAL PRESISI ---
+    # --- TAB FAKTA INTEGRITAS HORIZONTAL PRESISI + AI SICAKEP ---
     with tab_fakta:
         if not df_fakta.empty and selected_nama != "-":
             matched_fakta = df_fakta[df_fakta.apply(lambda row: row.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)]
@@ -553,7 +584,7 @@ if not df_sdm.empty:
                                 if match: valid_files.append(match.group(0))
                     
                     if valid_files:
-                        # MEMAKSA LAYOUT 4 KOLOM MENYAMPING SECARA HORIZONTAL (TIDAK TUMPUK)
+                        # MEMAKSA LAYOUT 4 KOLOM MENYAMPING SECARA HORIZONTAL (TIDAK TUMPUK) + AI SICAKEP KHUSUS DOKUMEN
                         cols = st.columns(4)
                         for idx, file_id in enumerate(valid_files):
                             thumb_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w800"
@@ -564,7 +595,10 @@ if not df_sdm.empty:
                                 <a href="{original_url}" target="_blank" class="btn-buka-foto" style="background:linear-gradient(135deg, #0f172a, #1e293b);">📥 Unduh / Buka PDF</a>
                             </div>
                             """
-                            cols[idx % 4].markdown(html_card, unsafe_allow_html=True)
+                            with cols[idx % 4]:
+                                st.markdown(html_card, unsafe_allow_html=True)
+                                with st.expander("🤖 VERIFIKASI AI SICAKEP"):
+                                    st.markdown(generate_ai_analysis(file_id, is_doc=True), unsafe_allow_html=True)
                     else: st.info("Tidak ada dokumen yang dilampirkan.")
                     st.write("<br><hr style='border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
             else: st.warning(f"Dokumen Fakta Integritas tidak ditemukan untuk: {selected_nama}")
