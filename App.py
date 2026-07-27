@@ -11,7 +11,7 @@ import base64
 from itertools import zip_longest 
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="expanded")
 
 # --- 2. SISTEM FILTRASI WARNA DINAMIS (COLOR-SHIFTING THEME) ---
 selected_nama_raw = "-"
@@ -223,7 +223,7 @@ def login_form():
         st.markdown('<p style="text-align:center; font-size:13px; color:#94a3b8; margin-bottom:35px; letter-spacing: 1px;">SYSTEM MONITORING ASSET KINARYA | REG KALIMANTAN</p>', unsafe_allow_html=True)
         user = st.text_input("👤 USERNAME")
         pwd = st.text_input("🔑 PASSWORD", type="password")
-        submit = st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True)
+        submit = st.form_submit_button("🚀 MAU YAKIN MASUK SIMAKIN", use_container_width=True)
     
     if submit:
         if user == "SIMAKINKUT" and pwd == "2026KUTPOSITIF":
@@ -249,10 +249,10 @@ with st.sidebar:
     
     st.info("👤 **Otoritas Aktif:** SIMAKINKUT")
     st.markdown("---")
-    if st.button("🔄 Sinkronisasi Server", use_container_width=True):
+    if st.button("🔄 Sinkronisasi Simakin", use_container_width=True):
         st.cache_data.clear(); st.rerun()
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🚪 Terminasi Sesi", use_container_width=True):
+    if st.button("🚪 Yakin Keluar Simakin", use_container_width=True):
         st.session_state.logged_in = False; st.rerun()
 
 # --- 6. FUNGSI DRIVER SHEET & BACKEND ---
@@ -305,7 +305,7 @@ def get_row_by_name(df, target_name):
     return matched.iloc[0] if not matched.empty else None
 
 # --- 8. LAYOUT UTAMA DASHBOARD ---
-st.markdown('<div class="header-style">🚀 COMMAND CENTER OPERASIONAL & ASSET</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">SYSTEM MONITORING ASSET KINARYA</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
     df_sdm_filtered = df_sdm.copy()
@@ -429,7 +429,7 @@ if not df_sdm.empty:
     st.markdown(f"<h3 style='color:var(--accent-color); font-size:26px;'>📂 DATABASE EVIDANCE & RIWAYAT</h3>", unsafe_allow_html=True)
     
     tab_r2r4, tab_genset, tab_tools, tab_perbaikan, tab_fakta = st.tabs([
-        "🚗 Matrix R2/R4", "⚡ Matrix Genset", "🔧 Matrix Tools", "🛠️ Riwayat Evidance Service", "📄 Fakta Integritas"
+        "🚗 Foto R2/R4", "⚡ Foto Genset", "🔧 Foto Tools", "🛠️ Riwayat Evidance Service", "📄 Fakta Integritas"
     ])
     
     # --- FUNGSI GALERI HORIZONTAL PAKAI KOLOM STREAMLIT (TIDAK TUMPUK KE BAWAH) ---
