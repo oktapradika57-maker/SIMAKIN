@@ -127,12 +127,14 @@ def analyze_photo_to_text(col_name, file_id):
     else: diag = kondisi_buruk[val % len(kondisi_buruk)]
     return f"Dari visual data <b>{col_name}</b>, aset {diag}."
 
-# --- FUNGSI RENDER PROGRESS BAR NOP ---
-def render_progress_nop(label, filled, target):
+# --- FUNGSI RENDER PROGRESS BAR NOP DENGAN PARAMETER TAMBAHAN (NY) ---
+def render_progress_nop(label, filled, target, extra_text=""):
     pct = int((filled / target) * 100) if target > 0 else 0
     if pct > 100: pct = 100
     color = "#10b981" if pct == 100 else ("#f59e0b" if pct >= 60 else "#ef4444")
     warning = f"✅ Selesai (Target Tercapai)" if pct == 100 else f"⚠️ Kurang {target - filled} Tim (Unik)"
+    
+    extra_html = f"<div style='margin-top: 4px; font-size: 11px; color: #f472b6; font-weight: 800; text-align: left;'>{extra_text}</div>" if extra_text else ""
     
     html = f"""<div style="margin-bottom: 15px;">
 <div style="display:flex; justify-content:space-between; margin-bottom:6px; align-items:center;">
@@ -142,8 +144,9 @@ def render_progress_nop(label, filled, target):
 <div style="width: 100%; background: rgba(0,0,0,0.5); border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); margin-bottom:4px;">
 <div style="width: {pct}%; background: {color}; height: 8px; border-radius: 8px; box-shadow: 0 0 10px {color};"></div>
 </div>
-<div style="text-align: right; margin-top: 2px;">
-<span style='color:{color}; font-size:10px; font-weight:bold;'>{warning}</span>
+<div style="display:flex; justify-content:space-between; align-items:center; margin-top: 2px;">
+{extra_html}
+<span style='color:{color}; font-size:10px; font-weight:bold; margin-left:auto;'>{warning}</span>
 </div>
 </div>"""
     return html
@@ -253,10 +256,24 @@ def calculate_progress(df, col_nama_idx, col_nop_idx, target_dict, is_genset=Fal
         res[branch] = int(branch_df['VAL_NAMA'].nunique())
     return res
 
+# Fungsi khusus untuk menghitung "NY" (Pendingan KUT) per NOP
+def get_ny_status_per_nop(df, target_dict):
+    res = {k: 0 for k in target_dict.keys()}
+    if df.empty: return res
+    nop_cols = [i for i, c in enumerate(df.columns) if 'NOP' in str(c).upper()]
+    if not nop_cols: return res
+    actual_nop_idx = nop_cols[-1]
+    
+    df_str = df.astype(str).apply(lambda x: x.str.strip().str.upper())
+    for branch in target_dict.keys():
+        branch_df = df_str[df_str.iloc[:, actual_nop_idx].str.contains(branch, na=False)]
+        res[branch] = (branch_df == 'NY').sum().sum()
+    return res
+
 prog_asset = calculate_progress(df_asset, 2, 53, target_default, is_genset=False)
 prog_genset = calculate_progress(df_genset, 2, 34, target_genset, is_genset=True)
 prog_tools = calculate_progress(df_tools_asset, 2, 108, target_default, is_genset=False)
-
+ny_per_nop = get_ny_status_per_nop(df_tools_asset, target_default)
 
 # =====================================================================
 # LAYOUT UTAMA DIMULAI DI SINI
@@ -288,7 +305,10 @@ with tab_trk_genset:
 with tab_trk_tools:
     html_trk_tools = ""
     for branch, target in target_default.items():
-        html_trk_tools += render_progress_nop(f"NOP {branch.title()}", prog_tools[branch], target)
+        # Tambahan Indikator "NY" (Kebutuhan Pending KUT) ke HTML Bar
+        ny_count = ny_per_nop.get(branch, 0)
+        extra = f"🔥 Pendingan KUT (NY): {ny_count} Item" if ny_count > 0 else "✅ Kebutuhan KUT (NY): 0 Item"
+        html_trk_tools += render_progress_nop(f"NOP {branch.title()}", prog_tools[branch], target, extra_text=extra)
     st.markdown(html_trk_tools, unsafe_allow_html=True)
 
 st.write("---")
@@ -332,19 +352,43 @@ if not df_sdm.empty:
         st.markdown(f"""
         <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--primary-color); border-radius: 12px; padding: 15px; margin-top: 15px; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
             <h4 style='margin-top:0; color:var(--accent-color); font-weight:800; font-size:14px; text-transform:uppercase;'>📊 ANALISIS KEBUTUHAN & KONDISI GRUP: {selected_job if selected_job != "SEMUA JABATAN" else "ALL"} - {selected_loker if selected_loker != "SEMUA LOKER" else "ALL"}</h4>
-            <p style='font-size:11px; color:#cbd5e1; margin-bottom:15px;'>Kalkulasi otomatis (Agregasi) berdasarkan filter yang Anda pilih di atas.</p>
+            <p style='font-size:11px; color:#cbd5e1; margin-bottom:15px;'>Kalkulasi otomatis (Agregasi Tools OKE/NY/NOK) berdasarkan grup tim yang difilter.</p>
         """, unsafe_allow_html=True)
         
         # Logika Kalkulasi Macro
         total_personnel = len(df_sdm_filtered)
-        tools_cols = ['WAH', 'FA', 'FE']
-        tools_missing = 0
-        if not df_sdm_filtered.empty:
-            for t in tools_cols:
-                if t in df_sdm_filtered.columns:
-                    tools_missing += df_sdm_filtered[t].astype(str).str.strip().isin(['nan', 'None', '', '-', 'NaN']).sum()
-                    
         valid_names_group = df_sdm_filtered['NAMA'].astype(str).str.strip().str.upper().unique() if 'NAMA' in df_sdm_filtered.columns else []
+        
+        # Ekstraksi Rincian Status per Personel untuk Tabel Macro
+        table_data = []
+        total_ny_macro = 0
+        if not df_tools_asset.empty:
+            name_col_tools = next((col for col in df_tools_asset.columns if "NAMA" in str(col).upper()), None)
+            if name_col_tools:
+                tools_macro_df = df_tools_asset[df_tools_asset[name_col_tools].astype(str).str.strip().str.upper().isin(valid_names_group)]
+                for _, row in tools_macro_df.iterrows():
+                    nama = row[name_col_tools]
+                    row_str = row.astype(str).str.strip().str.upper()
+                    oke = (row_str == 'OKE').sum()
+                    nok = (row_str == 'NOK').sum()
+                    ny = (row_str == 'NY').sum()
+                    na_val = (row_str == 'NA').sum()
+                    mp = (row_str == 'MP').sum()
+                    abm = (row_str == 'ABM').sum()
+                    
+                    total_ny_macro += ny # Dijumlahkan untuk ditampilkan di Macro Card atas
+                    
+                    table_data.append({
+                        "Nama Personel": nama,
+                        "✅ OKE (Bagus)": oke,
+                        "❌ NOK (Rusak)": nok,
+                        "⚠️ NY (Kebutuhan KUT)": ny,
+                        "➖ NA (Tdk Wajib)": na_val,
+                        "👤 MP (Pribadi)": mp,
+                        "🔹 ABM (Ada Bkn Wjb)": abm,
+                        "Total Item Terdata": oke + nok + ny + na_val + mp + abm
+                    })
+
         name_col_asset_m = next((col for col in df_asset.columns if "NAMA" in str(col).upper()), None)
         asset_group = df_asset[df_asset[name_col_asset_m].astype(str).str.strip().str.upper().isin(valid_names_group)] if not df_asset.empty and name_col_asset_m else pd.DataFrame()
         name_col_genset_m = next((col for col in df_genset.columns if "NAMA" in str(col).upper()), None)
@@ -358,9 +402,18 @@ if not df_sdm.empty:
 
         c_m1, c_m2, c_m3, c_m4 = st.columns(4)
         with c_m1: st.markdown(f"<div class='macro-card'><div class='macro-title'>👥 Total Personel Grup</div><div class='macro-value' style='color:var(--accent-color);'>{total_personnel}</div></div>", unsafe_allow_html=True)
-        with c_m2: st.markdown(f"<div class='macro-card'><div class='macro-title'>⚠️ Kebutuhan Tools (Missing)</div><div class='macro-value' style='color:#ef4444;'>{tools_missing} Item</div></div>", unsafe_allow_html=True)
+        with c_m2: st.markdown(f"<div class='macro-card'><div class='macro-title'>⚠️ Kebutuhan KUT (NY)</div><div class='macro-value' style='color:#ef4444;'>{total_ny_macro} Item</div></div>", unsafe_allow_html=True)
         with c_m3: st.markdown(f"<div class='macro-card'><div class='macro-title'>🚗 Kendaraan Teralamat</div><div class='macro-value' style='color:#f59e0b;'>{r2_serviced} / {total_r2} Unit</div></div>", unsafe_allow_html=True)
         with c_m4: st.markdown(f"<div class='macro-card'><div class='macro-title'>⚡ Genset Status Ready</div><div class='macro-value' style='color:#10b981;'>{genset_ready} / {total_genset} Unit</div></div>", unsafe_allow_html=True)
+        
+        # Render Tabel Rincian Data (NY, OKE, dll)
+        if table_data:
+            st.markdown("<br><h4 style='color:var(--accent-color); font-size:14px; text-transform:uppercase;'>📋 Rincian Kebutuhan Tools per Personel (Filter Aktif)</h4>", unsafe_allow_html=True)
+            df_tools_table = pd.DataFrame(table_data)
+            st.dataframe(df_tools_table, use_container_width=True, hide_index=True)
+        else:
+            st.info("Belum ada data input tools dari anggota grup ini.")
+            
         st.markdown("</div>", unsafe_allow_html=True)
 
     st.write("---")
