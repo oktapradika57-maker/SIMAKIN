@@ -418,7 +418,7 @@ if not df_sdm.empty:
     with col_ai:
         st.markdown(f"<h3 style='color:var(--accent-color);'>📊 Matrik Kepatuhan NOP</h3>", unsafe_allow_html=True)
         
-        # 🔥 FITUR BARU: LOGIKA KALKULASI DATA UNIK BERDASARKAN PARAMETER KOLOM TERBARU 🔥
+        # 🔥 FITUR BARU: LOGIKA KALKULASI DATA UNIK & AUTO-FALLBACK INDEX 🔥
         target_default = {
             "PALANGKARAYA": 41,
             "PANGKALANBUN": 45,
@@ -435,12 +435,18 @@ if not df_sdm.empty:
         
         def calculate_progress(df, col_nama_idx, col_nop_idx, target_dict, is_genset=False):
             res = {k: 0 for k in target_dict.keys()}
-            if df.empty or len(df.columns) <= max(col_nama_idx, col_nop_idx): return res
+            if df.empty: return res
             
-            # Ekstraksi dan Pembersihan Kolom (NAMA dan NOP)
+            # Sistem Auto-Fallback jika kolom terpotong di akhir (sering terjadi di Pandas Excel)
+            actual_nop_idx = col_nop_idx
+            if len(df.columns) <= col_nop_idx:
+                nop_cols = [i for i, c in enumerate(df.columns) if 'NOP' in str(c).upper()]
+                if nop_cols: actual_nop_idx = nop_cols[-1]
+                else: return res
+                
             temp_df = df.copy()
             temp_df['VAL_NAMA'] = temp_df.iloc[:, col_nama_idx].astype(str).str.upper().str.strip()
-            temp_df['VAL_NOP'] = temp_df.iloc[:, col_nop_idx].astype(str).str.upper().str.strip()
+            temp_df['VAL_NOP'] = temp_df.iloc[:, actual_nop_idx].astype(str).str.upper().str.strip()
             
             # Eliminasi Nilai Kosong / Blank
             temp_df = temp_df[~temp_df['VAL_NAMA'].isin(['NAN', 'NONE', '', 'NA', '-'])]
@@ -459,10 +465,10 @@ if not df_sdm.empty:
                 
             return res
         
-        # Eksekusi Pemetaan Target Data (Index Kolom Excel: 2 = C, 34 = AI, 53 = BB, 106 = DC)
+        # Eksekusi Pemetaan Target Data (Index Kolom Excel: 2 = C, 34 = AI, 53 = BB, 108 = DE)
         prog_asset = calculate_progress(df_asset, 2, 53, target_default, is_genset=False)
         prog_genset = calculate_progress(df_genset, 2, 34, target_genset, is_genset=True)
-        prog_tools = calculate_progress(df_tools_asset, 2, 106, target_default, is_genset=False)
+        prog_tools = calculate_progress(df_tools_asset, 2, 108, target_default, is_genset=False)
         
         st.markdown("""<div class="report-box-premium" style="margin-top: 0; padding: 25px; padding-bottom: 5px;">
 <h4 style="margin-top:0; color:#ffffff; font-weight:900; font-size:16px; letter-spacing:1px;">🎯 TRACKER REGISTRASI TIM (PER NOP)</h4>
