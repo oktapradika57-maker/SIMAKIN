@@ -228,7 +228,7 @@ def get_row_by_name(df, target_name):
     return matched.iloc[0] if not matched.empty else None
 
 # --- 8. LAYOUT UTAMA ---
-st.markdown('<div class="header-style">🚀 COMMAND CENTER OPERASIONAL & ASSET</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">Sismtem Monitoring Asset Kinarya</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
     df_sdm_filtered = df_sdm.copy()
