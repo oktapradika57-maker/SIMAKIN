@@ -12,7 +12,7 @@ import hashlib
 from itertools import zip_longest 
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="expanded")
 
 # --- 2. SISTEM FILTRASI WARNA DINAMIS (COLOR-SHIFTING THEME) ---
 selected_nama_raw = "-"
