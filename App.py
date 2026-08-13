@@ -12,7 +12,7 @@ import hashlib
 from itertools import zip_longest 
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
 
 # --- 2. SISTEM FILTRASI WARNA DINAMIS (COLOR-SHIFTING THEME) ---
 selected_nama_raw = "-"
@@ -126,7 +126,7 @@ def render_progress_nop(label, filled, target):
     pct = int((filled / target) * 100) if target > 0 else 0
     if pct > 100: pct = 100
     color = "#10b981" if pct == 100 else ("#f59e0b" if pct >= 60 else "#ef4444")
-    warning = f"✅ Selesai (Target Tercapai)" if pct == 100 else f"⚠️ Kurang {target - filled} Tim"
+    warning = f"✅ Selesai (Target Tercapai)" if pct == 100 else f"⚠️ Kurang {target - filled} Tim (Unik)"
     
     # Penulisan rata kiri agar tidak terdeteksi sebagai "Code Block" oleh Markdown Streamlit
     html = f"""<div style="margin-bottom: 15px;">
@@ -418,48 +418,55 @@ if not df_sdm.empty:
     with col_ai:
         st.markdown(f"<h3 style='color:var(--accent-color);'>📊 Matrik Kepatuhan NOP</h3>", unsafe_allow_html=True)
         
-        # 🔥 FITUR BARU: LOGIKA HITUNGAN NOP UNIK & SPESIFIK PER CABANG 🔥
-        target_nop = {
+        # 🔥 FITUR BARU: LOGIKA KALKULASI DATA UNIK BERDASARKAN PARAMETER KOLOM TERBARU 🔥
+        target_default = {
             "PALANGKARAYA": 41,
-            "TARAKAN": 36,
             "PANGKALANBUN": 45,
+            "TARAKAN": 36,
             "PONTIANAK": 75
         }
         
-        def calculate_progress_per_nop(df_source, col_idx, df_sdm):
-            res = {k: 0 for k in target_nop.keys()}
-            nama_col_src = next((col for col in df_source.columns if "NAMA" in str(col).upper()), None)
+        target_genset = {
+            "PALANGKARAYA": 14,
+            "PANGKALANBUN": 23,
+            "TARAKAN": 14,
+            "PONTIANAK": 31
+        }
+        
+        def calculate_progress(df, col_nama_idx, col_nop_idx, target_dict, is_genset=False):
+            res = {k: 0 for k in target_dict.keys()}
+            if df.empty or len(df.columns) <= max(col_nama_idx, col_nop_idx): return res
             
-            if not nama_col_src or df_source.empty or df_sdm.empty: 
-                return res
+            # Ekstraksi dan Pembersihan Kolom (NAMA dan NOP)
+            temp_df = df.copy()
+            temp_df['VAL_NAMA'] = temp_df.iloc[:, col_nama_idx].astype(str).str.upper().str.strip()
+            temp_df['VAL_NOP'] = temp_df.iloc[:, col_nop_idx].astype(str).str.upper().str.strip()
             
-            if len(df_source.columns) > col_idx:
-                s = df_source.iloc[:, col_idx].astype(str).str.strip().str.upper()
-                valid_df = df_source[~s.isin(['NAN', 'NONE', '', '-', 'NULL', 'NA', 'NAN'])]
-            else: 
-                return res
+            # Eliminasi Nilai Kosong / Blank
+            temp_df = temp_df[~temp_df['VAL_NAMA'].isin(['NAN', 'NONE', '', 'NA', '-'])]
+            temp_df = temp_df[~temp_df['VAL_NOP'].isin(['NAN', 'NONE', '', 'NA', '-'])]
             
-            valid_names = valid_df[nama_col_src].astype(str).str.strip().str.upper().unique()
-            
-            for nop_name in target_nop.keys():
-                # Cari personel yang masuk ke NOP ini (cek dari kolom NOP atau LOKER)
-                m1 = df_sdm['NOP'].astype(str).str.upper().str.contains(nop_name, na=False) if 'NOP' in df_sdm.columns else pd.Series(False, index=df_sdm.index)
-                m2 = df_sdm['LOKER'].astype(str).str.upper().str.contains(nop_name, na=False) if 'LOKER' in df_sdm.columns else pd.Series(False, index=df_sdm.index)
+            # Logika Khusus Parameter Genset (Wajib Jabatan MBP / CME)
+            if is_genset and len(temp_df.columns) > 3:
+                temp_df['VAL_JAB'] = temp_df.iloc[:, 3].astype(str).str.upper().str.strip() # Index 3 = Kolom D
+                temp_df = temp_df[temp_df['VAL_JAB'].str.contains('MBP|CME', na=False, regex=True)]
                 
-                sdm_names = df_sdm[m1 | m2]['NAMA'].astype(str).str.strip().str.upper().unique()
-                
-                # Cek irisan (intersection) untuk mendapat nilai unik
-                res[nop_name] = len(set(valid_names).intersection(set(sdm_names)))
+            # Validasi & Kalkulasi Personel Unik per Wilayah Cabang
+            for branch in target_dict.keys():
+                branch_df = temp_df[temp_df['VAL_NOP'].str.contains(branch, na=False)]
+                # nunique() berfungsi mengeliminasi nama ganda
+                res[branch] = int(branch_df['VAL_NAMA'].nunique())
                 
             return res
         
-        prog_asset = calculate_progress_per_nop(df_asset, 53, df_sdm)
-        prog_genset = calculate_progress_per_nop(df_genset, 34, df_sdm)
-        prog_tools = calculate_progress_per_nop(df_tools_asset, 108, df_sdm)
+        # Eksekusi Pemetaan Target Data (Index Kolom Excel: 2 = C, 34 = AI, 53 = BB, 106 = DC)
+        prog_asset = calculate_progress(df_asset, 2, 53, target_default, is_genset=False)
+        prog_genset = calculate_progress(df_genset, 2, 34, target_genset, is_genset=True)
+        prog_tools = calculate_progress(df_tools_asset, 2, 106, target_default, is_genset=False)
         
         st.markdown("""<div class="report-box-premium" style="margin-top: 0; padding: 25px; padding-bottom: 5px;">
 <h4 style="margin-top:0; color:#ffffff; font-weight:900; font-size:16px; letter-spacing:1px;">🎯 TRACKER REGISTRASI TIM (PER NOP)</h4>
-<p style="font-size:12px; color:#94a3b8; margin-bottom:15px; line-height:1.5;">Memantau progres jumlah tim yang telah submit data berdasarkan target masing-masing NOP cabang.</p>
+<p style="font-size:12px; color:#94a3b8; margin-bottom:15px; line-height:1.5;">Memantau progres jumlah inputan tim valid berdasarkan target unik masing-masing NOP cabang.</p>
 </div>""", unsafe_allow_html=True)
 
         # Tab Breakdown Per Kategori
@@ -467,23 +474,47 @@ if not df_sdm.empty:
         
         with tab_trk_asset:
             html_trk_asset = ""
-            for branch, target in target_nop.items():
+            for branch, target in target_default.items():
                 html_trk_asset += render_progress_nop(f"NOP {branch.title()}", prog_asset[branch], target)
             st.markdown(html_trk_asset, unsafe_allow_html=True)
             
         with tab_trk_genset:
             html_trk_genset = ""
-            for branch, target in target_nop.items():
+            for branch, target in target_genset.items():
                 html_trk_genset += render_progress_nop(f"NOP {branch.title()}", prog_genset[branch], target)
             st.markdown(html_trk_genset, unsafe_allow_html=True)
             
         with tab_trk_tools:
             html_trk_tools = ""
-            for branch, target in target_nop.items():
+            for branch, target in target_default.items():
                 html_trk_tools += render_progress_nop(f"NOP {branch.title()}", prog_tools[branch], target)
             st.markdown(html_trk_tools, unsafe_allow_html=True)
+            
+        # Catatan Penjelasan Target & Sistem Hitungan Unik
+        st.markdown("""
+<div style="font-size: 11px; color: #94a3b8; margin-top: 15px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 15px; line-height:1.6; background:rgba(0,0,0,0.2); padding:15px; border-radius:10px;">
+<div style="display:flex; justify-content:space-between; flex-wrap: wrap; gap:10px;">
+<div>
+<b>Target Tim (R2/R4 & Tools):</b><br>
+• Palangkaraya: <b style="color:#ffffff;">41</b><br>
+• Pangkalanbun: <b style="color:#ffffff;">45</b><br>
+• Tarakan: <b style="color:#ffffff;">36</b><br>
+• Pontianak: <b style="color:#ffffff;">75</b>
+</div>
+<div>
+<b>Target Tim (Khusus Genset):</b><br>
+• Palangkaraya: <b style="color:#ffffff;">14</b><br>
+• Pangkalanbun: <b style="color:#ffffff;">23</b><br>
+• Tarakan: <b style="color:#ffffff;">14</b><br>
+• Pontianak: <b style="color:#ffffff;">31</b>
+</div>
+</div>
+<br>
+<i style="color:var(--accent-color);">*Sistem otomatis mengeliminasi data ganda (double-input) dan hanya menghitung validasi input nama unik per NOP. Pada Parameter Genset, sistem hanya menghitung input dari tim dengan Jabatan MBP / CME.</i>
+</div>
+        """, unsafe_allow_html=True)
         
-        # 🔥 FITUR BARU: DROPDOWN RANGKUMAN SERVICE 🔥
+        # 🔥 DROPDOWN RANGKUMAN SERVICE 🔥
         st.markdown("<br>", unsafe_allow_html=True)
         with st.expander("🛠️ RANGKUMAN UPDATE SERVICE KENDARAAN"):
             if not df_asset.empty:
