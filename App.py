@@ -12,7 +12,7 @@ import hashlib
 from itertools import zip_longest 
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="SIMAKIN", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
 
 # --- 2. SISTEM FILTRASI WARNA DINAMIS (COLOR-SHIFTING THEME) ---
 selected_nama_raw = "-"
@@ -300,7 +300,7 @@ if not df_sdm.empty:
         list_job = ["SEMUA JABATAN"] + list(df_sdm_filtered['JOB'].dropna().unique()) if 'JOB' in df_sdm_filtered.columns else ["SEMUA JABATAN"]
         selected_job = st.selectbox("💼 JABATAN (ROLE):", list_job)
         if selected_job != "SEMUA JABATAN": 
-            df_sdm_filtered = df_sdm_filtered[df_sdm_filtered['JOB LEVEL'] == selected_job]
+            df_sdm_filtered = df_sdm_filtered[df_sdm_filtered['JOB'] == selected_job]
             
     with col_f3:
         list_loker = ["SEMUA LOKER"] + list(df_sdm_filtered['LOKER'].dropna().unique()) if 'LOKER' in df_sdm_filtered.columns else ["SEMUA LOKER"]
