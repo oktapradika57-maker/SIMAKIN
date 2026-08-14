@@ -238,8 +238,8 @@ st.markdown('<div class="header-style">🚀 COMMAND CENTER OPERASIONAL & ASSET</
 
 if not df_sdm.empty:
     
-    # ---------------------------------------------------------------------
-    # TIER 1: TRACKER REGISTRASI (DYNAMIC AUTO-DETECT COLUMNS)
+  # ---------------------------------------------------------------------
+    # TIER 1: TRACKER REGISTRASI (PERBAIKAN AUTO-DETECT COLUMNS)
     # ---------------------------------------------------------------------
     target_default = {"PALANGKARAYA": 41, "PANGKALANBUN": 45, "TARAKAN": 36, "PONTIANAK": 75}
     target_genset = {"PALANGKARAYA": 14, "PANGKALANBUN": 23, "TARAKAN": 14, "PONTIANAK": 31}
@@ -248,20 +248,21 @@ if not df_sdm.empty:
         res = {k: 0 for k in target_dict.keys()}
         if df.empty: return res
         
-        # Auto-Detect Kolom NAMA dan NOP (Mencegah error jika urutan Excel bergeser)
-        nama_col = next((c for c in df.columns if 'NAMA' in str(c).upper()), None)
-        nop_col = next((c for c in df.columns if 'NOP' in str(c).upper()), None)
+        # Pencarian kolom yang lebih kebal error (Fuzzy match)
+        nama_col = next((c for c in df.columns if 'NAMA' in str(c).upper() or 'NAME' in str(c).upper()), None)
+        nop_col = next((c for c in df.columns if 'NOP' in str(c).upper() or 'CABANG' in str(c).upper()), None)
+        
+        # Fallback jika nama kolom aneh, tebak dari index (biasanya NAMA di col 1/2, NOP di col 2/3)
+        if not nama_col and len(df.columns) > 1: nama_col = df.columns[1]
+        if not nop_col and len(df.columns) > 2: nop_col = df.columns[2]
         
         if not nama_col or not nop_col: return res
         
         temp_df = df.copy()
         temp_df['VAL_NAMA'] = temp_df[nama_col].astype(str).str.upper().str.strip()
-        temp_df['VAL_NOP'] = temp_df[nop_col].astype(str).str.upper().str.strip()
+        temp_df['VAL_NOP'] = temp_df[nop_col].astype(str).str.upper().str.strip().str.replace(" ", "")
         
         temp_df = temp_df[~temp_df['VAL_NAMA'].isin(['NAN', 'NONE', '', 'NA', '-'])]
-        temp_df = temp_df[~temp_df['VAL_NOP'].isin(['NAN', 'NONE', '', 'NA', '-'])]
-        
-        # Deduplikasi agar tracker unik (tidak hitung orang yang sama 2x)
         temp_df = temp_df.drop_duplicates(subset=['VAL_NAMA'])
         
         if is_genset:
@@ -269,12 +270,11 @@ if not df_sdm.empty:
             if job_col:
                 temp_df['VAL_JAB'] = temp_df[job_col].astype(str).str.upper().str.strip()
                 temp_df = temp_df[temp_df['VAL_JAB'].str.contains('MBP|CME', na=False, regex=True)]
-            elif len(df.columns) > 3: # Fallback jika kolom jabatan ga ketemu namanya
-                temp_df['VAL_JAB'] = temp_df.iloc[:, 3].astype(str).str.upper().str.strip()
-                temp_df = temp_df[temp_df['VAL_JAB'].str.contains('MBP|CME', na=False, regex=True)]
-                
+        
         for branch in target_dict.keys():
-            branch_df = temp_df[temp_df['VAL_NOP'].str.contains(branch.upper(), na=False)]
+            # Cek dengan string tanpa spasi agar 'PALANGKA RAYA' dan 'PALANGKARAYA' terbaca sama
+            branch_clean = branch.replace(" ", "").upper()
+            branch_df = temp_df[temp_df['VAL_NOP'].str.contains(branch_clean, na=False)]
             res[branch] = int(branch_df['VAL_NAMA'].nunique())
         return res
     
@@ -283,9 +283,9 @@ if not df_sdm.empty:
     prog_tools = calculate_progress_dynamic(df_tools_asset, target_default, is_genset=False)
     
     st.markdown("""<div class="report-box-premium" style="margin-top: -10px; padding: 20px; padding-bottom: 5px; border-left: 5px solid var(--primary-color);">
-<h4 style="margin-top:0; color:#ffffff; font-weight:900; font-size:16px; letter-spacing:1px;">🎯 TRACKER REGISTRASI TIM (PER NOP)</h4>
-<p style="font-size:12px; color:#94a3b8; margin-bottom:15px;">Memantau progres input data unik keseluruhan cabang secara global. (Otomatis Filter Nama Ganda)</p>
-</div>""", unsafe_allow_html=True)
+    <h4 style="margin-top:0; color:#ffffff; font-weight:900; font-size:16px; letter-spacing:1px;">🎯 TRACKER REGISTRASI TIM (PER NOP)</h4>
+    <p style="font-size:12px; color:#94a3b8; margin-bottom:15px;">Memantau progres input data unik keseluruhan cabang secara global. (Otomatis Filter Nama Ganda)</p>
+    </div>""", unsafe_allow_html=True)
 
     tab_trk_asset, tab_trk_genset, tab_trk_tools = st.tabs(["🚗 Spesifikasi R2/R4", "⚡ Parameter Genset", "🔧 Inventaris Tools"])
     with tab_trk_asset:
@@ -296,17 +296,17 @@ if not df_sdm.empty:
         for branch, target in target_default.items(): st.markdown(render_progress_nop(f"NOP {branch.title()}", prog_tools[branch], target), unsafe_allow_html=True)
         
     st.markdown("""
-<div style="font-size: 11px; color: #94a3b8; margin-top: 5px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 10px; margin-bottom:25px;">
-<b>Target:</b> Palangkaraya (41/14), Pangkalanbun (45/23), Tarakan (36/14), Pontianak (75/31).
-</div>
+    <div style="font-size: 11px; color: #94a3b8; margin-top: 5px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 10px; margin-bottom:25px;">
+    <b>Target:</b> Palangkaraya (41/14), Pangkalanbun (45/23), Tarakan (36/14), Pontianak (75/31).
+    </div>
     """, unsafe_allow_html=True)
     
     # ---------------------------------------------------------------------
-    # TIER 2: FILTER & REKAPITULASI HTML BERJERET
+    # TIER 2: FILTER & REKAPITULASI HTML BERJERET (PERBAIKAN PARAMETER)
     # ---------------------------------------------------------------------
     df_sdm_filtered = df_sdm.copy()
     
-    st.markdown(f"<h3 style='color:var(--accent-color); font-size:18px;'>🔍 Filter Makro & Analisa Kebutuhan</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color:var(--accent-color); font-size:18px;'>🔍 Filter Makro & Analisa Kebutuhan Tools</h3>", unsafe_allow_html=True)
     col_f1, col_f2, col_f3 = st.columns(3) 
     
     with col_f1:
@@ -318,11 +318,10 @@ if not df_sdm.empty:
             df_sdm_filtered = df_sdm_filtered[df_sdm_filtered[nop_col_sdm].astype(str).str.strip().str.upper() == selected_nop.upper()]
             
     with col_f2:
-        # Ekstrak Jabatan spesifik dari Kolom C (Index 2) Sheet SDM
         col_jabatan = df_sdm.columns[2] if len(df_sdm.columns) > 2 else next((c for c in df_sdm.columns if 'JOB' in str(c).upper()), None)
         list_job = ["SEMUA JABATAN"]
         if col_jabatan: list_job += sorted([str(x).strip() for x in df_sdm_filtered[col_jabatan].dropna().unique() if str(x).strip() not in ["", "nan", "None", "-"]])
-        selected_job = st.selectbox("💼 JABATAN (KOLOM C):", list_job)
+        selected_job = st.selectbox("💼 JABATAN:", list_job)
         if selected_job != "SEMUA JABATAN" and col_jabatan: 
             df_sdm_filtered = df_sdm_filtered[df_sdm_filtered[col_jabatan].astype(str).str.strip() == selected_job]
             
@@ -334,21 +333,15 @@ if not df_sdm.empty:
         if selected_loker != "SEMUA LOKER" and loker_col: 
             df_sdm_filtered = df_sdm_filtered[df_sdm_filtered[loker_col].astype(str).str.strip() == selected_loker]
 
-    # LOGIKA DEDUPLIKASI DAN EKSTRAKSI DAFTAR TOOLS
     table_data = []
-    grand_ny = 0
-    grand_nok = 0
-    grand_oke = 0
+    grand_ny, grand_nok, grand_oke, grand_lain = 0, 0, 0, 0
     
     if not df_tools_asset.empty and not df_sdm_filtered.empty:
         valid_names_group = df_sdm_filtered['NAMA'].astype(str).str.strip().str.upper().unique() if 'NAMA' in df_sdm_filtered.columns else []
         name_col_tools = next((col for col in df_tools_asset.columns if "NAMA" in str(col).upper()), None)
         
         if name_col_tools:
-            # Saring hanya nama yang ada di SDM terpilih
             tools_macro_df = df_tools_asset[df_tools_asset[name_col_tools].astype(str).str.strip().str.upper().isin(valid_names_group)].copy()
-            
-            # 🔥 DEDUPLIKASI SUPER KETAT: Jika nama double, ambil yang pertama kali muncul 🔥
             tools_macro_df['NAMA_UPPER'] = tools_macro_df[name_col_tools].astype(str).str.strip().str.upper()
             tools_macro_df = tools_macro_df.drop_duplicates(subset=['NAMA_UPPER'], keep='first')
             
@@ -358,110 +351,141 @@ if not df_sdm.empty:
                 nop_cols = [c for c in df_tools_asset.columns if 'NOP' in str(c).upper()]
                 if nop_cols: nop_val = str(row[nop_cols[-1]]).strip()
                 
+                # Mencakup semua parameter di excel (termasuk kolom A sampai DE ke atas)
                 status_dict = {'OKE': [], 'NOK': [], 'NY': [], 'NA': [], 'MP': [], 'ABM': []}
                 
-                # Scan isi baris, jika isinya cocok dengan Status, rekam NAMA HEADER KOLOM-nya
                 for col_name in df_tools_asset.columns:
-                    val = str(row[col_name]).strip().upper()
-                    if val in status_dict:
-                        status_dict[val].append(str(col_name).strip().title()) 
+                    # Cek agar nama/nop/jabatan tidak masuk list tools
+                    if str(col_name).upper() not in ['NAMA', 'NOP', 'NO', 'JABATAN', 'REGION', 'AREA']:
+                        val = str(row[col_name]).strip().upper()
+                        if val in status_dict:
+                            status_dict[val].append(str(col_name).strip().title()) 
                 
-                ny_count = len(status_dict['NY'])
-                nok_count = len(status_dict['NOK'])
-                oke_count = len(status_dict['OKE'])
-                
-                grand_ny += ny_count
-                grand_nok += nok_count
-                grand_oke += oke_count
+                grand_ny += len(status_dict['NY'])
+                grand_nok += len(status_dict['NOK'])
+                grand_oke += len(status_dict['OKE'])
+                grand_lain += len(status_dict['NA']) + len(status_dict['MP']) + len(status_dict['ABM'])
                 
                 table_data.append({
                     "nama": nama,
                     "nop": nop_val,
-                    "ny_count": ny_count,
                     "ny_list": status_dict['NY'],
-                    "nok_count": nok_count,
                     "nok_list": status_dict['NOK'],
-                    "oke_count": oke_count
+                    "oke_list": status_dict['OKE'],
+                    "lain_list": status_dict['NA'] + status_dict['MP'] + status_dict['ABM']
                 })
 
-    # Render Kotak Grand Total (Agregasi)
+    # Kotak Agregasi
     st.markdown(f"""
     <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--primary-color); border-radius: 12px; padding: 15px; margin-top: 15px; margin-bottom: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
-        <h4 style='margin-top:0; color:var(--accent-color); font-weight:800; font-size:14px; text-transform:uppercase;'>📊 RANGKUMAN KEBUTUHAN TOOLS (AGREGASI GRUP TERFILTER)</h4>
-        <p style='font-size:11px; color:#cbd5e1; margin-bottom:15px;'>Kalkulasi status tools (sudah difilter ganda/double input) dari <b>{len(table_data)} Personel valid</b>.</p>
+        <h4 style='margin-top:0; color:var(--accent-color); font-weight:800; font-size:14px; text-transform:uppercase;'>📊 RANGKUMAN KEBUTUHAN TOOLS ({len(table_data)} PERSONEL VALID)</h4>
     """, unsafe_allow_html=True)
     
-    c_m1, c_m2, c_m3 = st.columns(3)
-    with c_m1: st.markdown(f"<div class='macro-card' style='border-color:#ef4444;'><div class='macro-title'>🔥 GRAND TOTAL NY (PENDING KUT)</div><div class='macro-value' style='color:#ef4444;'>{grand_ny} Item</div></div>", unsafe_allow_html=True)
-    with c_m2: st.markdown(f"<div class='macro-card' style='border-color:#f59e0b;'><div class='macro-title'>❌ GRAND TOTAL NOK (RUSAK)</div><div class='macro-value' style='color:#f59e0b;'>{grand_nok} Item</div></div>", unsafe_allow_html=True)
-    with c_m3: st.markdown(f"<div class='macro-card' style='border-color:#10b981;'><div class='macro-title'>✅ GRAND TOTAL OKE (BAGUS)</div><div class='macro-value' style='color:#10b981;'>{grand_oke} Item</div></div>", unsafe_allow_html=True)
+    c_m1, c_m2, c_m3, c_m4 = st.columns(4)
+    with c_m1: st.markdown(f"<div class='macro-card' style='border-color:#10b981;'><div class='macro-title'>✅ OKE (STANDAR)</div><div class='macro-value' style='color:#10b981;'>{grand_oke}</div></div>", unsafe_allow_html=True)
+    with c_m2: st.markdown(f"<div class='macro-card' style='border-color:#ef4444;'><div class='macro-title'>🔥 NY (PENDING KUT)</div><div class='macro-value' style='color:#ef4444;'>{grand_ny}</div></div>", unsafe_allow_html=True)
+    with c_m3: st.markdown(f"<div class='macro-card' style='border-color:#f59e0b;'><div class='macro-title'>❌ NOK (RUSAK)</div><div class='macro-value' style='color:#f59e0b;'>{grand_nok}</div></div>", unsafe_allow_html=True)
+    with c_m4: st.markdown(f"<div class='macro-card' style='border-color:#94a3b8;'><div class='macro-title'>⚠️ LAIN (NA/MP/ABM)</div><div class='macro-value' style='color:#94a3b8;'>{grand_lain}</div></div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Render Tabel HTML "Berjeret" (Custom Rapi ke Bawah)
+    # TABEL HTML LENGKAP TANPA ERROR RENDER
     with st.expander("📋 LIHAT TABEL RINCIAN KONDISI TOOLS TIM & NAMA ITEM-NYA"):
         if table_data:
-            # Merakit HTML
-            table_html = "<table class='rek-table'><tr><th width='25%'>Identitas Personel</th><th width='37.5%'>🔥 Pending KUT (NY)</th><th width='37.5%'>❌ Rusak (NOK)</th></tr>"
+            table_html = """
+            <div style="overflow-x:auto;">
+            <table class='rek-table' style="min-width: 1000px;">
+                <tr>
+                    <th width='20%'>Identitas Personel</th>
+                    <th width='20%'>✅ OKE (Standar)</th>
+                    <th width='20%'>🔥 NY (Pending KUT)</th>
+                    <th width='20%'>❌ NOK (Rusak)</th>
+                    <th width='20%'>⚠️ NA / MP / ABM</th>
+                </tr>
+            """
             for item in table_data:
-                # Membuat format list bullet HTML untuk NY dan NOK
-                ny_list_html = "".join([f"<li>{tool}</li>" for tool in item['ny_list']])
-                nok_list_html = "".join([f"<li>{tool}</li>" for tool in item['nok_list']])
+                # Render isi list ke bentuk HTML Bullet point
+                oke_htm = "".join([f"<li>{x}</li>" for x in item['oke_list']])
+                ny_htm = "".join([f"<li>{x}</li>" for x in item['ny_list']])
+                nok_htm = "".join([f"<li>{x}</li>" for x in item['nok_list']])
+                lain_htm = "".join([f"<li>{x}</li>" for x in item['lain_list']])
                 
-                ny_cell = f"<span class='badge-ny'>{item['ny_count']} ITEM PENDING</span><ul class='item-list'>{ny_list_html}</ul>" if item['ny_count'] > 0 else "<span style='color:#64748b; font-size:11px; font-style:italic;'>Aman (0 Item)</span>"
-                
-                nok_cell = f"<span class='badge-nok'>{item['nok_count']} ITEM RUSAK</span><ul class='item-list'>{nok_list_html}</ul>" if item['nok_count'] > 0 else "<span style='color:#64748b; font-size:11px; font-style:italic;'>Aman (0 Item)</span>"
+                oke_cell = f"<span class='badge-ny' style='background:rgba(16,185,129,0.15); color:#10b981; border-color:rgba(16,185,129,0.4);'>{len(item['oke_list'])} ITEM</span><ul class='item-list' style='max-height:200px; overflow-y:auto;'>{oke_htm}</ul>" if item['oke_list'] else "<span style='color:#64748b; font-size:11px;'>- Kosong -</span>"
+                ny_cell = f"<span class='badge-ny'>{len(item['ny_list'])} ITEM</span><ul class='item-list' style='max-height:200px; overflow-y:auto;'>{ny_htm}</ul>" if item['ny_list'] else "<span style='color:#64748b; font-size:11px;'>- Kosong -</span>"
+                nok_cell = f"<span class='badge-nok'>{len(item['nok_list'])} ITEM</span><ul class='item-list' style='max-height:200px; overflow-y:auto;'>{nok_htm}</ul>" if item['nok_list'] else "<span style='color:#64748b; font-size:11px;'>- Kosong -</span>"
+                lain_cell = f"<span class='badge-ny' style='background:rgba(148,163,184,0.15); color:#94a3b8; border-color:rgba(148,163,184,0.4);'>{len(item['lain_list'])} ITEM</span><ul class='item-list' style='max-height:200px; overflow-y:auto;'>{lain_htm}</ul>" if item['lain_list'] else "<span style='color:#64748b; font-size:11px;'>- Kosong -</span>"
                 
                 table_html += f"""
                 <tr>
                     <td>
                         <b style='color:#ffffff; font-size:13px;'>{item['nama']}</b><br>
-                        <span style='color:var(--accent-color); font-size:11px;'>NOP: {item['nop']}</span><br>
-                        <span style='color:#94a3b8; font-size:10px;'>✅ {item['oke_count']} Item berstatus OKE</span>
+                        <span style='color:var(--accent-color); font-size:11px;'>NOP: {item['nop']}</span>
                     </td>
+                    <td>{oke_cell}</td>
                     <td>{ny_cell}</td>
                     <td>{nok_cell}</td>
+                    <td>{lain_cell}</td>
                 </tr>
                 """
-            table_html += "</table>"
-            
-            # Tampilkan Tabel HTML
+            table_html += "</table></div>"
             st.markdown(table_html, unsafe_allow_html=True)
-            st.markdown("""<div style='font-size: 11px; color:#94a3b8; line-height: 1.4; margin-top:10px;'>
-            <b>Legenda: OKE</b> (Bagus/Lengkap), <b>NOK</b> (Rusak), <b>NY</b> (Tdk Ada & Mandatory / KUT).<br>
-            <i>*Sistem secara otomatis menghapus data duplikasi nama pada tabel ini. Alat yang berstatus OKE hanya dirangkum dalam bentuk angka untuk menjaga kerapian layar.</i>
-            </div>""", unsafe_allow_html=True)
         else:
-            st.info("Belum ada data tools yang diinput oleh grup tim ini.")
+            st.info("ℹ️ Tidak ada data inventaris tools yang ditemukan untuk filter tim saat ini.")
 
-    st.write("---")
-    
     # ---------------------------------------------------------------------
-    # TIER 3: PILIH PERSONEL (SISA FITUR DI-HIDDEN DI BAWAH INI)
+    # TIER 3: PERSONAL DEEP DIVE & AUDIT ASET INDIVIDUAL
     # ---------------------------------------------------------------------
-    st.markdown(f"<h3 style='color:var(--accent-color); font-size:18px;'>👤 Panel Investigasi Individu</h3>", unsafe_allow_html=True)
-    st.info("👆 Gunakan *Dropdown* di bawah ini untuk **membuka laci rahasia** berisi Profil, AI KUT, Matrik Data, dan Galeri Foto personel.")
+    st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin: 40px 0 20px 0;'>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:var(--accent-color); font-size:18px;'>👤 PROFILING & AUDIT INDIVIDUAL</h3>", unsafe_allow_html=True)
     
-    list_nama = df_sdm_filtered['NAMA'].dropna().unique() if 'NAMA' in df_sdm_filtered.columns else []
-    selected_nama = "-"
-    if len(list_nama) > 0:
-        selected_nama = st.selectbox("PILIH IDENTITAS PERSONEL UNTUK MELIHAT DETAIL:", ["-"] + sorted(list(list_nama)))
-        if st.session_state.get('selected_nama_karyawan') != selected_nama:
-            st.session_state.selected_nama_karyawan = selected_nama; st.rerun()
+    nama_col_sdm = next((c for c in df_sdm_filtered.columns if 'NAMA' in str(c).upper()), None)
+    if nama_col_sdm and not df_sdm_filtered.empty:
+        list_nama = sorted([str(x).strip() for x in df_sdm_filtered[nama_col_sdm].dropna().unique() if str(x).strip() != "nan"])
+        
+        selected_nama = st.selectbox("🔎 PILIH PERSONEL UNTUK DETAIL AUDIT:", list_nama, key="selected_nama_karyawan")
+        
+        if selected_nama:
+            st.markdown(f"""
+            <div class="report-box-premium" style="margin-bottom: 20px;">
+                <div class="report-date-badge">⏱️ Live Audit: {datetime.now().strftime('%d %B %Y')}</div>
+                <h3 style="margin: 0; color: #ffffff; font-weight: 900; letter-spacing: 1px;">{selected_nama.upper()}</h3>
+                <p style="color: #94a3b8; font-size: 12px; margin-top: 5px;">Sistem Otomatis Terhubung dengan Database Asset, Tools & Genset</p>
+            </div>
+            """, unsafe_allow_html=True)
 
-    # 🔥🔥 SEMUA DATA KE BAWAH HANYA AKAN MUNCUL JIKA NAMA SUDAH DIPILIH 🔥🔥
-    if selected_nama != "-":
-        st.markdown("<br>", unsafe_allow_html=True)
-        def get_row_by_name(df, target_name):
-            if df.empty: return None
-            name_col = next((col for col in df.columns if "NAMA" in str(col).upper()), None)
-            if not name_col: return None
-            matched = df[df[name_col].astype(str).str.strip().str.lower().str.contains(str(target_name).strip().lower(), regex=False, na=False)]
-            return matched.iloc[0] if not matched.empty else None
+            if st.session_state.get('show_ai_kut', False):
+                st.markdown("""
+                <div class="ai-kut-box">
+                    <h4 style='color:var(--accent-color); margin-top:0; font-weight:900; letter-spacing:1px;'>🤖 AI SICAKEP GENERATIVE REPORT</h4>
+                """, unsafe_allow_html=True)
+                
+                ai_col1, ai_col2 = st.columns(2)
+                with ai_col1:
+                    st.markdown("<div class='ai-llm-card'>", unsafe_allow_html=True)
+                    st.markdown("<h4>📋 Analisa Dokumen & Tools</h4>", unsafe_allow_html=True)
+                    st.write(generate_ai_analysis_mini(selected_nama, is_doc=True))
+                    st.markdown("</div>", unsafe_allow_html=True)
+                with ai_col2:
+                    st.markdown("<div class='ai-llm-card'>", unsafe_allow_html=True)
+                    st.markdown("<h4>🔍 Diagnosa Aset Fisik</h4>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='color:#e2e8f0; font-size:13px;'>{analyze_photo_to_text('Kendaraan & Genset', selected_nama)}</p>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
-        data_karyawan_select = get_row_by_name(df_sdm_filtered, selected_nama)
-        data_asset_select = get_row_by_name(df_asset, selected_nama)
-        data_genset_select = get_row_by_name(df_genset, selected_nama)
-        data_tools_asset_select = get_row_by_name(df_tools_asset, selected_nama)
+            with st.expander("📝 INPUT REKOMENDASI & TINDAK LANJUT PERBAIKAN"):
+                with st.form(key=f"form_tindakan_{selected_nama}"):
+                    st.markdown(f"<p style='color:var(--accent-color); font-weight:bold; margin-bottom:15px;'>Catat instruksi KUT untuk: {selected_nama}</p>", unsafe_allow_html=True)
+                    unit_info = st.text_input("Unit Aset (Plat Mobil / ID Genset)")
+                    findings = st.text_area("Detail Temuan & Rekomendasi (Action Plan)", height=100)
+                    
+                    if st.form_submit_button("💾 SIMPAN KE DATABASE GOOGLE SHEETS", use_container_width=True):
+                        success = save_findings_to_sheet("-", selected_nama, unit_info, findings)
+                        if success:
+                            st.success(f"✅ Data rekomendasi untuk {selected_nama} berhasil disimpan ke Spreadsheet!")
+                        else:
+                            st.error("❌ Gagal menyimpan data.")
+
+else:
+    st.error("⚠️ Database kosong. Pastikan link Google Sheets benar.")
 
         # FITUR AI KUT REPORT
         if st.session_state.show_ai_kut:
