@@ -12,7 +12,7 @@ import re
 from itertools import zip_longest 
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Dashboard Operational, Asset & Genset", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="SiMAKIN", layout="wide", initial_sidebar_state="expanded")
 
 # --- 2. SISTEM FILTRASI WARNA DINAMIS (COLOR-SHIFTING THEME) ---
 selected_nama_raw = "-"
@@ -185,7 +185,7 @@ def login_form():
         st.markdown('<p style="text-align:center; font-size:12px; color:var(--primary-color); font-weight:800; letter-spacing:1.5px; margin-top:-20px; margin-bottom:35px;">Deployed by Okta Pradika</p>', unsafe_allow_html=True)
         user = st.text_input("👤 USERNAME")
         pwd = st.text_input("🔑 PASSWORD", type="password")
-        if st.form_submit_button("🚀 OTENTIKASI MASUK", use_container_width=True):
+        if st.form_submit_button("MASUKIN SIMAKIN", use_container_width=True):
             if user == "SIMAKINKUT" and pwd == "2026KUTPOSITIF": st.session_state.logged_in = True; st.rerun()
             else: st.error("❌ Kredensial Salah!")
 if not st.session_state.logged_in: login_form(); st.stop() 
@@ -240,7 +240,7 @@ with st.spinner("⏳ Sinkronisasi Mesin Data & AI SICAKEP..."):
 # =====================================================================
 # LAYOUT UTAMA DIMULAI DI SINI
 # =====================================================================
-st.markdown('<div class="header-style">🚀 COMMAND CENTER OPERASIONAL & ASSET</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-style">Sistem Monitoring Aset Kinarya</div>', unsafe_allow_html=True)
 
 if not df_sdm.empty:
     
