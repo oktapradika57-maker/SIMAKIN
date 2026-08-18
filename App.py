@@ -239,52 +239,43 @@ st.markdown('<div class="header-style">🚀 COMMAND CENTER OPERASIONAL & ASSET</
 if not df_sdm.empty:
     
     # ---------------------------------------------------------------------
-    # TIER 1: TRACKER REGISTRASI (DYNAMIC AUTO-DETECT COLUMNS)
+    # TIER 1: TRACKER REGISTRASI (MENGGUNAKAN RUMUS ORIGINAL INDEKS PASTI)
     # ---------------------------------------------------------------------
     target_default = {"PALANGKARAYA": 41, "PANGKALANBUN": 45, "TARAKAN": 36, "PONTIANAK": 75}
     target_genset = {"PALANGKARAYA": 14, "PANGKALANBUN": 23, "TARAKAN": 14, "PONTIANAK": 31}
     
-    def calculate_progress_dynamic(df, target_dict, is_genset=False):
+    # RUMUS INI ADALAH VERSI AWAL YANG 100% AMAN (100% Original)
+    def calculate_progress(df, col_nama_idx, col_nop_idx, target_dict, is_genset=False):
         res = {k: 0 for k in target_dict.keys()}
         if df.empty: return res
-        
-        # Auto-Detect Kolom NAMA dan NOP (Mencegah error jika urutan Excel bergeser)
-        nama_col = next((c for c in df.columns if 'NAMA' in str(c).upper()), None)
-        nop_col = next((c for c in df.columns if 'NOP' in str(c).upper()), None)
-        
-        if not nama_col or not nop_col: return res
-        
+        actual_nop_idx = col_nop_idx
+        if len(df.columns) <= col_nop_idx:
+            nop_cols = [i for i, c in enumerate(df.columns) if 'NOP' in str(c).upper()]
+            if nop_cols: actual_nop_idx = nop_cols[-1]
+            else: return res
+            
         temp_df = df.copy()
-        temp_df['VAL_NAMA'] = temp_df[nama_col].astype(str).str.upper().str.strip()
-        temp_df['VAL_NOP'] = temp_df[nop_col].astype(str).str.upper().str.strip()
-        
+        temp_df['VAL_NAMA'] = temp_df.iloc[:, col_nama_idx].astype(str).str.upper().str.strip()
+        temp_df['VAL_NOP'] = temp_df.iloc[:, actual_nop_idx].astype(str).str.upper().str.strip()
         temp_df = temp_df[~temp_df['VAL_NAMA'].isin(['NAN', 'NONE', '', 'NA', '-'])]
         temp_df = temp_df[~temp_df['VAL_NOP'].isin(['NAN', 'NONE', '', 'NA', '-'])]
         
-        # Deduplikasi agar tracker unik (tidak hitung orang yang sama 2x)
-        temp_df = temp_df.drop_duplicates(subset=['VAL_NAMA'])
-        
-        if is_genset:
-            job_col = next((c for c in df.columns if 'JABATAN' in str(c).upper() or 'JOB' in str(c).upper()), None)
-            if job_col:
-                temp_df['VAL_JAB'] = temp_df[job_col].astype(str).str.upper().str.strip()
-                temp_df = temp_df[temp_df['VAL_JAB'].str.contains('MBP|CME', na=False, regex=True)]
-            elif len(df.columns) > 3: # Fallback jika kolom jabatan ga ketemu namanya
-                temp_df['VAL_JAB'] = temp_df.iloc[:, 3].astype(str).str.upper().str.strip()
-                temp_df = temp_df[temp_df['VAL_JAB'].str.contains('MBP|CME', na=False, regex=True)]
-                
+        if is_genset and len(temp_df.columns) > 3:
+            temp_df['VAL_JAB'] = temp_df.iloc[:, 3].astype(str).str.upper().str.strip()
+            temp_df = temp_df[temp_df['VAL_JAB'].str.contains('MBP|CME', na=False, regex=True)]
+            
         for branch in target_dict.keys():
-            branch_df = temp_df[temp_df['VAL_NOP'].str.contains(branch.upper(), na=False)]
+            branch_df = temp_df[temp_df['VAL_NOP'].str.contains(branch, na=False)]
             res[branch] = int(branch_df['VAL_NAMA'].nunique())
         return res
-    
-    prog_asset = calculate_progress_dynamic(df_asset, target_default, is_genset=False)
-    prog_genset = calculate_progress_dynamic(df_genset, target_genset, is_genset=True)
-    prog_tools = calculate_progress_dynamic(df_tools_asset, target_default, is_genset=False)
+
+    prog_asset = calculate_progress(df_asset, 2, 53, target_default, is_genset=False)
+    prog_genset = calculate_progress(df_genset, 2, 34, target_genset, is_genset=True)
+    prog_tools = calculate_progress(df_tools_asset, 2, 108, target_default, is_genset=False)
     
     st.markdown("""<div class="report-box-premium" style="margin-top: -10px; padding: 20px; padding-bottom: 5px; border-left: 5px solid var(--primary-color);">
 <h4 style="margin-top:0; color:#ffffff; font-weight:900; font-size:16px; letter-spacing:1px;">🎯 TRACKER REGISTRASI TIM (PER NOP)</h4>
-<p style="font-size:12px; color:#94a3b8; margin-bottom:15px;">Memantau progres input data unik keseluruhan cabang secara global. (Otomatis Filter Nama Ganda)</p>
+<p style="font-size:12px; color:#94a3b8; margin-bottom:15px;">Memantau progres input data unik keseluruhan cabang secara global.</p>
 </div>""", unsafe_allow_html=True)
 
     tab_trk_asset, tab_trk_genset, tab_trk_tools = st.tabs(["🚗 Spesifikasi R2/R4", "⚡ Parameter Genset", "🔧 Inventaris Tools"])
