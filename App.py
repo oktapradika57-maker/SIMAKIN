@@ -95,19 +95,25 @@ st.markdown(f"""
     .ai-llm-card h4 {{ color: var(--accent-color); margin-top: 25px; margin-bottom: 10px; font-weight: 800; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px; font-size: 16px; }}
     
     /* Custom CSS untuk Macro Analysis & Tabel Custom */
-    .macro-card {{ background: rgba(15, 23, 42, 0.6); border-radius: 16px; padding: 15px; border: 1px solid rgba(255,255,255,0.05); text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); transition: transform 0.3s; height: 100%; border-bottom: 3px solid var(--primary-color);}}
-    .macro-card:hover {{ transform: translateY(-5px); border-color: var(--primary-color); box-shadow: 0 15px 30px rgba(0,0,0,0.5), 0 0 15px var(--glow-color); }}
-    .macro-value {{ font-size: 28px; font-weight: 900; color: #ffffff; margin: 5px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }}
-    .macro-title {{ font-size: 11px; color: var(--accent-color); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }}
+    .macro-card {{ background: rgba(15, 23, 42, 0.6); border-radius: 16px; padding: 15px; border: 1px solid rgba(255,255,255,0.05); text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); transition: transform 0.3s; height: 100%; }}
+    .macro-card:hover {{ transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.5), 0 0 15px var(--glow-color); }}
+    .macro-value {{ font-size: 24px; font-weight: 900; color: #ffffff; margin: 5px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }}
+    .macro-title {{ font-size: 10px; color: #e2e8f0; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom:5px; }}
     
-    .rek-table {{ width: 100%; border-collapse: collapse; margin-top: 10px; color: #e2e8f0; font-size: 12px; font-family: 'Inter', sans-serif; }}
-    .rek-table th {{ background: rgba(15,23,42, 0.9); padding: 14px; border: 1px solid rgba(255,255,255,0.1); color: var(--accent-color); text-transform: uppercase; text-align: left; font-size: 11px; letter-spacing: 1px; }}
-    .rek-table td {{ padding: 14px; border: 1px solid rgba(255,255,255,0.05); vertical-align: top; background: rgba(15,23,42, 0.5); transition: background 0.3s; }}
+    /* Tabel Rincian Tools Baru */
+    .rek-table {{ width: 100%; border-collapse: collapse; margin-top: 10px; color: #e2e8f0; font-size: 11px; font-family: 'Inter', sans-serif; }}
+    .rek-table th {{ background: rgba(15,23,42, 0.9); padding: 10px 5px; border: 1px solid rgba(255,255,255,0.1); color: var(--accent-color); text-transform: uppercase; text-align: center; font-size: 10px; letter-spacing: 1px; }}
+    .rek-table td {{ padding: 8px 5px; border: 1px solid rgba(255,255,255,0.05); vertical-align: middle; background: rgba(15,23,42, 0.5); text-align:center; }}
     .rek-table tr:hover td {{ background: rgba(30,41,59, 0.8); }}
-    .item-list {{ margin: 8px 0 0 0; padding-left: 18px; line-height: 1.6; color: #cbd5e1; font-size: 11px; }}
-    .item-list li {{ margin-bottom: 4px; border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 3px; }}
-    .badge-ny {{ background: rgba(239, 68, 68, 0.15); color: #f87171; padding: 3px 8px; border-radius: 6px; font-weight: 900; font-size: 10px; border: 1px solid rgba(239,68,68,0.4); display: inline-block; letter-spacing: 0.5px; }}
-    .badge-nok {{ background: rgba(245, 158, 11, 0.15); color: #fbbf24; padding: 3px 8px; border-radius: 6px; font-weight: 900; font-size: 10px; border: 1px solid rgba(245,158,11,0.4); display: inline-block; letter-spacing: 0.5px; }}
+    .rek-table td.text-left {{ text-align: left; padding-left: 10px; }}
+    
+    .status-check {{ font-size: 14px; font-weight: bold; }}
+    .check-ny {{ color: #ef4444; }}
+    .check-nok {{ color: #f59e0b; }}
+    .check-oke {{ color: #10b981; }}
+    .check-na {{ color: #64748b; }}
+    .check-mp {{ color: #3b82f6; }}
+    .check-abm {{ color: #8b5cf6; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -239,12 +245,11 @@ st.markdown('<div class="header-style">🚀 COMMAND CENTER OPERASIONAL & ASSET</
 if not df_sdm.empty:
     
     # ---------------------------------------------------------------------
-    # TIER 1: TRACKER REGISTRASI (MENGGUNAKAN RUMUS ORIGINAL INDEKS PASTI)
+    # TIER 1: TRACKER REGISTRASI (RUMUS ORIGINAL INDEKS PASTI)
     # ---------------------------------------------------------------------
     target_default = {"PALANGKARAYA": 41, "PANGKALANBUN": 45, "TARAKAN": 36, "PONTIANAK": 75}
     target_genset = {"PALANGKARAYA": 14, "PANGKALANBUN": 23, "TARAKAN": 14, "PONTIANAK": 31}
     
-    # RUMUS INI ADALAH VERSI AWAL YANG 100% AMAN (100% Original)
     def calculate_progress(df, col_nama_idx, col_nop_idx, target_dict, is_genset=False):
         res = {k: 0 for k in target_dict.keys()}
         if df.empty: return res
@@ -293,7 +298,7 @@ if not df_sdm.empty:
     """, unsafe_allow_html=True)
     
     # ---------------------------------------------------------------------
-    # TIER 2: FILTER & REKAPITULASI HTML BERJERET
+    # TIER 2: FILTER & REKAPITULASI (DESAIN SKETSA BARU)
     # ---------------------------------------------------------------------
     df_sdm_filtered = df_sdm.copy()
     
@@ -309,7 +314,6 @@ if not df_sdm.empty:
             df_sdm_filtered = df_sdm_filtered[df_sdm_filtered[nop_col_sdm].astype(str).str.strip().str.upper() == selected_nop.upper()]
             
     with col_f2:
-        # Ekstrak Jabatan spesifik dari Kolom C (Index 2) Sheet SDM
         col_jabatan = df_sdm.columns[2] if len(df_sdm.columns) > 2 else next((c for c in df_sdm.columns if 'JOB' in str(c).upper()), None)
         list_job = ["SEMUA JABATAN"]
         if col_jabatan: list_job += sorted([str(x).strip() for x in df_sdm_filtered[col_jabatan].dropna().unique() if str(x).strip() not in ["", "nan", "None", "-"]])
@@ -325,23 +329,20 @@ if not df_sdm.empty:
         if selected_loker != "SEMUA LOKER" and loker_col: 
             df_sdm_filtered = df_sdm_filtered[df_sdm_filtered[loker_col].astype(str).str.strip() == selected_loker]
 
-    # LOGIKA DEDUPLIKASI DAN EKSTRAKSI DAFTAR TOOLS
-    table_data = []
-    grand_ny = 0
-    grand_nok = 0
-    grand_oke = 0
+    # LOGIKA EKSTRAKSI DAFTAR TOOLS BENTUK BARU (BERJERET)
+    table_data_detailed = [] # Untuk nampung per item berjeret ke bawah
+    grand_totals = {'NY': 0, 'NOK': 0, 'OKE': 0, 'NA': 0, 'MP': 0, 'ABM': 0}
+    personel_count = 0
     
     if not df_tools_asset.empty and not df_sdm_filtered.empty:
         valid_names_group = df_sdm_filtered['NAMA'].astype(str).str.strip().str.upper().unique() if 'NAMA' in df_sdm_filtered.columns else []
         name_col_tools = next((col for col in df_tools_asset.columns if "NAMA" in str(col).upper()), None)
         
         if name_col_tools:
-            # Saring hanya nama yang ada di SDM terpilih
             tools_macro_df = df_tools_asset[df_tools_asset[name_col_tools].astype(str).str.strip().str.upper().isin(valid_names_group)].copy()
-            
-            # 🔥 DEDUPLIKASI SUPER KETAT: Jika nama double, ambil yang pertama kali muncul 🔥
             tools_macro_df['NAMA_UPPER'] = tools_macro_df[name_col_tools].astype(str).str.strip().str.upper()
             tools_macro_df = tools_macro_df.drop_duplicates(subset=['NAMA_UPPER'], keep='first')
+            personel_count = len(tools_macro_df)
             
             for _, row in tools_macro_df.iterrows():
                 nama = row[name_col_tools]
@@ -349,80 +350,109 @@ if not df_sdm.empty:
                 nop_cols = [c for c in df_tools_asset.columns if 'NOP' in str(c).upper()]
                 if nop_cols: nop_val = str(row[nop_cols[-1]]).strip()
                 
-                status_dict = {'OKE': [], 'NOK': [], 'NY': [], 'NA': [], 'MP': [], 'ABM': []}
-                
-                # Scan isi baris, jika isinya cocok dengan Status, rekam NAMA HEADER KOLOM-nya
+                # Scan semua kolom untuk nama ini
                 for col_name in df_tools_asset.columns:
                     val = str(row[col_name]).strip().upper()
-                    if val in status_dict:
-                        status_dict[val].append(str(col_name).strip().title()) 
-                
-                ny_count = len(status_dict['NY'])
-                nok_count = len(status_dict['NOK'])
-                oke_count = len(status_dict['OKE'])
-                
-                grand_ny += ny_count
-                grand_nok += nok_count
-                grand_oke += oke_count
-                
-                table_data.append({
-                    "nama": nama,
-                    "nop": nop_val,
-                    "ny_count": ny_count,
-                    "ny_list": status_dict['NY'],
-                    "nok_count": nok_count,
-                    "nok_list": status_dict['NOK'],
-                    "oke_count": oke_count
-                })
+                    if val in ['OKE', 'NOK', 'NY', 'NA', 'MP', 'ABM']:
+                        # Catat ke grand total
+                        grand_totals[val] += 1
+                        
+                        # Masukkan ke list detail (untuk dibikin tabel berjeret)
+                        table_data_detailed.append({
+                            "nama": nama,
+                            "nop": nop_val,
+                            "item_name": str(col_name).strip().title(),
+                            "status": val
+                        })
 
-    # Render Kotak Grand Total (Agregasi)
+    # Render 6 Kotak Grand Total (Desain Baru)
     st.markdown(f"""
     <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--primary-color); border-radius: 12px; padding: 15px; margin-top: 15px; margin-bottom: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
         <h4 style='margin-top:0; color:var(--accent-color); font-weight:800; font-size:14px; text-transform:uppercase;'>📊 RANGKUMAN KEBUTUHAN TOOLS (AGREGASI GRUP TERFILTER)</h4>
-        <p style='font-size:11px; color:#cbd5e1; margin-bottom:15px;'>Kalkulasi status tools (sudah difilter ganda/double input) dari <b>{len(table_data)} Personel valid</b>.</p>
+        <p style='font-size:11px; color:#cbd5e1; margin-bottom:15px;'>Kalkulasi status tools dari <b>{personel_count} Personel valid</b>.</p>
     """, unsafe_allow_html=True)
     
+    # 6 Kotak dibagi 2 baris (3 kolom x 2 baris)
     c_m1, c_m2, c_m3 = st.columns(3)
-    with c_m1: st.markdown(f"<div class='macro-card' style='border-color:#ef4444;'><div class='macro-title'>🔥 GRAND TOTAL NY (PENDING KUT)</div><div class='macro-value' style='color:#ef4444;'>{grand_ny} Item</div></div>", unsafe_allow_html=True)
-    with c_m2: st.markdown(f"<div class='macro-card' style='border-color:#f59e0b;'><div class='macro-title'>❌ GRAND TOTAL NOK (RUSAK)</div><div class='macro-value' style='color:#f59e0b;'>{grand_nok} Item</div></div>", unsafe_allow_html=True)
-    with c_m3: st.markdown(f"<div class='macro-card' style='border-color:#10b981;'><div class='macro-title'>✅ GRAND TOTAL OKE (BAGUS)</div><div class='macro-value' style='color:#10b981;'>{grand_oke} Item</div></div>", unsafe_allow_html=True)
+    with c_m1: st.markdown(f"<div class='macro-card' style='border-top:3px solid #10b981;'><div class='macro-title'>✅ OKE (Bagus)</div><div class='macro-value' style='color:#10b981;'>{grand_totals['OKE']}</div></div>", unsafe_allow_html=True)
+    with c_m2: st.markdown(f"<div class='macro-card' style='border-top:3px solid #f59e0b;'><div class='macro-title'>❌ NOK (Rusak)</div><div class='macro-value' style='color:#f59e0b;'>{grand_totals['NOK']}</div></div>", unsafe_allow_html=True)
+    with c_m3: st.markdown(f"<div class='macro-card' style='border-top:3px solid #ef4444;'><div class='macro-title'>🔥 NY (Mandatory Tdk Ada)</div><div class='macro-value' style='color:#ef4444;'>{grand_totals['NY']}</div></div>", unsafe_allow_html=True)
+    
+    st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+    
+    c_m4, c_m5, c_m6 = st.columns(3)
+    with c_m4: st.markdown(f"<div class='macro-card' style='border-top:3px solid #64748b;'><div class='macro-title'>➖ NA (Tidak Mandatory)</div><div class='macro-value' style='color:#94a3b8;'>{grand_totals['NA']}</div></div>", unsafe_allow_html=True)
+    with c_m5: st.markdown(f"<div class='macro-card' style='border-top:3px solid #3b82f6;'><div class='macro-title'>👤 MP (Milik Pribadi)</div><div class='macro-value' style='color:#60a5fa;'>{grand_totals['MP']}</div></div>", unsafe_allow_html=True)
+    with c_m6: st.markdown(f"<div class='macro-card' style='border-top:3px solid #8b5cf6;'><div class='macro-title'>🔹 ABM (Ada Bkn Mandatory)</div><div class='macro-value' style='color:#a78bfa;'>{grand_totals['ABM']}</div></div>", unsafe_allow_html=True)
+    
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Render Tabel HTML "Berjeret" (Custom Rapi ke Bawah)
-    with st.expander("📋 LIHAT TABEL RINCIAN KONDISI TOOLS TIM & NAMA ITEM-NYA"):
-        if table_data:
-            # Merakit HTML
-            table_html = "<table class='rek-table'><tr><th width='25%'>Identitas Personel</th><th width='37.5%'>🔥 Pending KUT (NY)</th><th width='37.5%'>❌ Rusak (NOK)</th></tr>"
-            for item in table_data:
-                # Membuat format list bullet HTML untuk NY dan NOK
-                ny_list_html = "".join([f"<li>{tool}</li>" for tool in item['ny_list']])
-                nok_list_html = "".join([f"<li>{tool}</li>" for tool in item['nok_list']])
-                
-                ny_cell = f"<span class='badge-ny'>{item['ny_count']} ITEM PENDING</span><ul class='item-list'>{ny_list_html}</ul>" if item['ny_count'] > 0 else "<span style='color:#64748b; font-size:11px; font-style:italic;'>Aman (0 Item)</span>"
-                
-                nok_cell = f"<span class='badge-nok'>{item['nok_count']} ITEM RUSAK</span><ul class='item-list'>{nok_list_html}</ul>" if item['nok_count'] > 0 else "<span style='color:#64748b; font-size:11px; font-style:italic;'>Aman (0 Item)</span>"
-                
-                table_html += f"""
+    # Render Tabel HTML "Berjeret" Sesuai Sketsa Coretan Tangan
+    with st.expander("📋 LIHAT TABEL RINCIAN KONDISI TOOLS TIM & NAMA ITEM-NYA", expanded=True):
+        if table_data_detailed:
+            # Sortir data berdasarkan Nama, lalu Nama Item
+            table_data_detailed_sorted = sorted(table_data_detailed, key=lambda x: (x['nama'], x['item_name']))
+            
+            # Merakit Header HTML sesuai sketsa
+            table_html = """
+            <table class='rek-table'>
                 <tr>
-                    <td>
-                        <b style='color:#ffffff; font-size:13px;'>{item['nama']}</b><br>
-                        <span style='color:var(--accent-color); font-size:11px;'>NOP: {item['nop']}</span><br>
-                        <span style='color:#94a3b8; font-size:10px;'>✅ {item['oke_count']} Item berstatus OKE</span>
-                    </td>
-                    <td>{ny_cell}</td>
-                    <td>{nok_cell}</td>
+                    <th width='20%'>Identitas Personal</th>
+                    <th width='15%'>NOP</th>
+                    <th width='30%' class='text-left'>Nama Item Tools</th>
+                    <th width='6%'>NOK</th>
+                    <th width='6%'>OKE</th>
+                    <th width='6%'>NY</th>
+                    <th width='6%'>NA</th>
+                    <th width='6%'>MP</th>
+                    <th width='6%'>ABM</th>
+                </tr>
+            """
+            
+            # Merakit baris data
+            current_name = ""
+            for item in table_data_detailed_sorted:
+                # Cetak nama & nop hanya di baris pertama per orang
+                if item['nama'] != current_name:
+                    display_nama = f"<b style='color:#ffffff; font-size:12px;'>{item['nama']}</b>"
+                    display_nop = f"<span style='color:var(--accent-color);'>{item['nop']}</span>"
+                    current_name = item['nama']
+                    border_style = "border-top: 2px solid rgba(255,255,255,0.2);" # Garis pemisah antar orang
+                else:
+                    display_nama = ""
+                    display_nop = ""
+                    border_style = "border-top: 1px solid rgba(255,255,255,0.02);" # Garis tipis antar item org yg sama
+
+                # Logika Centang
+                stat = item['status']
+                c_nok = "<span class='status-check check-nok'>❌</span>" if stat == 'NOK' else ""
+                c_oke = "<span class='status-check check-oke'>✅</span>" if stat == 'OKE' else ""
+                c_ny  = "<span class='status-check check-ny'>🔥</span>" if stat == 'NY' else ""
+                c_na  = "<span class='status-check check-na'>✔️</span>" if stat == 'NA' else ""
+                c_mp  = "<span class='status-check check-mp'>✔️</span>" if stat == 'MP' else ""
+                c_abm = "<span class='status-check check-abm'>✔️</span>" if stat == 'ABM' else ""
+
+                table_html += f"""
+                <tr style='{border_style}'>
+                    <td>{display_nama}</td>
+                    <td>{display_nop}</td>
+                    <td class='text-left' style='color:#cbd5e1;'>{item['item_name']}</td>
+                    <td>{c_nok}</td>
+                    <td>{c_oke}</td>
+                    <td>{c_ny}</td>
+                    <td>{c_na}</td>
+                    <td>{c_mp}</td>
+                    <td>{c_abm}</td>
                 </tr>
                 """
             table_html += "</table>"
             
-            # Tampilkan Tabel HTML
             st.markdown(table_html, unsafe_allow_html=True)
             st.markdown("""<div style='font-size: 11px; color:#94a3b8; line-height: 1.4; margin-top:10px;'>
-            <b>Legenda: OKE</b> (Bagus/Lengkap), <b>NOK</b> (Rusak), <b>NY</b> (Tdk Ada & Mandatory / KUT).<br>
-            <i>*Sistem secara otomatis menghapus data duplikasi nama pada tabel ini. Alat yang berstatus OKE hanya dirangkum dalam bentuk angka untuk menjaga kerapian layar.</i>
+            <i>*Tabel diatas merinci setiap item alat per personel sesuai statusnya secara vertikal (berjeret). Tanda centang menunjukan status alat pada kolom yang bersangkutan.</i>
             </div>""", unsafe_allow_html=True)
         else:
-            st.info("Belum ada data tools yang diinput oleh grup tim ini.")
+            st.info("Belum ada rincian data tools yang diinput oleh grup tim ini.")
 
     st.write("---")
     
