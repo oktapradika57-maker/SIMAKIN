@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import re
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
@@ -9,6 +8,7 @@ import os
 import urllib.parse 
 import base64
 import hashlib 
+import re
 from itertools import zip_longest 
 
 # --- 1. KONFIGURASI HALAMAN ---
@@ -107,7 +107,7 @@ st.markdown(f"""
     .rek-table tr:hover td {{ background: rgba(30,41,59, 0.8); }}
     .rek-table td.text-left {{ text-align: left; padding-left: 10px; }}
     
-    .status-check {{ font-size: 14px; font-weight: bold; }}
+    .status-check {{ font-size: 14px; font-weight: bold; display: inline-block; }}
     .check-ny {{ color: #ef4444; }}
     .check-nok {{ color: #f59e0b; }}
     .check-oke {{ color: #10b981; }}
@@ -330,7 +330,7 @@ if not df_sdm.empty:
             df_sdm_filtered = df_sdm_filtered[df_sdm_filtered[loker_col].astype(str).str.strip() == selected_loker]
 
     # LOGIKA EKSTRAKSI DAFTAR TOOLS BENTUK BARU (BERJERET)
-    table_data_detailed = [] # Untuk nampung per item berjeret ke bawah
+    table_data_detailed = [] 
     grand_totals = {'NY': 0, 'NOK': 0, 'OKE': 0, 'NA': 0, 'MP': 0, 'ABM': 0}
     personel_count = 0
     
@@ -354,10 +354,7 @@ if not df_sdm.empty:
                 for col_name in df_tools_asset.columns:
                     val = str(row[col_name]).strip().upper()
                     if val in ['OKE', 'NOK', 'NY', 'NA', 'MP', 'ABM']:
-                        # Catat ke grand total
                         grand_totals[val] += 1
-                        
-                        # Masukkan ke list detail (untuk dibikin tabel berjeret)
                         table_data_detailed.append({
                             "nama": nama,
                             "nop": nop_val,
@@ -372,7 +369,6 @@ if not df_sdm.empty:
         <p style='font-size:11px; color:#cbd5e1; margin-bottom:15px;'>Kalkulasi status tools dari <b>{personel_count} Personel valid</b>.</p>
     """, unsafe_allow_html=True)
     
-    # 6 Kotak dibagi 2 baris (3 kolom x 2 baris)
     c_m1, c_m2, c_m3 = st.columns(3)
     with c_m1: st.markdown(f"<div class='macro-card' style='border-top:3px solid #10b981;'><div class='macro-title'>✅ OKE (Bagus)</div><div class='macro-value' style='color:#10b981;'>{grand_totals['OKE']}</div></div>", unsafe_allow_html=True)
     with c_m2: st.markdown(f"<div class='macro-card' style='border-top:3px solid #f59e0b;'><div class='macro-title'>❌ NOK (Rusak)</div><div class='macro-value' style='color:#f59e0b;'>{grand_totals['NOK']}</div></div>", unsafe_allow_html=True)
@@ -390,40 +386,32 @@ if not df_sdm.empty:
     # Render Tabel HTML "Berjeret" Sesuai Sketsa Coretan Tangan
     with st.expander("📋 LIHAT TABEL RINCIAN KONDISI TOOLS TIM & NAMA ITEM-NYA", expanded=True):
         if table_data_detailed:
-            # Sortir data berdasarkan Nama, lalu Nama Item
             table_data_detailed_sorted = sorted(table_data_detailed, key=lambda x: (x['nama'], x['item_name']))
             
-            # Merakit Header HTML sesuai sketsa
-            table_html = """
-            <table class='rek-table'>
-                <tr>
-                    <th width='20%'>Identitas Personal</th>
-                    <th width='15%'>NOP</th>
-                    <th width='30%' class='text-left'>Nama Item Tools</th>
-                    <th width='6%'>NOK</th>
-                    <th width='6%'>OKE</th>
-                    <th width='6%'>NY</th>
-                    <th width='6%'>NA</th>
-                    <th width='6%'>MP</th>
-                    <th width='6%'>ABM</th>
-                </tr>
-            """
+            # MEMASANG TABEL HTML TANPA SPASI INDENTASI AGAR TIDAK JADI CODE BLOCK
+            table_html = "<table class='rek-table'><tr>"
+            table_html += "<th width='20%'>Identitas Personal</th>"
+            table_html += "<th width='15%'>NOP</th>"
+            table_html += "<th width='30%' class='text-left'>Nama Item Tools</th>"
+            table_html += "<th width='6%'>NOK</th>"
+            table_html += "<th width='6%'>OKE</th>"
+            table_html += "<th width='6%'>NY</th>"
+            table_html += "<th width='6%'>NA</th>"
+            table_html += "<th width='6%'>MP</th>"
+            table_html += "<th width='6%'>ABM</th></tr>"
             
-            # Merakit baris data
             current_name = ""
             for item in table_data_detailed_sorted:
-                # Cetak nama & nop hanya di baris pertama per orang
                 if item['nama'] != current_name:
                     display_nama = f"<b style='color:#ffffff; font-size:12px;'>{item['nama']}</b>"
                     display_nop = f"<span style='color:var(--accent-color);'>{item['nop']}</span>"
                     current_name = item['nama']
-                    border_style = "border-top: 2px solid rgba(255,255,255,0.2);" # Garis pemisah antar orang
+                    border_style = "border-top: 2px solid rgba(255,255,255,0.2);"
                 else:
                     display_nama = ""
                     display_nop = ""
-                    border_style = "border-top: 1px solid rgba(255,255,255,0.02);" # Garis tipis antar item org yg sama
+                    border_style = "border-top: 1px solid rgba(255,255,255,0.02);"
 
-                # Logika Centang
                 stat = item['status']
                 c_nok = "<span class='status-check check-nok'>❌</span>" if stat == 'NOK' else ""
                 c_oke = "<span class='status-check check-oke'>✅</span>" if stat == 'OKE' else ""
@@ -432,19 +420,13 @@ if not df_sdm.empty:
                 c_mp  = "<span class='status-check check-mp'>✔️</span>" if stat == 'MP' else ""
                 c_abm = "<span class='status-check check-abm'>✔️</span>" if stat == 'ABM' else ""
 
-                table_html += f"""
-                <tr style='{border_style}'>
-                    <td>{display_nama}</td>
-                    <td>{display_nop}</td>
-                    <td class='text-left' style='color:#cbd5e1;'>{item['item_name']}</td>
-                    <td>{c_nok}</td>
-                    <td>{c_oke}</td>
-                    <td>{c_ny}</td>
-                    <td>{c_na}</td>
-                    <td>{c_mp}</td>
-                    <td>{c_abm}</td>
-                </tr>
-                """
+                table_html += f"<tr style='{border_style}'>"
+                table_html += f"<td>{display_nama}</td>"
+                table_html += f"<td>{display_nop}</td>"
+                table_html += f"<td class='text-left' style='color:#cbd5e1;'>{item['item_name']}</td>"
+                table_html += f"<td>{c_nok}</td><td>{c_oke}</td><td>{c_ny}</td><td>{c_na}</td><td>{c_mp}</td><td>{c_abm}</td>"
+                table_html += "</tr>"
+                
             table_html += "</table>"
             
             st.markdown(table_html, unsafe_allow_html=True)
@@ -469,7 +451,6 @@ if not df_sdm.empty:
         if st.session_state.get('selected_nama_karyawan') != selected_nama:
             st.session_state.selected_nama_karyawan = selected_nama; st.rerun()
 
-    # 🔥🔥 SEMUA DATA KE BAWAH HANYA AKAN MUNCUL JIKA NAMA SUDAH DIPILIH 🔥🔥
     if selected_nama != "-":
         st.markdown("<br>", unsafe_allow_html=True)
         def get_row_by_name(df, target_name):
@@ -484,7 +465,6 @@ if not df_sdm.empty:
         data_genset_select = get_row_by_name(df_genset, selected_nama)
         data_tools_asset_select = get_row_by_name(df_tools_asset, selected_nama)
 
-        # FITUR AI KUT REPORT
         if st.session_state.show_ai_kut:
             st.markdown("<div class='ai-kut-box'>", unsafe_allow_html=True)
             st.markdown(f"<h2 style='text-align:center; color:var(--primary-color); text-transform:uppercase;'>🤖 KOGNITIF AI KUT (LLM ENGINE)</h2><p style='text-align:center; color:#94a3b8;'>Analisis Naratif & Pemahaman Visual untuk: <b>{selected_nama}</b></p><hr style='border-color:rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
