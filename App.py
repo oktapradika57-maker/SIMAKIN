@@ -68,7 +68,7 @@ st.markdown(f"""
     }}
     button[kind="primaryFormSubmit"]:hover, .stButton>button:hover {{ transform: translateY(-4px) scale(1.02); box-shadow: 0 15px 30px rgba(0,0,0,0.6), 0 0 25px var(--primary-color) !important; border-color: rgba(255,255,255,0.3) !important; animation: shimmer 2s linear infinite; }}
     
-    .header-style {{ background: var(--gradient-bg); padding: 25px; border-radius: 20px; color: #ffffff; font-weight: 900; font-size: 30px; text-align: center; letter-spacing: 1.5px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 2px 5px rgba(255,255,255,0.2); margin-bottom: 30px; border: 1px solid rgba(255,255,255,0.1); text-shadow: 0 4px 10px rgba(0,0,0,0.4); }}
+    .header-style {{ background: var(--gradient-bg); padding: 25px; border-radius: 20px; color: #ffffff; font-weight: 900; font-size: 30px; text-align: center; letter-spacing: 1.5px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 2px 5px rgba(255,255,255,0.2); margin-bottom: 40px; border: 1px solid rgba(255,255,255,0.1); text-shadow: 0 4px 10px rgba(0,0,0,0.4); }}
     
     [data-testid="stExpander"] {{ background: rgba(13, 19, 33, 0.8) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; border-top: 2px solid var(--primary-color) !important; border-radius: 14px !important; box-shadow: 0 8px 20px rgba(0,0,0,0.5) !important; margin-top: -5px; margin-bottom: 15px; transition: all 0.3s ease; }}
     [data-testid="stExpander"]:hover {{ border-color: var(--accent-color) !important; box-shadow: 0 10px 25px var(--glow-color) !important; }}
@@ -96,12 +96,6 @@ st.markdown(f"""
     .ai-llm-card:hover {{ box-shadow: 0 20px 40px rgba(0,0,0,0.7), 0 0 25px var(--glow-color); border-color: var(--primary-color); }}
     .ai-llm-card h4 {{ color: var(--accent-color); margin-top: 25px; margin-bottom: 10px; font-weight: 800; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px; font-size: 16px; }}
     .ai-llm-card p {{ font-size: 14px; line-height: 1.8; color: #cbd5e1; margin-bottom: 10px; }}
-
-    /* Custom CSS untuk Macro Analysis */
-    .macro-card {{ background: rgba(15, 23, 42, 0.6); border-radius: 16px; padding: 20px; border: 1px solid rgba(255,255,255,0.05); text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); transition: transform 0.3s; height: 100%; }}
-    .macro-card:hover {{ transform: translateY(-5px); border-color: var(--primary-color); box-shadow: 0 15px 30px rgba(0,0,0,0.5), 0 0 15px var(--glow-color); }}
-    .macro-value {{ font-size: 36px; font-weight: 900; color: #ffffff; margin: 10px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }}
-    .macro-title {{ font-size: 13px; color: var(--accent-color); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -127,13 +121,14 @@ def analyze_photo_to_text(col_name, file_id):
     else: diag = kondisi_buruk[val % len(kondisi_buruk)]
     return f"Dari visual data <b>{col_name}</b>, aset {diag}."
 
-# --- FUNGSI RENDER PROGRESS BAR NOP ---
+# --- FUNGSI RENDER PROGRESS BAR NOP (ANTI-BUG HTML) ---
 def render_progress_nop(label, filled, target):
     pct = int((filled / target) * 100) if target > 0 else 0
     if pct > 100: pct = 100
     color = "#10b981" if pct == 100 else ("#f59e0b" if pct >= 60 else "#ef4444")
     warning = f"✅ Selesai (Target Tercapai)" if pct == 100 else f"⚠️ Kurang {target - filled} Tim (Unik)"
     
+    # Penulisan rata kiri agar tidak terdeteksi sebagai "Code Block" oleh Markdown Streamlit
     html = f"""<div style="margin-bottom: 15px;">
 <div style="display:flex; justify-content:space-between; margin-bottom:6px; align-items:center;">
 <span style="font-size:12px; color:#cbd5e1; font-weight:bold;">{label}</span>
@@ -195,7 +190,7 @@ with st.sidebar:
     if st.button("🚪 Terminasi Sesi", use_container_width=True): st.session_state.logged_in = False; st.rerun()
     st.markdown("<div style='text-align: center; color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 60px;'>SIMAKIN Enterprise Dashboard<br><b>Deployed by Okta Pradika</b></div>", unsafe_allow_html=True)
 
-# --- 6. DRIVER SHEET & LOAD DATA ---
+# --- 6. DRIVER SHEET ---
 def get_gspread_client():
     try:
         creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'])
@@ -225,77 +220,16 @@ def load_all_data():
 with st.spinner("⏳ Sinkronisasi Mesin Data & AI SICAKEP..."):
     df_sdm, df_asset, df_genset, df_tools_asset, df_rekomendasi, df_fakta, df_evidence = load_all_data()
 
-# --- FUNGSI KALKULASI NOP (AUTO-FALLBACK INDEX) ---
-target_default = {"PALANGKARAYA": 41, "PANGKALANBUN": 45, "TARAKAN": 36, "PONTIANAK": 75}
-target_genset = {"PALANGKARAYA": 14, "PANGKALANBUN": 23, "TARAKAN": 14, "PONTIANAK": 31}
+def get_row_by_name(df, target_name):
+    if df.empty: return None
+    name_col = next((col for col in df.columns if "NAMA" in str(col).upper()), None)
+    if not name_col: return None
+    matched = df[df[name_col].astype(str).str.strip().str.lower().str.contains(str(target_name).strip().lower(), regex=False, na=False)]
+    return matched.iloc[0] if not matched.empty else None
 
-def calculate_progress(df, col_nama_idx, col_nop_idx, target_dict, is_genset=False):
-    res = {k: 0 for k in target_dict.keys()}
-    if df.empty: return res
-    actual_nop_idx = col_nop_idx
-    if len(df.columns) <= col_nop_idx:
-        nop_cols = [i for i, c in enumerate(df.columns) if 'NOP' in str(c).upper()]
-        if nop_cols: actual_nop_idx = nop_cols[-1]
-        else: return res
-        
-    temp_df = df.copy()
-    temp_df['VAL_NAMA'] = temp_df.iloc[:, col_nama_idx].astype(str).str.upper().str.strip()
-    temp_df['VAL_NOP'] = temp_df.iloc[:, actual_nop_idx].astype(str).str.upper().str.strip()
-    temp_df = temp_df[~temp_df['VAL_NAMA'].isin(['NAN', 'NONE', '', 'NA', '-'])]
-    temp_df = temp_df[~temp_df['VAL_NOP'].isin(['NAN', 'NONE', '', 'NA', '-'])]
-    
-    if is_genset and len(temp_df.columns) > 3:
-        temp_df['VAL_JAB'] = temp_df.iloc[:, 3].astype(str).str.upper().str.strip()
-        temp_df = temp_df[temp_df['VAL_JAB'].str.contains('MBP|CME', na=False, regex=True)]
-        
-    for branch in target_dict.keys():
-        branch_df = temp_df[temp_df['VAL_NOP'].str.contains(branch, na=False)]
-        res[branch] = int(branch_df['VAL_NAMA'].nunique())
-    return res
-
-prog_asset = calculate_progress(df_asset, 2, 53, target_default, is_genset=False)
-prog_genset = calculate_progress(df_genset, 2, 34, target_genset, is_genset=True)
-prog_tools = calculate_progress(df_tools_asset, 2, 108, target_default, is_genset=False)
-
-
-# =====================================================================
-# LAYOUT UTAMA DIMULAI DI SINI
-# =====================================================================
+# --- 8. LAYOUT UTAMA ---
 st.markdown('<div class="header-style">🚀 COMMAND CENTER OPERASIONAL & ASSET</div>', unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------
-# TIER 1: MATRIK KEPATUHAN NOP (DI PALING ATAS!)
-# ---------------------------------------------------------------------
-st.markdown("""<div class="report-box-premium" style="margin-top: -10px; padding: 25px; padding-bottom: 5px; border-left: 6px solid #10b981;">
-<h4 style="margin-top:0; color:#ffffff; font-weight:900; font-size:18px; letter-spacing:1px;">🎯 TRACKER REGISTRASI TIM (GLOBAL NOP VIEW)</h4>
-<p style="font-size:12px; color:#94a3b8; margin-bottom:15px; line-height:1.5;">Memantau progres input data unik keseluruhan cabang. (Otomatis filter data ganda/double-input)</p>
-</div>""", unsafe_allow_html=True)
-
-tab_trk_asset, tab_trk_genset, tab_trk_tools = st.tabs(["🚗 Spesifikasi R2/R4", "⚡ Parameter Genset", "🔧 Inventaris Tools"])
-
-with tab_trk_asset:
-    html_trk_asset = ""
-    for branch, target in target_default.items():
-        html_trk_asset += render_progress_nop(f"NOP {branch.title()}", prog_asset[branch], target)
-    st.markdown(html_trk_asset, unsafe_allow_html=True)
-    
-with tab_trk_genset:
-    html_trk_genset = ""
-    for branch, target in target_genset.items():
-        html_trk_genset += render_progress_nop(f"NOP {branch.title()} (Khusus MBP/CME)", prog_genset[branch], target)
-    st.markdown(html_trk_genset, unsafe_allow_html=True)
-    
-with tab_trk_tools:
-    html_trk_tools = ""
-    for branch, target in target_default.items():
-        html_trk_tools += render_progress_nop(f"NOP {branch.title()}", prog_tools[branch], target)
-    st.markdown(html_trk_tools, unsafe_allow_html=True)
-
-st.write("---")
-
-# ---------------------------------------------------------------------
-# TIER 2: FILTER & MACRO ANALYSIS (TAMPIL JIKA GRUP DIPILIH)
-# ---------------------------------------------------------------------
 if not df_sdm.empty:
     df_sdm_filtered = df_sdm.copy()
     data_karyawan_select = None; data_asset_select = None; data_genset_select = None; data_tools_asset_select = None
@@ -322,375 +256,439 @@ if not df_sdm.empty:
             nama_col_sdm = next((col for col in df_sdm_filtered.columns if "NAMA" in str(col).upper()), None)
             if nama_col_sdm: df_sdm_filtered = df_sdm_filtered[df_sdm_filtered[nama_col_sdm].astype(str).str.strip().str.lower().isin(valid_names)]
     with col_f4:
-        list_nama = ["-"] + list(df_sdm_filtered['NAMA'].dropna().unique()) if 'NAMA' in df_sdm_filtered.columns else ["-"]
-        selected_nama = st.selectbox("👤 IDENTITAS PERSONEL:", list_nama)
-        if st.session_state.get('selected_nama_karyawan') != selected_nama:
-            st.session_state.selected_nama_karyawan = selected_nama; st.rerun()
-
-    # 🔥 FITUR BARU: MACRO ANALYSIS (ANALISIS GRUP BERDASARKAN FILTER) 🔥
-    if selected_job != "SEMUA JABATAN" or selected_loker != "SEMUA LOKER":
-        st.markdown(f"""
-        <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--primary-color); border-radius: 12px; padding: 15px; margin-top: 15px; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
-            <h4 style='margin-top:0; color:var(--accent-color); font-weight:800; font-size:14px; text-transform:uppercase;'>📊 ANALISIS KEBUTUHAN & KONDISI GRUP: {selected_job if selected_job != "SEMUA JABATAN" else "ALL"} - {selected_loker if selected_loker != "SEMUA LOKER" else "ALL"}</h4>
-            <p style='font-size:11px; color:#cbd5e1; margin-bottom:15px;'>Kalkulasi otomatis (Agregasi) berdasarkan filter yang Anda pilih di atas.</p>
-        """, unsafe_allow_html=True)
-        
-        # Logika Kalkulasi Macro
-        total_personnel = len(df_sdm_filtered)
-        tools_cols = ['WAH', 'FA', 'FE']
-        tools_missing = 0
-        if not df_sdm_filtered.empty:
-            for t in tools_cols:
-                if t in df_sdm_filtered.columns:
-                    tools_missing += df_sdm_filtered[t].astype(str).str.strip().isin(['nan', 'None', '', '-', 'NaN']).sum()
-                    
-        valid_names_group = df_sdm_filtered['NAMA'].astype(str).str.strip().str.upper().unique() if 'NAMA' in df_sdm_filtered.columns else []
-        name_col_asset_m = next((col for col in df_asset.columns if "NAMA" in str(col).upper()), None)
-        asset_group = df_asset[df_asset[name_col_asset_m].astype(str).str.strip().str.upper().isin(valid_names_group)] if not df_asset.empty and name_col_asset_m else pd.DataFrame()
-        name_col_genset_m = next((col for col in df_genset.columns if "NAMA" in str(col).upper()), None)
-        genset_group = df_genset[df_genset[name_col_genset_m].astype(str).str.strip().str.upper().isin(valid_names_group)] if not df_genset.empty and name_col_genset_m else pd.DataFrame()
-
-        total_r2 = len(asset_group)
-        r2_serviced = (~asset_group['SERCIVE BERKALA (TGL TERAKHIR SERVICE)'].astype(str).str.strip().isin(['nan', 'None', '', '-', 'NaT'])).sum() if not asset_group.empty and 'SERCIVE BERKALA (TGL TERAKHIR SERVICE)' in asset_group.columns else 0
-        
-        total_genset = len(genset_group)
-        genset_ready = genset_group['STATUS ASSET'].astype(str).str.upper().str.contains('BAIK|READY', na=False).sum() if not genset_group.empty and 'STATUS ASSET' in genset_group.columns else 0
-
-        c_m1, c_m2, c_m3, c_m4 = st.columns(4)
-        with c_m1: st.markdown(f"<div class='macro-card'><div class='macro-title'>👥 Total Personel Grup</div><div class='macro-value' style='color:var(--accent-color);'>{total_personnel}</div></div>", unsafe_allow_html=True)
-        with c_m2: st.markdown(f"<div class='macro-card'><div class='macro-title'>⚠️ Kebutuhan Tools (Missing)</div><div class='macro-value' style='color:#ef4444;'>{tools_missing} Item</div></div>", unsafe_allow_html=True)
-        with c_m3: st.markdown(f"<div class='macro-card'><div class='macro-title'>🚗 Kendaraan Teralamat</div><div class='macro-value' style='color:#f59e0b;'>{r2_serviced} / {total_r2} Unit</div></div>", unsafe_allow_html=True)
-        with c_m4: st.markdown(f"<div class='macro-card'><div class='macro-title'>⚡ Genset Status Ready</div><div class='macro-value' style='color:#10b981;'>{genset_ready} / {total_genset} Unit</div></div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
+        list_nama = df_sdm_filtered['NAMA'].dropna().unique() if 'NAMA' in df_sdm_filtered.columns else []
+        if len(list_nama) > 0:
+            selected_nama = st.selectbox("👤 IDENTITAS PERSONEL:", list_nama)
+            if st.session_state.get('selected_nama_karyawan') != selected_nama:
+                st.session_state.selected_nama_karyawan = selected_nama; st.rerun()
+            data_karyawan_select = get_row_by_name(df_sdm_filtered, selected_nama)
+            data_asset_select = get_row_by_name(df_asset, selected_nama)
+            data_genset_select = get_row_by_name(df_genset, selected_nama)
+            data_tools_asset_select = get_row_by_name(df_tools_asset, selected_nama)
+    
     st.write("---")
 
-    # ---------------------------------------------------------------------
-    # TIER 3: MICRO ANALYSIS (TAMPIL UTUH JIKA 1 PERSONEL DIPILIH - SAMA PERSIS SEPERTI SEBELUMNYA)
-    # ---------------------------------------------------------------------
-    if selected_nama != "-":
-        def get_row_by_name(df, target_name):
-            if df.empty: return None
-            name_col = next((col for col in df.columns if "NAMA" in str(col).upper()), None)
-            if not name_col: return None
-            matched = df[df[name_col].astype(str).str.strip().str.lower().str.contains(str(target_name).strip().lower(), regex=False, na=False)]
-            return matched.iloc[0] if not matched.empty else None
-
-        data_karyawan_select = get_row_by_name(df_sdm_filtered, selected_nama)
-        data_asset_select = get_row_by_name(df_asset, selected_nama)
-        data_genset_select = get_row_by_name(df_genset, selected_nama)
-        data_tools_asset_select = get_row_by_name(df_tools_asset, selected_nama)
-
-        # 🔥 FITUR AI KUT REPORT 🔥
-        if st.session_state.show_ai_kut:
-            st.markdown("<div class='ai-kut-box'>", unsafe_allow_html=True)
-            st.markdown(f"<h2 style='text-align:center; color:var(--primary-color); text-transform:uppercase;'>🤖 KOGNITIF AI KUT (LLM ENGINE)</h2><p style='text-align:center; color:#94a3b8;'>Analisis Naratif & Pemahaman Visual untuk: <b>{selected_nama}</b></p><hr style='border-color:rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
-            
-            tools_lengkap = 0; total_tools = 0; tools_list_str = []
-            ai_score_tools = 0; ai_score_kendaraan = 0; ai_score_genset = 0
-            narasi_foto_tools = []; narasi_foto_r2 = []; narasi_foto_genset = []; narasi_foto_evid = []
-            data_ekspor = []
-            
-            tools_list = ["WAH", "FA", "FE"]
-            if data_karyawan_select is not None:
-                for t in tools_list:
-                    total_tools += 1
-                    val = str(data_karyawan_select.get(t, '-')).strip()
-                    if val not in ["nan", "None", "-", ""]:
-                        tools_lengkap += 1; tools_list_str.append(f"{t} (Tersedia)")
-                    else: tools_list_str.append(f"{t} (Kosong/Tidak Ada)")
-                ai_score_tools = int((tools_lengkap/max(1, total_tools)) * 100)
-                
-                if data_tools_asset_select is not None:
-                    for col in df_tools_asset.columns:
-                        val = str(data_tools_asset_select[col]); m = re.search(r'[-\w]{25,}', val)
-                        if m: 
-                            diag = analyze_photo_to_text(col, m.group(0))
-                            narasi_foto_tools.append(diag)
-                            data_ekspor.append({"Kategori": "Tools", "Aset": col, "Analisa AI KUT": diag})
-
-            nopol = str(data_asset_select.get('NOPOL (PLAT NOMOR)', 'Belum ada data')) if data_asset_select is not None else "Belum ada data"
-            merk_kendaraan = str(data_asset_select.get('MERK KENDARAAN', 'Kendaraan')) if data_asset_select is not None else "Kendaraan"
-            tgl_servis = str(data_asset_select.get('SERCIVE BERKALA (TGL TERAKHIR SERVICE)', '')) if data_asset_select is not None else ""
-            if tgl_servis and tgl_servis not in ["nan", "-", "None"]: ai_score_kendaraan = 95
-            else: ai_score_kendaraan = 40
-            if data_asset_select is not None:
-                for col in df_asset.columns:
-                    val = str(data_asset_select[col]); m = re.search(r'[-\w]{25,}', val)
-                    if m: 
-                        diag = analyze_photo_to_text(col, m.group(0))
-                        narasi_foto_r2.append(diag)
-                        data_ekspor.append({"Kategori": "Kendaraan", "Aset": col, "Analisa AI KUT": diag})
-                    
-            merk_genset = str(data_genset_select.get('TIPE GENSET', 'Genset')) if data_genset_select is not None else "Genset"
-            stat_genset = str(data_genset_select.get('STATUS ASSET', '')) if data_genset_select is not None else ""
-            if "BAIK" in stat_genset.upper() or "READY" in stat_genset.upper(): ai_score_genset = 100
-            else: ai_score_genset = 60
-            if data_genset_select is not None:
-                for col in df_genset.columns:
-                    val = str(data_genset_select[col]); m = re.search(r'[-\w]{25,}', val)
-                    if m: 
-                        diag = analyze_photo_to_text(col, m.group(0))
-                        narasi_foto_genset.append(diag)
-                        data_ekspor.append({"Kategori": "Genset", "Aset": col, "Analisa AI KUT": diag})
-                    
-            ai_evid = df_evidence[df_evidence.apply(lambda r: r.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)] if not df_evidence.empty else pd.DataFrame()
-            if not ai_evid.empty:
-                for col_val in ai_evid.iloc[-1].values:
-                    val_str = str(col_val)
-                    if "drive.google.com" in val_str:
-                        urls = val_str.split(',')
-                        for u in urls:
-                            m = re.search(r'[-\w]{25,}', u)
-                            if m: 
-                                diag = analyze_photo_to_text("Bukti Lapangan/Evidance Terbaru", m.group(0))
-                                narasi_foto_evid.append(diag)
-                                data_ekspor.append({"Kategori": "Evidance History", "Aset": "Evidance Operasional", "Analisa AI KUT": diag})
-
-            narasi_tools_gabung = " ".join(narasi_foto_tools) if narasi_foto_tools else "Tidak ada bukti foto tools yang diunggah untuk dianalisa visual."
-            narasi_r2_gabung = " ".join(narasi_foto_r2) if narasi_foto_r2 else "Tidak ada bukti foto kendaraan yang dapat dipindai oleh AI."
-            narasi_genset_gabung = " ".join(narasi_foto_genset) if narasi_foto_genset else "Tidak ada visual genset yang terarsip di sistem."
-            narasi_evid_gabung = " ".join(narasi_foto_evid) if narasi_foto_evid else "Belum ada laporan riwayat foto kegiatan operasional terkini."
-            status_servis_teks = f"tercatat melakukan servis pada <b>{tgl_servis}</b>, yang menandakan kepatuhan terhadap jadwal pemeliharaan." if ai_score_kendaraan == 95 else "mengindikasikan bahwa jadwal servis terakhir <b>belum terdata</b>, sehingga saya merekomendasikan perlunya pengecekan bengkel dalam waktu dekat."
-            
-            gemini_html_card = f"""<div class="ai-llm-card">
-    <div style="display:flex; align-items:center; margin-bottom:15px;">
-    <span style="font-size:26px; margin-right:12px;">✨</span>
-    <h3 style="margin:0; color:#ffffff; font-weight:900; letter-spacing:1px;">Analisis Kognitif AI KUT</h3>
-    </div>
-    <p>Berdasarkan pemindaian kognitif mendalam yang saya lakukan terhadap keseluruhan profil data dan dokumentasi visual milik <b>{selected_nama}</b>, berikut adalah ringkasan hasil diagnosa:</p>
-    <h4>🔧 1. Analisa Matrik Inventaris Tools</h4>
-    <p>Tingkat kelengkapan tools esensial mencapai <b>{ai_score_tools}%</b>. Status inventaris saat ini: <i>{', '.join(tools_list_str)}</i>. 
-    <br><span style="color:var(--primary-color);"><b>Sintesis Visual:</b></span> {narasi_tools_gabung}</p>
-    <h4>🚗 2. Analisa Spesifikasi Kendaraan (R2/R4)</h4>
-    <p>Aset tercatat berupa unit <b>{merk_kendaraan}</b> (Plat: {nopol}). Berdasarkan rekam jejak, kendaraan ini {status_servis_teks}
-    <br><span style="color:var(--primary-color);"><b>Sintesis Visual:</b></span> {narasi_r2_gabung}</p>
-    <h4>⚡ 3. Analisa Parameter Genset</h4>
-    <p>Unit genset berjenis <b>{merk_genset}</b> dengan status operasional <b>{stat_genset if stat_genset else "Belum Ditetapkan"}</b>. 
-    <br><span style="color:var(--primary-color);"><b>Sintesis Visual:</b></span> {narasi_genset_gabung}</p>
-    <h4>📸 4. Analisa Riwayat Evidance Lapangan</h4>
-    <p>Memeriksa dokumen visual aktivitas operasional terakhir yang diunggah ke dalam sistem.
-    <br><span style="color:var(--primary-color);"><b>Sintesis Visual:</b></span> {narasi_evid_gabung}</p>
-    <div style="background:rgba(16, 185, 129, 0.1); padding:15px; border-left:4px solid #10b981; border-radius:8px; margin-top:25px;">
-    <h4 style="margin-top:0; color:#10b981; border:none; padding:0;">💡 Rekomendasi & Tindak Lanjut</h4>
-    <p style="margin-bottom:0;">Secara keseluruhan, kesiapan operasional berada di level <b>{int((ai_score_tools + ai_score_kendaraan + ai_score_genset)/3)}%</b>. 
-    {"Saya menyimpulkan seluruh aset dalam kondisi <b>siap tempur</b> untuk mendukung kegiatan operasional secara maksimal." if int((ai_score_tools + ai_score_kendaraan + ai_score_genset)/3) > 75 else "Terdeteksi adanya <b>anomali data operasional</b>. Saya merekomendasikan audit fisik dan penjadwalan service segera untuk mengamankan kelancaran tugas."}</p>
-    </div>
-    </div>"""
-            
-            col_grafik, col_llm = st.columns([1, 1.8])
-            with col_grafik:
-                st.markdown("<p style='color:var(--accent-color); font-weight:bold; margin-bottom:5px;'>📊 AI Readiness Index:</p>", unsafe_allow_html=True)
-                chart_data = pd.DataFrame({"Kategori": ["Kelengkapan Tools", "Kelayakan Kendaraan", "Parameter Genset"], "Persentase (%)": [ai_score_tools, ai_score_kendaraan, ai_score_genset]}).set_index("Kategori")
-                st.bar_chart(chart_data, height=350)
-                
-                if len(data_ekspor) > 0:
-                    df_report_ai = pd.DataFrame(data_ekspor)
-                    csv_export = df_report_ai.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="📥 EXPORT DATA TEXT AI KE CSV",
-                        data=csv_export,
-                        file_name=f"Report_AI_KUT_{selected_nama.replace(' ','_')}.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
-            with col_llm:
-                st.markdown(gemini_html_card, unsafe_allow_html=True)
-
-            st.markdown("</div>", unsafe_allow_html=True)
-                
-        st.markdown(f"<h3 style='color:var(--accent-color);'>👤 Matrix Profil & Identitas</h3>", unsafe_allow_html=True)
-        karyawan_fields = ["NIK", "NAMA", "JOB", "LOKER", "NOP", "NO. KTP", "AKHIR PKWT", "Status Karyawan", "pakta Integritas", "Keahlian"]
-        dict_karyawan = {field: str(data_karyawan_select[field]) if data_karyawan_select is not None and field in data_karyawan_select else "-" for field in karyawan_fields}
-        st.dataframe(pd.DataFrame(list(dict_karyawan.items()), columns=["Parameter", "Informasi"]), hide_index=True, use_container_width=True)
-        st.write("---")
-
-        col_left, col_mid, col_right = st.columns(3)
-        with col_left:
-            st.markdown(f"<h3 style='color:var(--accent-color);'>🔧 Inventaris Tools</h3>", unsafe_allow_html=True)
-            tools_list_df = ["WAH", "FA", "FE", "EXP. CERT.", "COUNSELING", "RESUME CONSELING", "WARNING LETTER", "Safety Driving License", "Type Kendaraan", "Jenis Kendaraan", "Nopol", "Status Asset Kendaraan", "Type Genset", "KVA Genset", "Status Genset"]
-            tools_data = [{"Nama Tools": t, "Kondisi / Jumlah": str(data_karyawan_select[t]) if data_karyawan_select is not None and t in df_sdm.columns and str(data_karyawan_select[t]).strip() not in ["nan", "None"] else "-"} for t in tools_list_df]
-            st.dataframe(pd.DataFrame(tools_data), height=600, hide_index=True, use_container_width=True)
-
-        with col_mid:
-            st.markdown(f"<h3 style='color:var(--accent-color);'>🚗 Spesifikasi R2/R4</h3>", unsafe_allow_html=True)
-            asset_fields = ["JABATAN/ROLE", "LOKASI KERJA", "KATEGORI KENDARAAN", "STATUS KEPEMILIKAN ASSET", "NOPOL (PLAT NOMOR)", "MERK KENDARAAN", "TYPE KENDARAAN", "JENIS KENDARAAN", "TAHUN KENDARAAN", "OLI MESIN (TGL TERAKHIR DIGANTI)", "SERCIVE BERKALA (TGL TERAKHIR SERVICE)"]
-            asset_data = [{"Parameter Asset R2/R4": f, "Keterangan": str(data_asset_select[f]) if data_asset_select is not None and f in df_asset.columns and str(data_asset_select[f]).strip() not in ["nan", "None"] else "-"} for f in asset_fields]
-            st.dataframe(pd.DataFrame(asset_data), height=600, hide_index=True, use_container_width=True)
-
-        with col_right:
-            st.markdown(f"<h3 style='color:var(--accent-color);'>⚡ Parameter Genset</h3>", unsafe_allow_html=True)
-            genset_fields = ["TIPE GENSET", "NOMER SERI MESIN", "TAHUN PENGADAAN", "STSTUS KEPEMILIKAN", "STATUS ASSET"]
-            genset_data = [{"Parameter Genset": f, "Keterangan": str(data_genset_select[f]) if data_genset_select is not None and f in df_genset.columns and str(data_genset_select[f]).strip() not in ["nan", "None"] else "-"} for f in genset_fields]
-            st.dataframe(pd.DataFrame(genset_data), height=600, hide_index=True, use_container_width=True)
-
-        st.write("---")
+    # 🔥 FITUR AI KUT REPORT 🔥
+    if st.session_state.show_ai_kut and selected_nama != "-":
+        st.markdown("<div class='ai-kut-box'>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align:center; color:var(--primary-color); text-transform:uppercase;'>🤖 KOGNITIF AI KUT (LLM ENGINE)</h2><p style='text-align:center; color:#94a3b8;'>Analisis Naratif & Pemahaman Visual untuk: <b>{selected_nama}</b></p><hr style='border-color:rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
         
-        col_ai, col_plan = st.columns([1.5, 2.0]) 
-        with col_ai:
-            st.markdown(f"<h3 style='color:var(--accent-color);'>🛠️ RANGKUMAN SERVICE</h3>", unsafe_allow_html=True)
+        tools_lengkap = 0; total_tools = 0; tools_list_str = []
+        ai_score_tools = 0; ai_score_kendaraan = 0; ai_score_genset = 0
+        narasi_foto_tools = []; narasi_foto_r2 = []; narasi_foto_genset = []; narasi_foto_evid = []
+        data_ekspor = []
+        
+        tools_list = ["WAH", "FA", "FE"]
+        if data_karyawan_select is not None:
+            for t in tools_list:
+                total_tools += 1
+                val = str(data_karyawan_select.get(t, '-')).strip()
+                if val not in ["nan", "None", "-", ""]:
+                    tools_lengkap += 1; tools_list_str.append(f"{t} (Tersedia)")
+                else: tools_list_str.append(f"{t} (Kosong/Tidak Ada)")
+            ai_score_tools = int((tools_lengkap/max(1, total_tools)) * 100)
+            
+            if data_tools_asset_select is not None:
+                for col in df_tools_asset.columns:
+                    val = str(data_tools_asset_select[col]); m = re.search(r'[-\w]{25,}', val)
+                    if m: 
+                        diag = analyze_photo_to_text(col, m.group(0))
+                        narasi_foto_tools.append(diag)
+                        data_ekspor.append({"Kategori": "Tools", "Aset": col, "Analisa AI KUT": diag})
+
+        nopol = str(data_asset_select.get('NOPOL (PLAT NOMOR)', 'Belum ada data')) if data_asset_select is not None else "Belum ada data"
+        merk_kendaraan = str(data_asset_select.get('MERK KENDARAAN', 'Kendaraan')) if data_asset_select is not None else "Kendaraan"
+        tgl_servis = str(data_asset_select.get('SERCIVE BERKALA (TGL TERAKHIR SERVICE)', '')) if data_asset_select is not None else ""
+        if tgl_servis and tgl_servis not in ["nan", "-", "None"]: ai_score_kendaraan = 95
+        else: ai_score_kendaraan = 40
+        if data_asset_select is not None:
+            for col in df_asset.columns:
+                val = str(data_asset_select[col]); m = re.search(r'[-\w]{25,}', val)
+                if m: 
+                    diag = analyze_photo_to_text(col, m.group(0))
+                    narasi_foto_r2.append(diag)
+                    data_ekspor.append({"Kategori": "Kendaraan", "Aset": col, "Analisa AI KUT": diag})
+                
+        merk_genset = str(data_genset_select.get('TIPE GENSET', 'Genset')) if data_genset_select is not None else "Genset"
+        stat_genset = str(data_genset_select.get('STATUS ASSET', '')) if data_genset_select is not None else ""
+        if "BAIK" in stat_genset.upper() or "READY" in stat_genset.upper(): ai_score_genset = 100
+        else: ai_score_genset = 60
+        if data_genset_select is not None:
+            for col in df_genset.columns:
+                val = str(data_genset_select[col]); m = re.search(r'[-\w]{25,}', val)
+                if m: 
+                    diag = analyze_photo_to_text(col, m.group(0))
+                    narasi_foto_genset.append(diag)
+                    data_ekspor.append({"Kategori": "Genset", "Aset": col, "Analisa AI KUT": diag})
+                
+        ai_evid = df_evidence[df_evidence.apply(lambda r: r.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)] if not df_evidence.empty else pd.DataFrame()
+        if not ai_evid.empty:
+            for col_val in ai_evid.iloc[-1].values:
+                val_str = str(col_val)
+                if "drive.google.com" in val_str:
+                    urls = val_str.split(',')
+                    for u in urls:
+                        m = re.search(r'[-\w]{25,}', u)
+                        if m: 
+                            diag = analyze_photo_to_text("Bukti Lapangan/Evidance Terbaru", m.group(0))
+                            narasi_foto_evid.append(diag)
+                            data_ekspor.append({"Kategori": "Evidance History", "Aset": "Evidance Operasional", "Analisa AI KUT": diag})
+
+        narasi_tools_gabung = " ".join(narasi_foto_tools) if narasi_foto_tools else "Tidak ada bukti foto tools yang diunggah untuk dianalisa visual."
+        narasi_r2_gabung = " ".join(narasi_foto_r2) if narasi_foto_r2 else "Tidak ada bukti foto kendaraan yang dapat dipindai oleh AI."
+        narasi_genset_gabung = " ".join(narasi_foto_genset) if narasi_foto_genset else "Tidak ada visual genset yang terarsip di sistem."
+        narasi_evid_gabung = " ".join(narasi_foto_evid) if narasi_foto_evid else "Belum ada laporan riwayat foto kegiatan operasional terkini."
+        status_servis_teks = f"tercatat melakukan servis pada <b>{tgl_servis}</b>, yang menandakan kepatuhan terhadap jadwal pemeliharaan." if ai_score_kendaraan == 95 else "mengindikasikan bahwa jadwal servis terakhir <b>belum terdata</b>, sehingga saya merekomendasikan perlunya pengecekan bengkel dalam waktu dekat."
+        
+        # Penulisan rata kiri agar tidak terdeteksi sebagai Code Block HTML oleh Streamlit
+        gemini_html_card = f"""<div class="ai-llm-card">
+<div style="display:flex; align-items:center; margin-bottom:15px;">
+<span style="font-size:26px; margin-right:12px;">✨</span>
+<h3 style="margin:0; color:#ffffff; font-weight:900; letter-spacing:1px;">Analisis Kognitif AI KUT</h3>
+</div>
+<p>Berdasarkan pemindaian kognitif mendalam yang saya lakukan terhadap keseluruhan profil data dan dokumentasi visual milik <b>{selected_nama}</b>, berikut adalah ringkasan hasil diagnosa:</p>
+<h4>🔧 1. Analisa Matrik Inventaris Tools</h4>
+<p>Tingkat kelengkapan tools esensial mencapai <b>{ai_score_tools}%</b>. Status inventaris saat ini: <i>{', '.join(tools_list_str)}</i>. 
+<br><span style="color:var(--primary-color);"><b>Sintesis Visual:</b></span> {narasi_tools_gabung}</p>
+<h4>🚗 2. Analisa Spesifikasi Kendaraan (R2/R4)</h4>
+<p>Aset tercatat berupa unit <b>{merk_kendaraan}</b> (Plat: {nopol}). Berdasarkan rekam jejak, kendaraan ini {status_servis_teks}
+<br><span style="color:var(--primary-color);"><b>Sintesis Visual:</b></span> {narasi_r2_gabung}</p>
+<h4>⚡ 3. Analisa Parameter Genset</h4>
+<p>Unit genset berjenis <b>{merk_genset}</b> dengan status operasional <b>{stat_genset if stat_genset else "Belum Ditetapkan"}</b>. 
+<br><span style="color:var(--primary-color);"><b>Sintesis Visual:</b></span> {narasi_genset_gabung}</p>
+<h4>📸 4. Analisa Riwayat Evidance Lapangan</h4>
+<p>Memeriksa dokumen visual aktivitas operasional terakhir yang diunggah ke dalam sistem.
+<br><span style="color:var(--primary-color);"><b>Sintesis Visual:</b></span> {narasi_evid_gabung}</p>
+<div style="background:rgba(16, 185, 129, 0.1); padding:15px; border-left:4px solid #10b981; border-radius:8px; margin-top:25px;">
+<h4 style="margin-top:0; color:#10b981; border:none; padding:0;">💡 Rekomendasi & Tindak Lanjut</h4>
+<p style="margin-bottom:0;">Secara keseluruhan, kesiapan operasional berada di level <b>{int((ai_score_tools + ai_score_kendaraan + ai_score_genset)/3)}%</b>. 
+{"Saya menyimpulkan seluruh aset dalam kondisi <b>siap tempur</b> untuk mendukung kegiatan operasional secara maksimal." if int((ai_score_tools + ai_score_kendaraan + ai_score_genset)/3) > 75 else "Terdeteksi adanya <b>anomali data operasional</b>. Saya merekomendasikan audit fisik dan penjadwalan service segera untuk mengamankan kelancaran tugas."}</p>
+</div>
+</div>"""
+        
+        col_grafik, col_llm = st.columns([1, 1.8])
+        with col_grafik:
+            st.markdown("<p style='color:var(--accent-color); font-weight:bold; margin-bottom:5px;'>📊 AI Readiness Index:</p>", unsafe_allow_html=True)
+            chart_data = pd.DataFrame({"Kategori": ["Kelengkapan Tools", "Kelayakan Kendaraan", "Parameter Genset"], "Persentase (%)": [ai_score_tools, ai_score_kendaraan, ai_score_genset]}).set_index("Kategori")
+            st.bar_chart(chart_data, height=350)
+            
+            if len(data_ekspor) > 0:
+                df_report_ai = pd.DataFrame(data_ekspor)
+                csv_export = df_report_ai.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 EXPORT DATA TEXT AI KE CSV",
+                    data=csv_export,
+                    file_name=f"Report_AI_KUT_{selected_nama.replace(' ','_')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+        with col_llm:
+            st.markdown(gemini_html_card, unsafe_allow_html=True)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+            
+    st.markdown(f"<h3 style='color:var(--accent-color);'>👤 Matrix Profil & Identitas</h3>", unsafe_allow_html=True)
+    karyawan_fields = ["NIK", "NAMA", "JOB", "LOKER", "NOP", "NO. KTP", "AKHIR PKWT", "Status Karyawan", "pakta Integritas", "Keahlian"]
+    dict_karyawan = {field: str(data_karyawan_select[field]) if data_karyawan_select is not None and field in data_karyawan_select else "-" for field in karyawan_fields}
+    st.dataframe(pd.DataFrame(list(dict_karyawan.items()), columns=["Parameter", "Informasi"]), hide_index=True, use_container_width=True)
+    st.write("---")
+
+    col_left, col_mid, col_right = st.columns(3)
+    with col_left:
+        st.markdown(f"<h3 style='color:var(--accent-color);'>🔧 Inventaris Tools</h3>", unsafe_allow_html=True)
+        tools_list_df = ["WAH", "FA", "FE", "EXP. CERT.", "COUNSELING", "RESUME CONSELING", "WARNING LETTER", "Safety Driving License", "Type Kendaraan", "Jenis Kendaraan", "Nopol", "Status Asset Kendaraan", "Type Genset", "KVA Genset", "Status Genset"]
+        tools_data = [{"Nama Tools": t, "Kondisi / Jumlah": str(data_karyawan_select[t]) if data_karyawan_select is not None and t in df_sdm.columns and str(data_karyawan_select[t]).strip() not in ["nan", "None"] else "-"} for t in tools_list_df]
+        st.dataframe(pd.DataFrame(tools_data), height=600, hide_index=True, use_container_width=True)
+
+    with col_mid:
+        st.markdown(f"<h3 style='color:var(--accent-color);'>🚗 Spesifikasi R2/R4</h3>", unsafe_allow_html=True)
+        asset_fields = ["JABATAN/ROLE", "LOKASI KERJA", "KATEGORI KENDARAAN", "STATUS KEPEMILIKAN ASSET", "NOPOL (PLAT NOMOR)", "MERK KENDARAAN", "TYPE KENDARAAN", "JENIS KENDARAAN", "TAHUN KENDARAAN", "OLI MESIN (TGL TERAKHIR DIGANTI)", "SERCIVE BERKALA (TGL TERAKHIR SERVICE)"]
+        asset_data = [{"Parameter Asset R2/R4": f, "Keterangan": str(data_asset_select[f]) if data_asset_select is not None and f in df_asset.columns and str(data_asset_select[f]).strip() not in ["nan", "None"] else "-"} for f in asset_fields]
+        st.dataframe(pd.DataFrame(asset_data), height=600, hide_index=True, use_container_width=True)
+
+    with col_right:
+        st.markdown(f"<h3 style='color:var(--accent-color);'>⚡ Parameter Genset</h3>", unsafe_allow_html=True)
+        genset_fields = ["TIPE GENSET", "NOMER SERI MESIN", "TAHUN PENGADAAN", "STSTUS KEPEMILIKAN", "STATUS ASSET"]
+        genset_data = [{"Parameter Genset": f, "Keterangan": str(data_genset_select[f]) if data_genset_select is not None and f in df_genset.columns and str(data_genset_select[f]).strip() not in ["nan", "None"] else "-"} for f in genset_fields]
+        st.dataframe(pd.DataFrame(genset_data), height=600, hide_index=True, use_container_width=True)
+
+    st.write("---")
+    
+    col_ai, col_plan = st.columns([1.5, 2.0]) 
+    with col_ai:
+        st.markdown(f"<h3 style='color:var(--accent-color);'>📊 Matrik Kepatuhan NOP</h3>", unsafe_allow_html=True)
+        
+        # 🔥 FITUR BARU: LOGIKA KALKULASI DATA UNIK & AUTO-FALLBACK INDEX 🔥
+        target_default = {
+            "PALANGKARAYA": 41,
+            "PANGKALANBUN": 45,
+            "TARAKAN": 36,
+            "PONTIANAK": 75
+        }
+        
+        target_genset = {
+            "PALANGKARAYA": 14,
+            "PANGKALANBUN": 23,
+            "TARAKAN": 14,
+            "PONTIANAK": 31
+        }
+        
+        def calculate_progress(df, col_nama_idx, col_nop_idx, target_dict, is_genset=False):
+            res = {k: 0 for k in target_dict.keys()}
+            if df.empty: return res
+            
+            # Sistem Auto-Fallback jika kolom terpotong di akhir (sering terjadi di Pandas Excel)
+            actual_nop_idx = col_nop_idx
+            if len(df.columns) <= col_nop_idx:
+                nop_cols = [i for i, c in enumerate(df.columns) if 'NOP' in str(c).upper()]
+                if nop_cols: actual_nop_idx = nop_cols[-1]
+                else: return res
+                
+            temp_df = df.copy()
+            temp_df['VAL_NAMA'] = temp_df.iloc[:, col_nama_idx].astype(str).str.upper().str.strip()
+            temp_df['VAL_NOP'] = temp_df.iloc[:, actual_nop_idx].astype(str).str.upper().str.strip()
+            
+            # Eliminasi Nilai Kosong / Blank
+            temp_df = temp_df[~temp_df['VAL_NAMA'].isin(['NAN', 'NONE', '', 'NA', '-'])]
+            temp_df = temp_df[~temp_df['VAL_NOP'].isin(['NAN', 'NONE', '', 'NA', '-'])]
+            
+            # Logika Khusus Parameter Genset (Wajib Jabatan MBP / CME)
+            if is_genset and len(temp_df.columns) > 3:
+                temp_df['VAL_JAB'] = temp_df.iloc[:, 3].astype(str).str.upper().str.strip() # Index 3 = Kolom D
+                temp_df = temp_df[temp_df['VAL_JAB'].str.contains('MBP|CME', na=False, regex=True)]
+                
+            # Validasi & Kalkulasi Personel Unik per Wilayah Cabang
+            for branch in target_dict.keys():
+                branch_df = temp_df[temp_df['VAL_NOP'].str.contains(branch, na=False)]
+                # nunique() berfungsi mengeliminasi nama ganda
+                res[branch] = int(branch_df['VAL_NAMA'].nunique())
+                
+            return res
+        
+        # Eksekusi Pemetaan Target Data (Index Kolom Excel: 2 = C, 34 = AI, 53 = BB, 108 = DE)
+        prog_asset = calculate_progress(df_asset, 2, 53, target_default, is_genset=False)
+        prog_genset = calculate_progress(df_genset, 2, 34, target_genset, is_genset=True)
+        prog_tools = calculate_progress(df_tools_asset, 2, 108, target_default, is_genset=False)
+        
+        st.markdown("""<div class="report-box-premium" style="margin-top: 0; padding: 25px; padding-bottom: 5px;">
+<h4 style="margin-top:0; color:#ffffff; font-weight:900; font-size:16px; letter-spacing:1px;">🎯 TRACKER REGISTRASI TIM (PER NOP)</h4>
+<p style="font-size:12px; color:#94a3b8; margin-bottom:15px; line-height:1.5;">Memantau progres jumlah inputan tim valid berdasarkan target unik masing-masing NOP cabang.</p>
+</div>""", unsafe_allow_html=True)
+
+        # Tab Breakdown Per Kategori
+        tab_trk_asset, tab_trk_genset, tab_trk_tools = st.tabs(["🚗 Spesifikasi R2/R4", "⚡ Parameter Genset", "🔧 Inventaris Tools"])
+        
+        with tab_trk_asset:
+            html_trk_asset = ""
+            for branch, target in target_default.items():
+                html_trk_asset += render_progress_nop(f"NOP {branch.title()}", prog_asset[branch], target)
+            st.markdown(html_trk_asset, unsafe_allow_html=True)
+            
+        with tab_trk_genset:
+            html_trk_genset = ""
+            for branch, target in target_genset.items():
+                html_trk_genset += render_progress_nop(f"NOP {branch.title()}", prog_genset[branch], target)
+            st.markdown(html_trk_genset, unsafe_allow_html=True)
+            
+        with tab_trk_tools:
+            html_trk_tools = ""
+            for branch, target in target_default.items():
+                html_trk_tools += render_progress_nop(f"NOP {branch.title()}", prog_tools[branch], target)
+            st.markdown(html_trk_tools, unsafe_allow_html=True)
+            
+        # Catatan Penjelasan Target & Sistem Hitungan Unik
+        st.markdown("""
+<div style="font-size: 11px; color: #94a3b8; margin-top: 15px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 15px; line-height:1.6; background:rgba(0,0,0,0.2); padding:15px; border-radius:10px;">
+<div style="display:flex; justify-content:space-between; flex-wrap: wrap; gap:10px;">
+<div>
+<b>Target Tim (R2/R4 & Tools):</b><br>
+• Palangkaraya: <b style="color:#ffffff;">41</b><br>
+• Pangkalanbun: <b style="color:#ffffff;">45</b><br>
+• Tarakan: <b style="color:#ffffff;">36</b><br>
+• Pontianak: <b style="color:#ffffff;">75</b>
+</div>
+<div>
+<b>Target Tim (Khusus Genset):</b><br>
+• Palangkaraya: <b style="color:#ffffff;">14</b><br>
+• Pangkalanbun: <b style="color:#ffffff;">23</b><br>
+• Tarakan: <b style="color:#ffffff;">14</b><br>
+• Pontianak: <b style="color:#ffffff;">31</b>
+</div>
+</div>
+<br>
+<i style="color:var(--accent-color);">*Sistem otomatis mengeliminasi data ganda (double-input) dan hanya menghitung validasi input nama unik per NOP. Pada Parameter Genset, sistem hanya menghitung input dari tim dengan Jabatan MBP / CME.</i>
+</div>
+        """, unsafe_allow_html=True)
+        
+        # 🔥 DROPDOWN RANGKUMAN SERVICE 🔥
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.expander("🛠️ RANGKUMAN UPDATE SERVICE KENDARAAN"):
             if not df_asset.empty:
                 nama_col = next((col for col in df_asset.columns if "NAMA" in str(col).upper()), None)
                 if nama_col and 'NOPOL (PLAT NOMOR)' in df_asset.columns and 'SERCIVE BERKALA (TGL TERAKHIR SERVICE)' in df_asset.columns:
                     servis_df = df_asset[[nama_col, 'NOPOL (PLAT NOMOR)', 'SERCIVE BERKALA (TGL TERAKHIR SERVICE)']].copy()
                     servis_df.columns = ['Nama Personel', 'Plat Kendaraan', 'Tanggal Servis Terakhir']
                     servis_df['Tanggal Servis Terakhir'] = servis_df['Tanggal Servis Terakhir'].astype(str).str.strip()
+                    
                     valid_servis = servis_df[~servis_df['Tanggal Servis Terakhir'].isin(['nan', 'None', '', '-', 'NaT', 'Belum Terdata'])].copy()
+                    
                     if not valid_servis.empty:
                         st.dataframe(valid_servis.reset_index(drop=True), use_container_width=True, hide_index=True)
-                    else: st.info("Belum ada data servis kendaraan yang valid di sistem.")
-                else: st.warning("Format kolom tabel tidak sesuai untuk menampilkan rangkuman.")
-            else: st.info("Database R2/R4 kosong.")
-            
-        with col_plan:
-            st.markdown(f"<h3 style='color:var(--accent-color);'>📝 1. Panel Transmisi Laporan</h3>", unsafe_allow_html=True)
-            input_findings = st.text_area("✍️ Uraikan Detail Tindakan & Kondisi Asset:", height=120)
-            
-            unit_mobil = str(data_asset_select.get('NOPOL (PLAT NOMOR)', 'Tidak Ada')) if data_asset_select is not None else "Tidak Ada"
-            unit_genset = str(data_genset_select.get('NOMER SERI MESIN', 'Tidak Ada')) if data_genset_select is not None else "Tidak Ada"
-            info_gabungan = f"Mobil: {unit_mobil} | Genset: {unit_genset}"
-            
-            if st.button("🚀 TRANSMISI DATA TEKS", use_container_width=True):
-                if input_findings:
-                    with st.spinner("Menyandikan dan Mengirim Laporan ke Database..."):
-                        if save_findings_to_sheet(str(dict_karyawan.get('NIK', 'N/A')), selected_nama, info_gabungan, input_findings):
-                            st.success("✅ Otorisasi Sukses! Laporan telah terenkripsi dan tersimpan di server.")
-                            time.sleep(1.5)
-                            st.cache_data.clear(); st.rerun()
-                        else: st.error("❌ Gagal menyinkronkan data. Periksa koneksi satelit/internet Anda.")
-                else: st.warning("⚠️ Protokol ditolak: Kolom deskripsi tidak boleh kosong.")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown(f"<h3 style='color:var(--accent-color);'>📸 2. Sinkronisasi Evidance Visual</h3>", unsafe_allow_html=True)
-            st.info("Pintu protokol terbuka. Sistem mengunci Identitas dan Aset Anda untuk transmisi form.")
-            
-            val_nik = str(dict_karyawan.get('NIK', '-'))
-            url_base = "https://docs.google.com/forms/d/e/1FAIpQLSdOwyvntF3QAFYmC724zKfJMG_P59xSYG_UaoDwleWFsZkmOg/viewform"
-            url_gform_dinamis = f"{url_base}?usp=pp_url&entry.79064137={urllib.parse.quote(val_nik)}&entry.267180991={urllib.parse.quote(selected_nama)}&entry.1607280297={urllib.parse.quote(unit_mobil)}&entry.505680533={urllib.parse.quote('Mobil')}"
-            
-            st.markdown(f"""
-            <a href="{url_gform_dinamis}" target="_blank" style="text-decoration:none;">
-                <div style="background: var(--gradient-bg); padding: 18px; border-radius: 14px; color: white; text-align: center; font-weight: 900; font-size: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 20px var(--glow-color); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); letter-spacing: 1px;" onmouseover="this.style.transform='scale(1.02) translateY(-3px)'; this.style.boxShadow='0 15px 40px rgba(0,0,0,0.7), 0 0 30px var(--primary-color)';" onmouseout="this.style.transform='scale(1) translateY(0)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.5), 0 0 20px var(--glow-color)';">
-                    <span style="font-size:20px;">📸</span> BUKA PORTAL UPLOAD EVIDANCE
-                </div>
-            </a>
-            """, unsafe_allow_html=True)
+                    else:
+                        st.info("Belum ada data servis kendaraan yang valid di sistem.")
+                else:
+                    st.warning("Format kolom tabel tidak sesuai untuk menampilkan rangkuman.")
+            else:
+                st.info("Database R2/R4 kosong.")
+        
+    with col_plan:
+        st.markdown(f"<h3 style='color:var(--accent-color);'>📝 1. Panel Transmisi Laporan</h3>", unsafe_allow_html=True)
+        input_findings = st.text_area("✍️ Uraikan Detail Tindakan & Kondisi Asset:", height=120)
+        
+        unit_mobil = str(data_asset_select.get('NOPOL (PLAT NOMOR)', 'Tidak Ada')) if data_asset_select is not None else "Tidak Ada"
+        unit_genset = str(data_genset_select.get('NOMER SERI MESIN', 'Tidak Ada')) if data_genset_select is not None else "Tidak Ada"
+        info_gabungan = f"Mobil: {unit_mobil} | Genset: {unit_genset}"
+        
+        if st.button("🚀 TRANSMISI DATA TEKS", use_container_width=True):
+            if input_findings:
+                with st.spinner("Menyandikan dan Mengirim Laporan ke Database..."):
+                    if save_findings_to_sheet(str(dict_karyawan.get('NIK', 'N/A')), selected_nama, info_gabungan, input_findings):
+                        st.success("✅ Otorisasi Sukses! Laporan telah terenkripsi dan tersimpan di server.")
+                        time.sleep(1.5)
+                        st.cache_data.clear(); st.rerun()
+                    else: st.error("❌ Gagal menyinkronkan data. Periksa koneksi satelit/internet Anda.")
+            else: st.warning("⚠️ Protokol ditolak: Kolom deskripsi tidak boleh kosong.")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='color:var(--accent-color);'>📸 2. Sinkronisasi Evidance Visual</h3>", unsafe_allow_html=True)
+        st.info("Pintu protokol terbuka. Sistem mengunci Identitas dan Aset Anda untuk transmisi form.")
+        
+        val_nik = str(dict_karyawan.get('NIK', '-'))
+        url_base = "https://docs.google.com/forms/d/e/1FAIpQLSdOwyvntF3QAFYmC724zKfJMG_P59xSYG_UaoDwleWFsZkmOg/viewform"
+        url_gform_dinamis = f"{url_base}?usp=pp_url&entry.79064137={urllib.parse.quote(val_nik)}&entry.267180991={urllib.parse.quote(selected_nama)}&entry.1607280297={urllib.parse.quote(unit_mobil)}&entry.505680533={urllib.parse.quote('Mobil')}"
+        
+        st.markdown(f"""
+        <a href="{url_gform_dinamis}" target="_blank" style="text-decoration:none;">
+            <div style="background: var(--gradient-bg); padding: 18px; border-radius: 14px; color: white; text-align: center; font-weight: 900; font-size: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 20px var(--glow-color); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); letter-spacing: 1px;" onmouseover="this.style.transform='scale(1.02) translateY(-3px)'; this.style.boxShadow='0 15px 40px rgba(0,0,0,0.7), 0 0 30px var(--primary-color)';" onmouseout="this.style.transform='scale(1) translateY(0)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.5), 0 0 20px var(--glow-color)';">
+                <span style="font-size:20px;">📸</span> BUKA PORTAL UPLOAD EVIDANCE
+            </div>
+        </a>
+        """, unsafe_allow_html=True)
 
-        st.write("---")
-        
-        # 🔥 FITUR GALERI (EVIDANCE) DIKEMBALIKAN 100% UTUH 🔥
-        st.markdown(f"<h3 style='color:var(--accent-color); font-size:26px;'>📂 DATABASE EVIDANCE & RIWAYAT</h3>", unsafe_allow_html=True)
-        
-        tab_r2r4, tab_genset, tab_tools, tab_perbaikan, tab_fakta = st.tabs([
-            "🚗 Matrix R2/R4", "⚡ Matrix Genset", "🔧 Matrix Tools", "🛠️ Riwayat Evidance Service", "📄 Fakta Integritas"
-        ])
-        
-        def render_gallery_fast(tab_context, df, df_columns, data_row, empty_msg):
-            with tab_context:
-                if data_row is not None:
-                    photos_exist = False
-                    valid_photos = []
-                    for col_name in df_columns:
-                        cell_val = str(data_row[col_name]).strip()
-                        match = re.search(r'[-\w]{25,}', cell_val) 
-                        if match: valid_photos.append((col_name, match.group(0)))
-                    
-                    if valid_photos:
-                        photos_exist = True
-                        cols = st.columns(4) 
-                        for idx, (col_name, file_id) in enumerate(valid_photos):
-                            img_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
-                            original_url = f"https://drive.google.com/file/d/{file_id}/view"
-                            html_card = f"""
-                            <div class="gallery-card-3d">
-                                <img src="{img_url}" referrerpolicy="no-referrer">
-                                <div style="margin-top:10px;">
-                                    <p style="font-size:11px; color:var(--accent-color); font-weight:bold; margin-bottom:5px; text-transform:uppercase;">{col_name}</p>
-                                    <a href="{original_url}" target="_blank" class="btn-buka-foto">🔍 HD View</a>
-                                </div>
-                            </div>
-                            """
-                            html_ai_card = f"<div style='background:rgba(9,14,23,0.9); padding:10px; border-radius:8px; border-left:3px solid var(--primary-color); font-size:11px;'>🧠 {generate_ai_analysis_mini(file_id)}</div>"
-                            with cols[idx % 4]:
-                                st.markdown(html_card, unsafe_allow_html=True)
-                                with st.expander("🤖 PEMINDAIAN AI SICAKEP"): 
-                                    st.markdown(html_ai_card, unsafe_allow_html=True)
-                    
-                    if not photos_exist: st.info(empty_msg)
-                else: st.info(empty_msg)
-
-        render_gallery_fast(tab_r2r4, df_asset, df_asset.columns, data_asset_select, "Data visual kendaraan belum terarsip.")
-        render_gallery_fast(tab_genset, df_genset, df_genset.columns, data_genset_select, "Data visual genset belum terarsip.")
-        render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Data visual tools belum terarsip.")
-            
-        with tab_perbaikan:
-            if selected_nama != "-":
-                ai_rek = pd.DataFrame()
-                if not df_rekomendasi.empty:
-                    r_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
-                    if r_col: ai_rek = df_rekomendasi[df_rekomendasi[r_col].astype(str).str.strip().str.lower() == selected_nama.strip().lower()]
-                ai_evid = df_evidence[df_evidence.apply(lambda row: row.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)] if not df_evidence.empty else pd.DataFrame()
+    st.write("---")
+    st.markdown(f"<h3 style='color:var(--accent-color); font-size:26px;'>📂 DATABASE EVIDANCE & RIWAYAT</h3>", unsafe_allow_html=True)
+    
+    tab_r2r4, tab_genset, tab_tools, tab_perbaikan, tab_fakta = st.tabs([
+        "🚗 Matrix R2/R4", "⚡ Matrix Genset", "🔧 Matrix Tools", "🛠️ Riwayat Evidance Service", "📄 Fakta Integritas"
+    ])
+    
+    def render_gallery_fast(tab_context, df, df_columns, data_row, empty_msg):
+        with tab_context:
+            if data_row is not None:
+                photos_exist = False
+                valid_photos = []
+                for col_name in df_columns:
+                    cell_val = str(data_row[col_name]).strip()
+                    match = re.search(r'[-\w]{25,}', cell_val) 
+                    if match: valid_photos.append((col_name, match.group(0)))
                 
-                if not ai_rek.empty or not ai_evid.empty:
-                    st.markdown(f"<h4 style='color:var(--accent-color); text-transform:uppercase;'>Histori Tindakan & Bukti Visual: {selected_nama}</h4>", unsafe_allow_html=True)
-                    rek_iter = list(ai_rek.iloc[::-1].iterrows()) if not ai_rek.empty else []
-                    evid_iter = list(ai_evid.iloc[::-1].iterrows()) if not ai_evid.empty else []
+                if valid_photos:
+                    photos_exist = True
+                    cols = st.columns(4) 
+                    for idx, (col_name, file_id) in enumerate(valid_photos):
+                        img_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
+                        original_url = f"https://drive.google.com/file/d/{file_id}/view"
+                        html_card = f"""
+                        <div class="gallery-card-3d">
+                            <img src="{img_url}" referrerpolicy="no-referrer">
+                            <div style="margin-top:10px;">
+                                <p style="font-size:11px; color:var(--accent-color); font-weight:bold; margin-bottom:5px; text-transform:uppercase;">{col_name}</p>
+                                <a href="{original_url}" target="_blank" class="btn-buka-foto">🔍 HD View</a>
+                            </div>
+                        </div>
+                        """
+                        # Memastikan tidak ada code block
+                        html_ai_card = f"<div style='background:rgba(9,14,23,0.9); padding:10px; border-radius:8px; border-left:3px solid var(--primary-color); font-size:11px;'>🧠 {generate_ai_analysis_mini(file_id)}</div>"
+                        with cols[idx % 4]:
+                            st.markdown(html_card, unsafe_allow_html=True)
+                            with st.expander("🤖 PEMINDAIAN AI SICAKEP"): 
+                                st.markdown(html_ai_card, unsafe_allow_html=True)
+                
+                if not photos_exist: st.info(empty_msg)
+            else: st.info(empty_msg)
+
+    render_gallery_fast(tab_r2r4, df_asset, df_asset.columns, data_asset_select, "Data visual kendaraan belum terarsip.")
+    render_gallery_fast(tab_genset, df_genset, df_genset.columns, data_genset_select, "Data visual genset belum terarsip.")
+    render_gallery_fast(tab_tools, df_tools_asset, df_tools_asset.columns, data_tools_asset_select, "Data visual tools belum terarsip.")
+        
+    with tab_perbaikan:
+        if selected_nama != "-":
+            ai_rek = pd.DataFrame()
+            if not df_rekomendasi.empty:
+                r_col = next((col for col in df_rekomendasi.columns if "NAMA" in str(col).upper()), None)
+                if r_col: ai_rek = df_rekomendasi[df_rekomendasi[r_col].astype(str).str.strip().str.lower() == selected_nama.strip().lower()]
+            ai_evid = df_evidence[df_evidence.apply(lambda row: row.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)] if not df_evidence.empty else pd.DataFrame()
+            
+            if not ai_rek.empty or not ai_evid.empty:
+                st.markdown(f"<h4 style='color:var(--accent-color); text-transform:uppercase;'>Histori Tindakan & Bukti Visual: {selected_nama}</h4>", unsafe_allow_html=True)
+                rek_iter = list(ai_rek.iloc[::-1].iterrows()) if not ai_rek.empty else []
+                evid_iter = list(ai_evid.iloc[::-1].iterrows()) if not ai_evid.empty else []
+                
+                for (rek_idx, row_rek), (evid_idx, row_evid) in zip_longest(rek_iter, evid_iter, fillvalue=(None, None)):
+                    if row_rek is not None:
+                        teks_laporan = row_rek.get('Findings & Action Plan', '')
+                        if pd.isna(teks_laporan) or teks_laporan.strip() == "": teks_laporan = "- Lampiran foto tanpa deskripsi teks -"
+                        st.markdown(f"<div class='report-box-premium'><span class='report-date-badge'>⏱️ LOG: {row_rek.get('Timestamp', '-')}</span><p style='color:#f8fafc; font-size:16px;'>{teks_laporan}</p></div>", unsafe_allow_html=True)
                     
-                    for (rek_idx, row_rek), (evid_idx, row_evid) in zip_longest(rek_iter, evid_iter, fillvalue=(None, None)):
-                        if row_rek is not None:
-                            teks_laporan = row_rek.get('Findings & Action Plan', '')
-                            if pd.isna(teks_laporan) or teks_laporan.strip() == "": teks_laporan = "- Lampiran foto tanpa deskripsi teks -"
-                            st.markdown(f"<div class='report-box-premium'><span class='report-date-badge'>⏱️ LOG: {row_rek.get('Timestamp', '-')}</span><p style='color:#f8fafc; font-size:16px;'>{teks_laporan}</p></div>", unsafe_allow_html=True)
-                        
-                        if row_evid is not None:
-                            waktu_foto = row_evid.iloc[0] if len(row_evid) > 0 else "-"
-                            valid_photos = []
-                            for col_val in row_evid.values:
-                                val_str = str(col_val).strip()
-                                if "drive.google.com" in val_str:
-                                    urls = val_str.split(',')
-                                    for u in urls:
-                                        m = re.search(r'[-\w]{25,}', u)
-                                        if m: valid_photos.append(m.group(0))
-
-                            if valid_photos:
-                                st.markdown(f"<p style='font-size:12px; color:var(--accent-color); font-weight:bold;'>[ 📸 VISUAL EVIDANCE - {waktu_foto} ]</p>", unsafe_allow_html=True)
-                                cols = st.columns(4) 
-                                for idx, file_id in enumerate(valid_photos):
-                                    html_card = f"<div class='gallery-card-3d' style='background:rgba(9,14,23,0.8);'><img src='https://drive.google.com/thumbnail?id={file_id}&sz=w1000' referrerpolicy='no-referrer'><a href='https://drive.google.com/file/d/{file_id}/view' target='_blank' class='btn-buka-foto'>🔍 Buka</a></div>"
-                                    html_ai_card = f"<div style='background:rgba(9,14,23,0.9); padding:10px; border-radius:8px; border-left:3px solid var(--primary-color); font-size:11px;'>🧠 {generate_ai_analysis_mini(file_id)}</div>"
-                                    with cols[idx % 4]:
-                                        st.markdown(html_card, unsafe_allow_html=True)
-                                        with st.expander("🤖 PEMINDAIAN AI SICAKEP"): 
-                                            st.markdown(html_ai_card, unsafe_allow_html=True)
-                        st.write("<br><div style='height:2px; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); margin: 20px 0;'></div>", unsafe_allow_html=True)
-                else: st.info("Tidak ada rekam jejak untuk personel ini.")
-            else: st.info("Pilih personel di panel atas.")
-
-        with tab_fakta:
-            if not df_fakta.empty and selected_nama != "-":
-                matched_fakta = df_fakta[df_fakta.apply(lambda row: row.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)]
-                if not matched_fakta.empty:
-                    st.markdown(f"<h4 style='color:var(--accent-color); text-transform:uppercase;'>Vault Integritas: {selected_nama}</h4>", unsafe_allow_html=True)
-                    for _, row in matched_fakta.iloc[::-1].iterrows():
-                        st.markdown(f"<span class='report-date-badge'>⏱️ TIMESTAMP: {row.get('Timestamp', row.get('TANGGAL', '-'))}</span>", unsafe_allow_html=True)
-                        valid_files = []
-                        for c in matched_fakta.columns:
-                            if "drive.google.com" in str(row[c]):
-                                urls = str(row[c]).split(',')
+                    if row_evid is not None:
+                        waktu_foto = row_evid.iloc[0] if len(row_evid) > 0 else "-"
+                        valid_photos = []
+                        for col_val in row_evid.values:
+                            val_str = str(col_val).strip()
+                            if "drive.google.com" in val_str:
+                                urls = val_str.split(',')
                                 for u in urls:
                                     m = re.search(r'[-\w]{25,}', u)
-                                    if m: valid_files.append(m.group(0))
-                        
-                        if valid_files:
-                            cols = st.columns(4)
-                            for idx, file_id in enumerate(valid_files):
-                                html_card = f"<div class='gallery-card-3d'><img src='https://drive.google.com/thumbnail?id={file_id}&sz=w800' referrerpolicy='no-referrer'><a href='https://drive.google.com/file/d/{file_id}/view' target='_blank' class='btn-buka-foto'>📥 Unduh PDF</a></div>"
-                                html_ai_card = f"<div style='background:rgba(9,14,23,0.9); padding:10px; border-radius:8px; border-left:3px solid var(--primary-color); font-size:11px;'>🧠 {generate_ai_analysis_mini(file_id, is_doc=True)}</div>"
+                                    if m: valid_photos.append(m.group(0))
+
+                        if valid_photos:
+                            st.markdown(f"<p style='font-size:12px; color:var(--accent-color); font-weight:bold;'>[ 📸 VISUAL EVIDANCE - {waktu_foto} ]</p>", unsafe_allow_html=True)
+                            cols = st.columns(4) 
+                            for idx, file_id in enumerate(valid_photos):
+                                html_card = f"<div class='gallery-card-3d' style='background:rgba(9,14,23,0.8);'><img src='https://drive.google.com/thumbnail?id={file_id}&sz=w1000' referrerpolicy='no-referrer'><a href='https://drive.google.com/file/d/{file_id}/view' target='_blank' class='btn-buka-foto'>🔍 Buka</a></div>"
+                                html_ai_card = f"<div style='background:rgba(9,14,23,0.9); padding:10px; border-radius:8px; border-left:3px solid var(--primary-color); font-size:11px;'>🧠 {generate_ai_analysis_mini(file_id)}</div>"
                                 with cols[idx % 4]:
                                     st.markdown(html_card, unsafe_allow_html=True)
-                                    with st.expander("🤖 VERIFIKASI AI"): 
+                                    with st.expander("🤖 PEMINDAIAN AI SICAKEP"): 
                                         st.markdown(html_ai_card, unsafe_allow_html=True)
-                        st.write("<hr style='border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
-                else: st.warning("Dokumen Fakta Integritas tidak ditemukan.")
-            else: st.info("Terkunci. Pilih personel.")
+                    st.write("<br><div style='height:2px; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); margin: 20px 0;'></div>", unsafe_allow_html=True)
+            else: st.info("Tidak ada rekam jejak untuk personel ini.")
+        else: st.info("Pilih personel di panel atas.")
+
+    with tab_fakta:
+        if not df_fakta.empty and selected_nama != "-":
+            matched_fakta = df_fakta[df_fakta.apply(lambda row: row.astype(str).str.contains(selected_nama, case=False, na=False).any(), axis=1)]
+            if not matched_fakta.empty:
+                st.markdown(f"<h4 style='color:var(--accent-color); text-transform:uppercase;'>Vault Integritas: {selected_nama}</h4>", unsafe_allow_html=True)
+                for _, row in matched_fakta.iloc[::-1].iterrows():
+                    st.markdown(f"<span class='report-date-badge'>⏱️ TIMESTAMP: {row.get('Timestamp', row.get('TANGGAL', '-'))}</span>", unsafe_allow_html=True)
+                    valid_files = []
+                    for c in matched_fakta.columns:
+                        if "drive.google.com" in str(row[c]):
+                            urls = str(row[c]).split(',')
+                            for u in urls:
+                                m = re.search(r'[-\w]{25,}', u)
+                                if m: valid_files.append(m.group(0))
+                    
+                    if valid_files:
+                        cols = st.columns(4)
+                        for idx, file_id in enumerate(valid_files):
+                            html_card = f"<div class='gallery-card-3d'><img src='https://drive.google.com/thumbnail?id={file_id}&sz=w800' referrerpolicy='no-referrer'><a href='https://drive.google.com/file/d/{file_id}/view' target='_blank' class='btn-buka-foto'>📥 Unduh PDF</a></div>"
+                            html_ai_card = f"<div style='background:rgba(9,14,23,0.9); padding:10px; border-radius:8px; border-left:3px solid var(--primary-color); font-size:11px;'>🧠 {generate_ai_analysis_mini(file_id, is_doc=True)}</div>"
+                            with cols[idx % 4]:
+                                st.markdown(html_card, unsafe_allow_html=True)
+                                with st.expander("🤖 VERIFIKASI AI"): 
+                                    st.markdown(html_ai_card, unsafe_allow_html=True)
+                    st.write("<hr style='border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
+            else: st.warning("Dokumen Fakta Integritas tidak ditemukan.")
+        else: st.info("Terkunci. Pilih personel.")
