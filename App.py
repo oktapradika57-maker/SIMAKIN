@@ -295,60 +295,80 @@ if not df_sdm.empty:
     with tab_trk_tools:
         for branch, target in target_default.items(): st.markdown(render_progress_nop(f"NOP {branch.title()}", prog_tools[branch], target), unsafe_allow_html=True)
         
-    # ⚡ FITUR BARU: LOGIKA KOMPARASI FILE DENGAN GOOGLE SHEET
+   # ⚡ FITUR BARU: LOGIKA KOMPARASI FILE OTOMATIS (PERMANEN BACA DARI GITHUB)
     with tab_trk_audit:
-        st.markdown("<h4 style='color:var(--accent-color); margin-bottom:10px; margin-top:5px;'>🎯 KOMPARASI FILE DATABASE KARYAWAN</h4>", unsafe_allow_html=True)
-        st.info("Upload file **DATABASE KARYAWAN.xlsx** di sini. Sistem akan mencocokkan namanya dengan 3 Sheet utama untuk mendeteksi siapa yang tertinggal update.")
+        st.markdown("<h4 style='color:var(--accent-color); margin-bottom:10px; margin-top:5px;'>🎯 KOMPARASI OTOMATIS DATABASE KARYAWAN</h4>", unsafe_allow_html=True)
+        st.info("Sistem membaca otomatis file **DATABASE KARYAWAN_2.xlsx** (atau **DATABASE KARYAWAN.xlsx**) dari server/GitHub. Jika ada update data Karyawan, cukup timpa file lama di Github dengan yang baru!")
         
-        uploaded_db = st.file_uploader("📂 Upload File (Format .xlsx)", type=["xlsx", "xls"], key="db_karyawan")
-        
-        if uploaded_db is not None:
-            df_kar = pd.read_excel(uploaded_db)
-            if 'NAMA' in df_kar.columns:
-                # Standarisasi huruf besar agar pencarian nama lebih presisi
-                df_kar['NAMA_UPPER'] = df_kar['NAMA'].astype(str).str.strip().str.upper()
-                
-                # Fungsi untuk menarik seluruh nama dari masing-masing sheet database Google
-                def ekstrak_nama(df):
-                    if df.empty: return []
-                    col = next((c for c in df.columns if 'NAMA' in str(c).upper()), df.columns[2] if len(df.columns) > 2 else None)
-                    if col: return df[col].astype(str).str.strip().str.upper().unique().tolist()
-                    return []
-                
-                list_mbp = ekstrak_nama(df_asset)
-                list_genset = ekstrak_nama(df_genset)
-                list_tools = ekstrak_nama(df_tools_asset)
-                
-                # Menuliskan 0% Jika tidak ada, Done Upload jika ada
-                df_kar['ASSET MBP & CME'] = df_kar['NAMA_UPPER'].apply(lambda x: '✅ Done Upload' if x in list_mbp else '❌ 0%')
-                df_kar['ASSET GENSET'] = df_kar['NAMA_UPPER'].apply(lambda x: '✅ Done Upload' if x in list_genset else '❌ 0%')
-                df_kar['ASSET TOOLS'] = df_kar['NAMA_UPPER'].apply(lambda x: '✅ Done Upload' if x in list_tools else '❌ 0%')
-                
-                # Kalkulasi Persentase Gabungan (Total 33%, 66%, atau 100%)
-                def hitung_persentase(row):
-                    total = 3
-                    done = sum([1 for val in [row['ASSET MBP & CME'], row['ASSET GENSET'], row['ASSET TOOLS']] if '✅ Done Upload' in val])
-                    pct = int((done/total)*100)
-                    if pct == 100: return f"{pct}% (Lengkap)"
-                    elif pct == 0: return f"0% (Kosong)"
-                    else: return f"{pct}% (Tidak Lengkap)"
+        # 1. Mencari file secara lokal (permanen dari direktori Github/Server)
+        file_path = None
+        if os.path.exists("DATABASE KARYAWAN_2.xlsx"):
+            file_path = "DATABASE KARYAWAN_2.xlsx"
+        elif os.path.exists("DATABASE KARYAWAN.xlsx"):
+            file_path = "DATABASE KARYAWAN.xlsx"
+            
+        if file_path:
+            try:
+                df_kar = pd.read_excel(file_path)
+                if 'NAMA' in df_kar.columns:
+                    # Standarisasi huruf besar agar pencarian nama lebih presisi
+                    df_kar['NAMA_UPPER'] = df_kar['NAMA'].astype(str).str.strip().str.upper()
                     
-                df_kar['PROGRESS TOTAL'] = df_kar.apply(hitung_persentase, axis=1)
-                
-                # Rapikan Data untuk ditampilkan
-                df_result = df_kar.drop(columns=['NAMA_UPPER'])
-                
-                # Buat Metrik Ringkasan Eksekutif di atas tabel
-                c_a1, c_a2, c_a3 = st.columns(3)
-                c_a1.markdown(f"<div class='macro-card' style='border-color:#3b82f6;'><div class='macro-title'>Total List Karyawan</div><div class='macro-value' style='color:#3b82f6;'>{len(df_result)}</div></div>", unsafe_allow_html=True)
-                c_a2.markdown(f"<div class='macro-card' style='border-color:#10b981;'><div class='macro-title'>Upload 100% (Lengkap)</div><div class='macro-value' style='color:#10b981;'>{len(df_result[df_result['PROGRESS TOTAL'] == '100% (Lengkap)'])}</div></div>", unsafe_allow_html=True)
-                c_a3.markdown(f"<div class='macro-card' style='border-color:#ef4444;'><div class='macro-title'>0% (Belum Sama Sekali)</div><div class='macro-value' style='color:#ef4444;'>{len(df_result[df_result['PROGRESS TOTAL'] == '0% (Kosong)'])}</div></div>", unsafe_allow_html=True)
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.dataframe(df_result, hide_index=True, use_container_width=True)
-            else:
-                st.error("❌ Gagal mendeteksi kolom 'NAMA' di dalam file Excel Anda. Pastikan Header kolom bernama NAMA.")
-
+                    # Fungsi untuk menarik seluruh nama dari masing-masing sheet database Google
+                    def ekstrak_nama(df):
+                        if df.empty: return []
+                        col = next((c for c in df.columns if 'NAMA' in str(c).upper()), df.columns[2] if len(df.columns) > 2 else None)
+                        if col: return df[col].astype(str).str.strip().str.upper().unique().tolist()
+                        return []
+                    
+                    list_mbp = ekstrak_nama(df_asset)
+                    list_genset = ekstrak_nama(df_genset)
+                    list_tools = ekstrak_nama(df_tools_asset)
+                    
+                    # Menuliskan 0% Jika tidak ada, Done Upload jika ada
+                    df_kar['ASSET MBP & CME'] = df_kar['NAMA_UPPER'].apply(lambda x: '✅ Done Upload' if x in list_mbp else '❌ 0%')
+                    df_kar['ASSET GENSET'] = df_kar['NAMA_UPPER'].apply(lambda x: '✅ Done Upload' if x in list_genset else '❌ 0%')
+                    df_kar['ASSET TOOLS'] = df_kar['NAMA_UPPER'].apply(lambda x: '✅ Done Upload' if x in list_tools else '❌ 0%')
+                    
+                    # Kalkulasi Persentase Gabungan
+                    def hitung_persentase(row):
+                        total = 3
+                        done = sum([1 for val in [row['ASSET MBP & CME'], row['ASSET GENSET'], row['ASSET TOOLS']] if '✅ Done Upload' in val])
+                        pct = int((done/total)*100)
+                        if pct == 100: return f"{pct}% (Lengkap)"
+                        elif pct == 0: return f"0% (Kosong)"
+                        else: return f"{pct}% (Tidak Lengkap)"
+                        
+                    df_kar['PROGRESS TOTAL'] = df_kar.apply(hitung_persentase, axis=1)
+                    
+                    # Rapikan Data untuk ditampilkan
+                    df_result = df_kar.drop(columns=['NAMA_UPPER'])
+                    
+                    # Cek kolom NOP untuk membuat fitur Filter NOP
+                    nop_col = next((c for c in df_result.columns if 'NOP' in str(c).upper()), None)
+                    if nop_col:
+                        # Buat filter dropdown NOP
+                        list_nop_filter = ["SEMUA NOP"] + sorted([str(x).strip() for x in df_result[nop_col].dropna().unique() if str(x).strip() != ""])
+                        pilih_nop = st.selectbox("🔍 FILTER BERDASARKAN NOP (CABANG):", list_nop_filter)
+                        
+                        # Filter dataframe berdasarkan NOP yang dipilih
+                        if pilih_nop != "SEMUA NOP":
+                            df_result = df_result[df_result[nop_col].astype(str).str.strip() == pilih_nop]
+                    
+                    # Buat Metrik Ringkasan Eksekutif di atas tabel
+                    c_a1, c_a2, c_a3 = st.columns(3)
+                    c_a1.markdown(f"<div class='macro-card' style='border-color:#3b82f6;'><div class='macro-title'>Total Karyawan (Di-filter)</div><div class='macro-value' style='color:#3b82f6;'>{len(df_result)}</div></div>", unsafe_allow_html=True)
+                    c_a2.markdown(f"<div class='macro-card' style='border-color:#10b981;'><div class='macro-title'>Upload 100% (Lengkap)</div><div class='macro-value' style='color:#10b981;'>{len(df_result[df_result['PROGRESS TOTAL'] == '100% (Lengkap)'])}</div></div>", unsafe_allow_html=True)
+                    c_a3.markdown(f"<div class='macro-card' style='border-color:#ef4444;'><div class='macro-title'>0% (Belum Sama Sekali)</div><div class='macro-value' style='color:#ef4444;'>{len(df_result[df_result['PROGRESS TOTAL'] == '0% (Kosong)'])}</div></div>", unsafe_allow_html=True)
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.dataframe(df_result, hide_index=True, use_container_width=True)
+                else:
+                    st.error("❌ Gagal mendeteksi kolom 'NAMA' di dalam file Excel. Pastikan header kolomnya bernama NAMA.")
+            except Exception as e:
+                st.error(f"❌ Terjadi kesalahan saat membaca file Excel: {e}")
+        else:
+            st.warning("⚠️ File **DATABASE KARYAWAN_2.xlsx** atau **DATABASE KARYAWAN.xlsx** tidak ditemukan di dalam Folder/Github Anda! Pastikan Anda sudah meng-upload file tersebut ke repositori yang sama dengan `App.py`.")
     st.markdown("""
 <div style="font-size: 11px; color: #94a3b8; margin-top: 5px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 10px; margin-bottom:25px;">
 <b>Target NOP:</b> Palangkaraya (41/14), Pangkalanbun (45/23), Tarakan (36/14), Pontianak (75/31).
