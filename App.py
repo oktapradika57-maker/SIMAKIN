@@ -599,7 +599,6 @@ if not df_sdm.empty:
     
     st.markdown(section_header("Tracker registrasi tim dan kepatuhan upload", "Progres input data per NOP dan audit kelengkapan upload personel."), unsafe_allow_html=True)
 
-    # PERUBAHAN: MENAMBAHKAN TAB KE-4 "AUDIT KEPATUHAN"
     tab_trk_asset, tab_trk_genset, tab_trk_tools, tab_trk_audit = st.tabs([
         "Spesifikasi R2/R4", "Parameter Genset", "Inventaris Tools", "AUDIT KEPATUHAN UPLOAD"
     ])
@@ -611,12 +610,10 @@ if not df_sdm.empty:
     with tab_trk_tools:
         for branch, target in target_default.items(): st.markdown(render_progress_nop(f"NOP {branch.title()}", prog_tools[branch], target), unsafe_allow_html=True)
         
-   # FITUR BARU: LOGIKA KOMPARASI FILE OTOMATIS (PERMANEN BACA DARI GITHUB)
     with tab_trk_audit:
         st.markdown("<h4 style='color:var(--accent-color); margin-bottom:10px; margin-top:5px;'>KOMPARASI OTOMATIS DATABASE KARYAWAN</h4>", unsafe_allow_html=True)
         st.info("Sistem membaca otomatis file **DATABASE KARYAWAN_2.xlsx** (atau **DATABASE KARYAWAN.xlsx**) dari server/GitHub. Jika ada update data Karyawan, cukup timpa file lama di Github dengan yang baru!")
         
-        # 1. Mencari file secara lokal (permanen dari direktori Github/Server)
         file_path = None
         if os.path.exists("DATABASE KARYAWAN_2.xlsx"):
             file_path = "DATABASE KARYAWAN_2.xlsx"
@@ -627,10 +624,8 @@ if not df_sdm.empty:
             try:
                 df_kar = pd.read_excel(file_path)
                 if 'NAMA' in df_kar.columns:
-                    # Standarisasi huruf besar agar pencarian nama lebih presisi
                     df_kar['NAMA_UPPER'] = df_kar['NAMA'].astype(str).str.strip().str.upper()
                     
-                    # Fungsi untuk menarik seluruh nama dari masing-masing sheet database Google
                     def ekstrak_nama(df):
                         if df.empty: return []
                         col = next((c for c in df.columns if 'NAMA' in str(c).upper()), df.columns[2] if len(df.columns) > 2 else None)
@@ -641,12 +636,10 @@ if not df_sdm.empty:
                     list_genset = ekstrak_nama(df_genset)
                     list_tools = ekstrak_nama(df_tools_asset)
                     
-                    # Menuliskan 0% Jika tidak ada, Done Upload jika ada
                     df_kar['ASSET MBP & CME'] = df_kar['NAMA_UPPER'].apply(lambda x: 'Done Upload' if x in list_mbp else '0%')
                     df_kar['ASSET GENSET'] = df_kar['NAMA_UPPER'].apply(lambda x: 'Done Upload' if x in list_genset else '0%')
                     df_kar['ASSET TOOLS'] = df_kar['NAMA_UPPER'].apply(lambda x: 'Done Upload' if x in list_tools else '0%')
                     
-                    # Kalkulasi Persentase Gabungan
                     def hitung_persentase(row):
                         total = 3
                         done = sum([1 for val in [row['ASSET MBP & CME'], row['ASSET GENSET'], row['ASSET TOOLS']] if 'Done Upload' in val])
@@ -656,22 +649,15 @@ if not df_sdm.empty:
                         else: return f"{pct}% (Tidak Lengkap)"
                         
                     df_kar['PROGRESS TOTAL'] = df_kar.apply(hitung_persentase, axis=1)
-                    
-                    # Rapikan Data untuk ditampilkan
                     df_result = df_kar.drop(columns=['NAMA_UPPER'])
                     
-                    # Cek kolom NOP untuk membuat fitur Filter NOP
                     nop_col = next((c for c in df_result.columns if 'NOP' in str(c).upper()), None)
                     if nop_col:
-                        # Buat filter dropdown NOP
                         list_nop_filter = ["SEMUA NOP"] + sorted([str(x).strip() for x in df_result[nop_col].dropna().unique() if str(x).strip() != ""])
                         pilih_nop = st.selectbox("FILTER BERDASARKAN NOP (CABANG):", list_nop_filter)
-                        
-                        # Filter dataframe berdasarkan NOP yang dipilih
                         if pilih_nop != "SEMUA NOP":
                             df_result = df_result[df_result[nop_col].astype(str).str.strip() == pilih_nop]
                     
-                    # Buat Metrik Ringkasan Eksekutif di atas tabel
                     c_a1, c_a2, c_a3 = st.columns(3)
                     c_a1.markdown(f"<div class='macro-card' style='border-color:#3b82f6;'><div class='macro-title'>Total Karyawan (Di-filter)</div><div class='macro-value' style='color:#3b82f6;'>{len(df_result)}</div></div>", unsafe_allow_html=True)
                     c_a2.markdown(f"<div class='macro-card' style='border-color:#10b981;'><div class='macro-title'>Upload 100% (Lengkap)</div><div class='macro-value' style='color:#10b981;'>{len(df_result[df_result['PROGRESS TOTAL'] == '100% (Lengkap)'])}</div></div>", unsafe_allow_html=True)
@@ -679,6 +665,24 @@ if not df_sdm.empty:
                     
                     st.markdown("<br>", unsafe_allow_html=True)
                     st.dataframe(df_result, hide_index=True, use_container_width=True)
+                    
+                    # Add generate WA text button
+                    missing_data = df_result[df_result['PROGRESS TOTAL'] == '0% (Kosong)']
+                    if not missing_data.empty:
+                        names_list = missing_data['NAMA'].tolist()
+                        wa_text = "Mohon perhatian bagi personel berikut yang belum melakukan upload data sama sekali (Progress 0%):
+
+"
+                        for idx, name in enumerate(names_list, 1):
+                            wa_text += f"{idx}. {name}
+"
+                        wa_text += "
+Mohon segera melengkapi data aset di sistem SIMAKIN. Terima kasih."
+                        
+                        # Use a text area so user can easily copy
+                        st.markdown("#### Teks WhatsApp untuk Personel yang Belum Upload Data (0%)")
+                        st.text_area("Copy teks di bawah ini:", value=wa_text, height=150)
+                        
                 else:
                     st.error("Gagal mendeteksi kolom 'NAMA' di dalam file Excel. Pastikan header kolomnya bernama NAMA.")
             except Exception as e:
@@ -1133,7 +1137,7 @@ if not df_sdm.empty:
                             st.markdown(f"<p style='font-size:12px; color:var(--accent-color); font-weight:bold;'>[ VISUAL EVIDANCE - {waktu_foto} ]</p>", unsafe_allow_html=True)
                             cols = st.columns(4) 
                             for idx, file_id in enumerate(valid_photos):
-                                html_card = f"<div class='gallery-card-3d' style='background:rgba(9,14,23,0.8);'><img src='https://drive.google.com/thumbnail?id={file_id}&sz=w1000' referrerpolicy='no-referrer'><a href='https://drive.google.com/file/d/{file_id}/view' target='_blank' class='btn-buka-foto'>Buka</a></div>"
+                                html_card = f"""<div class='gallery-card-3d' style='background:rgba(9,14,23,0.8);'><img src='https://drive.google.com/thumbnail?id={file_id}&sz=w1000' referrerpolicy='no-referrer'><a href='https://drive.google.com/file/d/{file_id}/view' target='_blank' class='btn-buka-foto'>Buka</a></div>"""
                                 html_ai_card = f"<div style='background:rgba(9,14,23,0.9); padding:10px; border-radius:8px; border-left:3px solid var(--primary-color); font-size:11px;'>{generate_ai_analysis_mini(file_id)}</div>"
                                 with cols[idx % 4]:
                                     st.markdown(html_card, unsafe_allow_html=True)
