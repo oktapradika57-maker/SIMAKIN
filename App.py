@@ -683,18 +683,24 @@ if not df_sdm.empty:
                     st.markdown("<br>", unsafe_allow_html=True)
                     st.dataframe(df_result, hide_index=True, use_container_width=True)
                     
-                    # Add generate WA text button
+                    # 🔥 PERUBAHAN: Add generate WA text button
                     missing_data = df_result[df_result['PROGRESS TOTAL'] == '0% (Kosong)']
                     if not missing_data.empty:
                         names_list = missing_data['NAMA'].tolist()
-                        wa_text = "Mohon perhatian bagi personel berikut yang belum melakukan upload data sama sekali (Progress 0%):\\n\\n"
-                        for idx, name in enumerate(names_list, 1):
-                            wa_text += f"{idx}. {name}\\n"
-                        wa_text += "\\nMohon segera melengkapi data aset di sistem SIMAKIN. Terima kasih."
                         
-                        # Use a text area so user can easily copy
-                        st.markdown("#### Teks WhatsApp untuk Personel yang Belum Upload Data (0%)")
-                        st.text_area("Copy teks di bawah ini:", value=wa_text.replace('\\n', '\n'), height=150)
+                        wa_text = "🚨 *PEMBERITAHUAN UPDATE DATA SIMAKIN* 🚨\n\n"
+                        wa_text += "Halo Rekan-rekan Tim Operasional,\n\n"
+                        wa_text += "Berdasarkan hasil pemindaian sistem *SIMAKIN* (Sistem Monitoring Aset Kinarya) hari ini, kami mendapati bahwa personel berikut *BELUM* melakukan pembaruan data aset sama sekali (Progress 0%):\n\n"
+                        
+                        for idx, name in enumerate(names_list, 1):
+                            wa_text += f" 👤 {idx}. {name}\n"
+                            
+                        wa_text += "\nMohon kerjasamanya untuk *SEGERA* melengkapi data Spesifikasi Kendaraan (R2/R4), Parameter Genset, dan Inventaris Tools di database. Kelengkapan data ini berstatus Mandatory (Wajib).\n\n"
+                        wa_text += "Terima kasih atas kedisiplinan dan kerjasamanya! 🙏\n"
+                        wa_text += "- *Admin SIMAKIN*"
+                        
+                        st.markdown("<h4 style='color:var(--accent-color); margin-top:20px;'>📱 Broadcast WhatsApp (Reminder 0%)</h4>", unsafe_allow_html=True)
+                        st.text_area("Salin teks di bawah ini dan kirim ke Grup WA Tim:", value=wa_text, height=280)
                         
                 else:
                     st.error("Gagal mendeteksi kolom 'NAMA' di dalam file Excel. Pastikan header kolomnya bernama NAMA.")
