@@ -231,6 +231,23 @@ div[data-testid="stDownloadButton"] > button:hover, div[data-testid="stFormSubmi
 [data-testid="stExpander"] summary { color: var(--text) !important; font-size: .87rem !important; font-weight: 500 !important; padding: 10px 14px !important; }
 [data-testid="stDataFrame"] { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 div[data-testid="stAlert"] { border-radius: 10px !important; }
+
+/* 📱 MODE HP (SMARTPHONE AUTO-RESPONSIVE DETECTOR) 📱 */
+@media (max-width: 768px) {
+    .header-style { font-size: 18px !important; padding: 15px !important; margin-bottom: 15px !important; }
+    div[data-testid="stForm"] { padding: 20px !important; width: 90% !important; }
+    .macro-value { font-size: 20px !important; margin: 2px 0 !important; }
+    .macro-title { font-size: 9px !important; letter-spacing: 0px !important; }
+    .macro-card { padding: 10px !important; margin-bottom: 10px !important; }
+    .rek-table th { font-size: 8px !important; padding: 5px !important; }
+    .rek-table td { font-size: 9px !important; padding: 5px !important; }
+    .item-list { font-size: 9px !important; padding-left: 12px !important; }
+    .badge-ny, .badge-nok { font-size: 8px !important; padding: 2px 4px !important; }
+    .ai-llm-card { padding: 15px !important; }
+    .ai-llm-card h4 { font-size: 13px !important; }
+    .ai-llm-card p { font-size: 11px !important; line-height: 1.5 !important; }
+    .gallery-card-3d img { height: 150px !important; }
+}
 </style>""", unsafe_allow_html=True)
 
 # --- FUNGSI AI MINI SICAKEP ---
@@ -670,18 +687,14 @@ if not df_sdm.empty:
                     missing_data = df_result[df_result['PROGRESS TOTAL'] == '0% (Kosong)']
                     if not missing_data.empty:
                         names_list = missing_data['NAMA'].tolist()
-                        wa_text = "Mohon perhatian bagi personel berikut yang belum melakukan upload data sama sekali (Progress 0%):
-
-"
+                        wa_text = "Mohon perhatian bagi personel berikut yang belum melakukan upload data sama sekali (Progress 0%):\\n\\n"
                         for idx, name in enumerate(names_list, 1):
-                            wa_text += f"{idx}. {name}
-"
-                        wa_text += "
-Mohon segera melengkapi data aset di sistem SIMAKIN. Terima kasih."
+                            wa_text += f"{idx}. {name}\\n"
+                        wa_text += "\\nMohon segera melengkapi data aset di sistem SIMAKIN. Terima kasih."
                         
                         # Use a text area so user can easily copy
                         st.markdown("#### Teks WhatsApp untuk Personel yang Belum Upload Data (0%)")
-                        st.text_area("Copy teks di bawah ini:", value=wa_text, height=150)
+                        st.text_area("Copy teks di bawah ini:", value=wa_text.replace('\\n', '\n'), height=150)
                         
                 else:
                     st.error("Gagal mendeteksi kolom 'NAMA' di dalam file Excel. Pastikan header kolomnya bernama NAMA.")
